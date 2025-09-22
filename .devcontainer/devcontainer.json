@@ -1,0 +1,23 @@
+{
+  "name": "Unified GUI (Lite+U3)",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {}
+  },
+  "postCreateCommand": "pip install -r requirements.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "GitHub.vscode-pull-request-github"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.unittestEnabled": false,
+        "python.testing.pytestEnabled": false
+      }
+    }
+  },
+  "remoteUser": "vscode"
+}
