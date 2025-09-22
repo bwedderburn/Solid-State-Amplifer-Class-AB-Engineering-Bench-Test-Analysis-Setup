@@ -4,8 +4,16 @@
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {}
   },
+<<<<<<< HEAD
   "remoteUser": "vscode",
+<<<<<<< HEAD
   "postCreateCommand": "python -m pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
+=======
+
+=======
+  "postCreateCommand": "pip install -r requirements.txt || true && pip install -r requirements-dev.txt || true && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
+>>>>>>> b72ee39 (chore: add requirements.txt for CI selftest)
+>>>>>>> 2162094 (Resolve merge: keep our requirements.txt and drop duplicate uppercase file)
   "customizations": {
     "vscode": {
       "extensions": [
@@ -21,5 +29,16 @@
         "python.testing.unittestEnabled": false
       }
     }
+<<<<<<< HEAD
   }
+=======
+  },
+<<<<<<< HEAD
+
+  "postCreateCommand": "python -m pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb"
+>>>>>>> 2162094 (Resolve merge: keep our requirements.txt and drop duplicate uppercase file)
 }
+=======
+  "remoteUser": "vscode"
+}
+>>>>>>> b72ee39 (chore: add requirements.txt for CI selftest)

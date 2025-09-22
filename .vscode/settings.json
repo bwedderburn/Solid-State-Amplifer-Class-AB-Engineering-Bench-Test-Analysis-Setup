@@ -1,0 +1,8 @@
+{
+  // Prefer Black; keep legacy provider setting for older Python extension
+  "python.formatting.provider": "none",
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter"
+  }
+}
