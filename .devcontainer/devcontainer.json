@@ -4,7 +4,8 @@
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {}
   },
-  "postCreateCommand": "pip install -r requirements.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
+  "remoteUser": "vscode",
+
   "customizations": {
     "vscode": {
       "extensions": [
@@ -15,9 +16,15 @@
       "settings": {
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.testing.unittestEnabled": false,
-        "python.testing.pytestEnabled": false
+        "python.testing.pytestEnabled": false,
+
+        "remote.portsAttributes": {
+          "3399": { "label": "Pylance", "onAutoForward": "ignore" }
+        },
+        "codespaces.defaultPortPublic": false
       }
     }
   },
-  "remoteUser": "vscode"
+
+  "postCreateCommand": "python -m pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb"
 }
