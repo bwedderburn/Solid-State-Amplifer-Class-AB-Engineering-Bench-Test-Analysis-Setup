@@ -1,4 +1,5 @@
 # Unified GUI Layout (Lite + U3)
+![selftest](https://github.com/bwedderburn/Solid-State-Amplifer-Class-AB-Engineering-Bench-Test-Analysis-Setup/actions/workflows/selftest.yml/badge.svg)
 
 Cross-platform control panel for:
 - FeelTech FY3200S function generator (dual-channel)
