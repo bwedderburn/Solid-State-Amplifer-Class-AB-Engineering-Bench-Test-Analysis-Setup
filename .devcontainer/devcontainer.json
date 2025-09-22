@@ -13,6 +13,9 @@
 =======
   "postCreateCommand": "pip install -r requirements.txt || true && pip install -r requirements-dev.txt || true && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
 >>>>>>> b72ee39 (chore: add requirements.txt for CI selftest)
+<<<<<<< HEAD
+>>>>>>> 2162094 (Resolve merge: keep our requirements.txt and drop duplicate uppercase file)
+=======
 >>>>>>> 2162094 (Resolve merge: keep our requirements.txt and drop duplicate uppercase file)
   "customizations": {
     "vscode": {
