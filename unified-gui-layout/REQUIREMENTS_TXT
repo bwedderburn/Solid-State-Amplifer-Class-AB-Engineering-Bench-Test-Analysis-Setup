@@ -1,0 +1,13 @@
+numpy
+matplotlib
+pyserial
+pyvisa
+PySide6
+
+Alternative Qt binding:
+
+PyQt5
+
+Optional (for U3 support):
+
+LabJackPython
