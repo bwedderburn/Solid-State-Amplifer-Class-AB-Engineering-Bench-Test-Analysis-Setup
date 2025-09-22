@@ -4,6 +4,7 @@
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {}
   },
+  "remoteUser": "vscode",
   "postCreateCommand": "python -m pip install -U pip && pip install -r requirements.txt -r requirements-dev.txt && sudo apt-get update && sudo apt-get install -y libxkbcommon-x11-0 libxcb-cursor0 libgl1 libglib2.0-0 xvfb",
   "customizations": {
     "vscode": {
@@ -13,15 +14,12 @@
         "GitHub.vscode-pull-request-github"
       ],
       "settings": {
+        "remote.portsAttributes": { "3399": { "label": "Pylance", "onAutoForward": "ignore" } },
+        "codespaces.defaultPortPublic": false,
         "python.defaultInterpreterPath": "/usr/local/bin/python",
         "python.testing.pytestEnabled": false,
-        "python.testing.unittestEnabled": false,
-        "remote.portsAttributes": {
-          "3399": { "label": "Pylance", "onAutoForward": "ignore" }
-        },
-        "codespaces.defaultPortPublic": false
+        "python.testing.unittestEnabled": false
       }
     }
-  },
-  "remoteUser": "vscode"
+  }
 }
