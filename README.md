@@ -1,0 +1,225 @@
+# amp-benchkit
+
+Unified GUI + LabJack instrumentation helper environment.
+
+[![CI](https://github.com/your-org-or-user/amp-benchkit/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+
+## Contents
+
+- `unified_gui_layout.py` – Main multi‑tab GUI / CLI tool (PySide6/PyQt5, VISA, Serial, LabJack U3).
+- `amp_benchkit/deps.py` – Dependency detection (Qt binding, pyvisa, pyserial, LabJack) + shared helpers.
+- `amp_benchkit/fy.py` – FY32xx function generator helpers (command build, apply, sweep).
+- `amp_benchkit/tek.py` – Tektronix scope SCPI helpers (setup, waveform capture, IEEE block parsing).
+- `amp_benchkit/dsp.py` – DSP helpers (RMS, Vpp, THD FFT, bandwidth knees).
+- `amp_benchkit/gui/` – Incremental extraction of GUI tabs (generator, scope, DAQ extracted).
+- `amp_benchkit/u3util.py` – LabJack U3 safe‑open and feature detection utilities.
+- `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
+- `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
+
+## Quick Start
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+# Build & install Exodriver (USB support)
+./scripts/install_exodriver_alpine.sh
+
+# Run CLI selftest (headless)
+python unified_gui_layout.py selftest
+
+# Launch GUI (if X / Wayland or VS Code desktop available)
+python unified_gui_layout.py gui --gui
+```
+
+### Installed (Package) Usage
+
+After `pip install .[gui]` you can use console scripts:
+
+```bash
+amp-benchkit selftest          # run selftests (headless)
+amp-benchkit diag              # dependency diagnostics summary
+amp-benchkit gui --gui         # launch GUI (or use: amp-benchkit-gui --gui)
+amp-benchkit config-dump       # show persisted JSON config
+amp-benchkit config-reset      # reset config to defaults
+```
+
+Add `--verbose` to any of the above to elevate logging to DEBUG.
+
+### Logging
+
+A central logger (`amp_benchkit.logging`) is initialized by the CLI. It emits to stderr and a rotating file (`benchkit.log`) under `XDG_STATE_HOME` / `XDG_CACHE_HOME` (fallback `~/.cache/amp-benchkit`). Levels:
+
+* INFO: High‑level actions (applied FY settings, captured scope block, etc.)
+* DEBUG: Detailed SCPI / serial commands (enable with `--verbose`)
+* WARNING/ERROR: Dependency or runtime issues
+
+You can integrate programmatically:
+```python
+from amp_benchkit.logging import setup_logging, get_logger
+setup_logging(verbose=True)
+log = get_logger()
+log.info("Starting scripted acquisition")
+```
+
+### Config Persistence
+
+User preferences (FY port/protocol, last scope resource) persist to:
+`~/.config/amp-benchkit/config.json` (XDG‑style). Functions:
+
+```python
+from amp_benchkit.config import load_config, save_config, update_config
+cfg = load_config()
+update_config(fy_port="/dev/ttyUSB0")
+```
+CLI helpers: `config-dump`, `config-reset`.
+
+Corrupt config files are ignored gracefully and overwritten on next save.
+
+### Programmatic Use (Headless Helpers)
+
+```python
+from amp_benchkit.fy import fy_apply
+from amp_benchkit.tek import tek_capture_block, TEK_RSRC_DEFAULT
+from amp_benchkit.u3util import open_u3_safely
+
+# Apply a 1 kHz 2 Vpp sine on FY CH1 (auto port detection)
+fy_apply(freq_hz=1000, amp_vpp=2.0, wave="Sine", ch=1)
+
+# Capture a waveform from a Tek scope (returns t, volts, raw)
+t, v, raw = tek_capture_block(TEK_RSRC_DEFAULT, ch=1)
+
+# Open LabJack U3 safely
+try:
+	d = open_u3_safely()
+	ain0 = d.getAIN(0)
+	print("AIN0=", ain0)
+finally:
+	try: d.close()
+	except Exception: pass
+```
+
+If LabJack USB still not detected on Alpine (musl) add:
+```bash
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+```
+
+## Exodriver Strategies
+
+| Strategy | When to Use | Pros | Cons |
+|----------|-------------|------|------|
+| Wrapper script (current) | Local dev, containers | Clean, repeatable | Needs network clone |
+| Patch file | Re-apply minimal change to upstream checkout | Upstream diff isolated | Must re-apply after pulls |
+| Fork repo | Long‑lived customizations / PR | Version control of changes | Maintenance overhead |
+
+## Patch Workflow
+
+Create / refresh:
+```bash
+(cd exodriver && git format-patch -1 HEAD --stdout > ../patches/exodriver-install-alpine.patch)
+```
+Apply in fresh clone:
+```bash
+git clone https://github.com/labjack/exodriver.git
+cd exodriver
+git apply ../patches/exodriver-install-alpine.patch
+```
+
+## Health Check (after install)
+```bash
+python -c "import u3; print('u3 import OK')" || echo "LabJack Python import failed"
+```
+To probe a device (will fail gracefully if none):
+```bash
+python scripts/check_labjack_usb.py
+```
+
+## Make Targets (after Makefile added)
+Planned:
+- `make install-exodriver` – run wrapper.
+- `make check-usb` – run health script.
+- `make gui` – launch GUI.
+- `make selftest` – headless tests.
+
+## Troubleshooting
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `Could not load the Exodriver driver` | `liblabjackusb` not on search path | Run installer; set `LD_LIBRARY_PATH` |
+| `No module named numpy` | Dependencies not installed | `pip install -r requirements.txt` (future) |
+| GUI won’t launch | Missing Qt binding / no display | Install PySide6; ensure DISPLAY set or use VS Code desktop |
+| `Permission denied` running script | Not executable | `chmod +x script.sh` |
+
+## Future Improvements
+
+Implemented so far:
+* Phase 1 & 2 modularization: dependencies, instruments (FY / Tek / U3) extracted
+* Core pytest suite (FFT THD, IEEE block decode, config roundtrip)
+* Logging subsystem and JSON config persistence
+* GitHub Actions CI (Python 3.11 / 3.12)
+* DSP module extraction (`amp_benchkit.dsp`)
+* GUI tab modularization (generator + scope + DAQ + automation + diagnostics extracted into `amp_benchkit.gui`)
+* Version 0.2.0 released – full GUI tab extraction, shared Qt helper, removal of deprecated DSP wrappers.
+
+Planned / open:
+* Continue GUI tab extraction: diagnostics
+* Additional error handling (timeouts around VISA / serial)
+* Test extras & packaging polish
+* Optional hardware-in-loop stage (conditional)
+* Type hint expansion & static checks
+* Potential REST / WebSocket automation bridge
+
+---
+
+**Support references**: LabJack Exodriver repo <https://github.com/labjack/exodriver>
+
+## Changelog
+
+See `CHANGELOG.md` for a full list of versions and changes. Highlight 0.2.0: all GUI tabs modular, deprecated DSP wrappers removed, shared lazy Qt import helper.
+
+## Next Steps / Roadmap
+
+- Add `requirements.txt` or `pyproject.toml` for pinned dependencies.
+- Continuous Integration: GitHub Actions workflow to run `make selftest` and build Docker image.
+- Optional hardware-in-loop stage (tagged, skipped by default) for real LabJack tests.
+- Improve `unified_gui_layout.py` modularity (further split GUI/automation logic – Phase 1 & 2 complete: deps + instruments extracted).
+	(Logging + config persistence now implemented.)
+
+	## Public API (Stability: Beta)
+
+	The following functions / symbols are considered part of the provisional public API and will aim to avoid breaking changes without a minor version bump:
+
+	Instrument helpers:
+	* `amp_benchkit.fy.build_fy_cmds(freq_hz, amp_vpp, off_v, wave, duty=None, ch=1)`
+	* `amp_benchkit.fy.fy_apply(...)`
+	* `amp_benchkit.fy.fy_sweep(port, ch, proto, start=None, end=None, t_s=None, mode=None, run=None)`
+	* `amp_benchkit.tek.tek_capture_block(resource, ch=1)`
+	* `amp_benchkit.tek.scope_capture_calibrated(resource, timeout_ms=15000, ch=1)`
+	* `amp_benchkit.tek.scope_screenshot(filename, resource=..., timeout_ms=15000, ch=1)`
+	* `amp_benchkit.u3util.open_u3_safely()`
+
+	Diagnostics / utilities:
+	* `amp_benchkit.deps.find_fy_port()`
+	* `amp_benchkit.logging.setup_logging(verbose=False, file_logging=True)`
+	* `amp_benchkit.config.load_config()` / `save_config(cfg)` / `update_config(**kv)`
+
+	DSP / analysis (`amp_benchkit.dsp`):
+	* `vrms(v)`
+	* `vpp(v)`
+	* `thd_fft(t, v, f0=None, nharm=10, window='hann')`
+	* `find_knees(freqs, amps, ref_mode='max', ref_hz=1000.0, drop_db=3.0)`
+
+	Exceptions:
+	* `amp_benchkit.fy.FYError`, `FYTimeoutError`
+	* `amp_benchkit.tek.TekError`, `TekTimeoutError`
+
+	Items not listed above should be treated as internal and are subject to change.
+- Add type hints & mypy pass for critical modules.
+- Provide wheel / PyPI packaging for headless CLI mode.
+- Add a simple REST or WebSocket bridge for remote automation control.
+- Extend Makefile with `format` / `lint` targets (black, ruff, mypy).
+- Optional plugin architecture for new instrument tabs.
+
+

@@ -1,0 +1,1357 @@
+
+#!/usr/bin/env python3
+"""
+Unified GUI Layout (LITE+U3)
+
+Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftests preserved.
+- NEW: Automation tab uses a single shared FY **Port override** and **Protocol** for sweeps,
+        regardless of which FY channel is selected. If left blank, it auto-finds a likely FY port.
+- NEW: DAQ (U3) page includes a "Config Defaults" sub‑tab modeled after the U3-HV Windows panel.
+- NEW: U3 Config tab adds Watchdog "Reset on Timeout" + (optional) Set DIO State,
+       Backward-compat checkboxes, and Counter enable mapping to configIO when possible.
+"""
+import sys, os, time, argparse
+import numpy as np
+import warnings
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+# Import extracted dependency detection & helpers
+from amp_benchkit.deps import (
+    HAVE_PYVISA, HAVE_SERIAL, HAVE_QT, HAVE_U3,
+    QT_BINDING, PYVISA_ERR, SERIAL_ERR, QT_ERR, U3_ERR,
+    dep_msg, list_ports, find_fy_port, INSTALL_HINTS,
+    _serial, _pyvisa, _u3
+)
+# Imported refactored helpers
+from amp_benchkit.fy import fy_apply, fy_sweep, build_fy_cmds, FY_BAUD_EOLS, WAVE_CODE, SWEEP_MODE
+from amp_benchkit.tek import (
+    TEK_RSRC_DEFAULT, tek_setup_channel as _tek_setup_channel,
+    tek_capture_block as _tek_capture_block, read_curve_block as _read_curve_block,
+    parse_ieee_block as _decode_ieee_block, scope_set_trigger_ext, scope_arm_single,
+    scope_wait_single_complete, scope_configure_math_subtract, scope_capture_calibrated,
+    scope_screenshot
+)
+from amp_benchkit.u3util import open_u3_safely as u3_open
+from amp_benchkit.u3config import (
+    u3_read_ain, u3_read_multi, u3_set_line, u3_set_dir, u3_pulse_line, u3_autoconfigure_for_automation
+)
+from amp_benchkit.logging import setup_logging, get_logger
+from amp_benchkit.gui import build_generator_tab, build_scope_tab
+try:  # Qt symbol imports (available if HAVE_QT True)
+    from amp_benchkit.deps import (
+        QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
+        QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
+        QCheckBox, QSpinBox, Qt
+    )
+    from PySide6.QtCore import QTimer  # or PyQt5 equivalent already resolved inside deps
+    from PySide6.QtGui import QFont
+except Exception:
+    # If Qt not available, placeholders are already None in deps
+    pass
+
+FY_PROTOCOLS = ["FY ASCII 9600", "Auto (115200/CRLF→9600/LF)"]
+
+# -----------------------------
+# Utility / status helpers
+# -----------------------------
+
+# dep_msg, list_ports, find_fy_port now provided by amp_benchkit.deps
+
+FY_BAUD_EOLS = [(9600, "\n"), (115200, "\r\n")]
+
+# Prefer a fixed-width font when available (used in Test Panel)
+def fixed_font():
+    try:
+        f = QFont("Monospace")
+        try:
+            f.setStyleHint(QFont.TypeWriter)
+        except Exception:
+            pass
+        return f
+    except Exception:
+        return None
+
+# -----------------------------
+## FY and Tek helpers removed; now imported from amp_benchkit.fy and amp_benchkit.tek
+def _decode_ieee_block(raw: bytes) -> bytes:
+    """Backward-compatible IEEE block decoder (returns raw bytes or sliced payload).
+
+    Mirrors original implementation used by selftests: if the data does not start
+    with '#', it is returned unchanged; otherwise parse the length header and
+    return only the payload segment.
+    """
+    if not raw:
+        return b""
+    if raw[:1] != b"#":
+        return raw
+    if len(raw) < 2:
+        return b""
+    try:
+        nd = raw[1] - 48  # ASCII digit count
+    except Exception:
+        return b""
+    if nd <= 0:
+        return b""
+    if len(raw) < 2 + nd:
+        return b""
+    try:
+        nlen = int(raw[2:2+nd].decode('ascii', errors='ignore') or '0')
+    except Exception:
+        return b""
+    start = 2 + nd
+    return raw[start:start+nlen]
+
+## Removed local IEEE block decode and scope_capture; using imported helpers instead.
+def scope_capture(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
+    """Return raw sample bytes for channel ch (delegates to tek module)."""
+    if not HAVE_PYVISA:
+        raise ImportError(f"pyvisa not available. {INSTALL_HINTS['pyvisa']}")
+    # tek_capture_block returns (t, volts, raw) – we match previous semantics (raw bytes list)
+    _t, _v, raw = _tek_capture_block(resource, ch=ch)
+    return list(raw.astype(np.uint8)) if hasattr(raw, 'astype') else list(raw)
+
+## Migrated scope_* and U3 basic helpers moved to amp_benchkit.tek and amp_benchkit.u3config
+
+# -----------------------------
+# DSP / audio KPI helpers (scope waveform based)
+# -----------------------------
+
+from amp_benchkit import dsp as _dsp
+# Deprecated DSP wrappers removed; import users should now use amp_benchkit.dsp directly.
+
+# -----------------------------
+# U3 simple digital helpers for orchestration
+# -----------------------------
+
+def u3_set_line(line: str, state: int):
+    """Set a single U3 digital line high/low. line like 'FIO3', 'EIO1', 'CIO0'."""
+    if not HAVE_U3:
+        return
+    if not line or line.strip().lower() == 'none':
+        return
+    line = line.strip().upper()
+    try:
+        idx_local = int(line[3:])
+    except Exception:
+        return
+    # Map to global IO number
+    base = 0
+    if line.startswith('FIO'): base = 0
+    elif line.startswith('EIO'): base = 8
+    elif line.startswith('CIO'): base = 16
+    idx = base + idx_local
+    d = u3_open()
+    try:
+        st = 1 if state else 0
+        try:
+            d.getFeedback(_u3.BitStateWrite(idx, st))
+        except Exception:
+            # Fallback for older firmwares/APIs
+            try:
+                d.setDOState(idx, st)
+            except Exception:
+                pass
+    finally:
+        try: d.close()
+        except Exception: pass
+
+def u3_pulse_line(line: str, width_ms: float = 5.0, level: int = 1):
+    """Pulse a U3 line for width_ms milliseconds (best-effort)."""
+    if not HAVE_U3:
+        return
+    try:
+        u3_set_line(line, level)
+        time.sleep(max(0.0, float(width_ms)/1000.0))
+    finally:
+        u3_set_line(line, 0 if level else 1)
+
+def u3_set_dir(line: str, direction: int):
+    """Set a single U3 line direction (1=output, 0=input)."""
+    if not HAVE_U3:
+        return
+    if not line or line.strip().lower() == 'none':
+        return
+    line = line.strip().upper()
+    try:
+        idx_local = int(line[3:])
+    except Exception:
+        return
+    base = 0
+    if line.startswith('FIO'): base = 0
+    elif line.startswith('EIO'): base = 8
+    elif line.startswith('CIO'): base = 16
+    idx = base + idx_local
+    d = u3_open()
+    try:
+        try:
+            d.getFeedback(_u3.BitDirWrite(idx, 1 if direction else 0))
+        except Exception:
+            # Fallback: try PortDirWrite on the appropriate port
+            try:
+                if base == 0:
+                    # FIO is lower 8 bits
+                    mask = 1 << idx_local
+                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[mask, 0, 0]))
+                elif base == 8:
+                    mask = 1 << idx_local
+                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, mask, 0]))
+                elif base == 16:
+                    mask = 1 << idx_local
+                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, 0, mask]))
+            except Exception:
+                pass
+    finally:
+        try: d.close()
+        except Exception: pass
+
+def u3_autoconfigure_for_automation(pulse_line: str, base: str = 'current'):
+    """Best-effort: optionally restore factory defaults, set AIN0-3 as analog, and ensure pulse_line is output."""
+    if not HAVE_U3:
+        return
+    d = None
+    try:
+        d = u3_open()
+        # Base reset if requested
+        if isinstance(base, str) and base.lower().startswith('factory'):
+            try:
+                d.setToFactoryDefaults()
+            except Exception:
+                pass
+        # If starting from factory, ensure AIN0-3 analog (FIOAnalog bits 0..3 = 1)
+        if isinstance(base, str) and base.lower().startswith('factory'):
+            try:
+                # Prefer configIO path if supported
+                d.configIO(FIOAnalog=0x0F)
+            except Exception:
+                try:
+                    d.configU3(FIOAnalog=0x0F)
+                except Exception:
+                    pass
+    finally:
+        try:
+            if d: d.close()
+        except Exception:
+            pass
+    # Ensure selected pulse line is an output
+    try:
+        if pulse_line and pulse_line.strip().lower() != 'none':
+            u3_set_dir(pulse_line, 1)
+    except Exception:
+        pass
+
+# -----------------------------
+# GUI
+# -----------------------------
+if HAVE_QT:
+    BaseGUI = QMainWindow
+else:
+    class BaseGUI(object): pass
+
+class UnifiedGUI(BaseGUI):
+    def __init__(self):
+        if not HAVE_QT: return
+        super().__init__(); self.setWindowTitle("Unified Control (Lite+U3)"); self.resize(1080,780)
+        self.scope_res = TEK_RSRC_DEFAULT; os.makedirs('results', exist_ok=True)
+        tabs = QTabWidget(); self.setCentralWidget(tabs)
+        tabs.addTab(self.tab_gen(), "Generator"); tabs.addTab(self.tab_scope(), "Scope"); tabs.addTab(self.tab_daq(), "DAQ (U3)")
+        tabs.addTab(self.tab_automation(), "Automation / Sweep"); tabs.addTab(self.tab_diag(), "Diagnostics")
+
+    # ---- Generator (delegated)
+    def tab_gen(self):
+        return build_generator_tab(self)
+
+    def scan_serial_into(self, target_edit):
+        ps = list_ports()
+        if not ps:
+            self._log(self.gen_log, "No serial ports."); return
+        self._log(self.gen_log, "Ports: "+", ".join(p.device for p in ps))
+        for p in ps:
+            d=(p.device or '').lower()
+            if any(k in d for k in ['usbserial','tty.usb','wchusb','ftdi']):
+                target_edit.setText(p.device); break
+
+    def _proto_for_ch(self, ch:int) -> str:
+        cb = self.proto1 if ch==1 else self.proto2
+        return cb.currentText() if cb and hasattr(cb, 'currentText') else "FY ASCII 9600"
+
+    def _port_for_ch(self, ch:int) -> str:
+        ed = self.port1 if ch==1 else self.port2
+        txt = (ed.text().strip() if ed and hasattr(ed,'text') else '')
+        return txt or find_fy_port()
+
+    def apply_gen_side(self, side):
+        try:
+            if side==1:
+                f=float(self.freq1.text()); a=float(self.amp1.text()); o=float(self.off1.text()); wf=self.wave1.currentText(); duty=None
+                try: duty=float(self.duty1.text())
+                except Exception: pass
+                pr=self.proto1.currentText(); pt=(self.port1.text().strip() or None)
+                fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=1,port=pt,proto=pr)
+                self._log(self.gen_log,f"APPLIED CH1: {wf} {f} Hz, {a} Vpp, Off {o} V, Duty {duty if duty is not None else '—'}% ({pr})")
+            else:
+                f=float(self.freq2.text()); a=float(self.amp2.text()); o=float(self.off2.text()); wf=self.wave2.currentText(); duty=None
+                try: duty=float(self.duty2.text())
+                except Exception: pass
+                pr=self.proto2.currentText(); pt=(self.port2.text().strip() or None)
+                fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=2,port=pt,proto=pr)
+                self._log(self.gen_log,f"APPLIED CH2: {wf} {f} Hz, {a} Vpp, Off {o} V, Duty {duty if duty is not None else '—'}% ({pr})")
+        except Exception as e:
+            self._log(self.gen_log,f"Error: {e}")
+
+    def start_sweep_side(self, side):
+        try:
+            if side==1:
+                pr=self.proto1.currentText(); pt=self.port1.text().strip() or find_fy_port()
+                st=float(self.sw_start1.text()) if self.sw_start1.text().strip() else None
+                en=float(self.sw_end1.text()) if self.sw_end1.text().strip() else None
+                ts=int(self.sw_time1.text()) if self.sw_time1.text().strip() else None
+                md=self.sw_mode1.currentText()
+                if self.sw_amp1.text().strip():
+                    try:
+                        a=float(self.sw_amp1.text()); f=float(self.freq1.text() or 1000.0); o=float(self.off1.text() or 0.0); wf=self.wave1.currentText(); d=float(self.duty1.text()) if self.duty1.text().strip() else None
+                        fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=1, port=pt, proto=pr)
+                    except Exception as e:
+                        self._log(self.gen_log,f"Amp set CH1 failed: {e}")
+                fy_sweep(pt,1,pr,st,en,ts,md,True)
+                self._log(self.gen_log,f"SWEEP START CH1: {st}→{en} Hz, {ts}s, {md}")
+            else:
+                pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
+                st=float(self.sw_start2.text()) if self.sw_start2.text().strip() else None
+                en=float(self.sw_end2.text()) if self.sw_end2.text().strip() else None
+                ts=int(self.sw_time2.text()) if self.sw_time2.text().strip() else None
+                md=self.sw_mode2.currentText()
+                if self.sw_amp2.text().strip():
+                    try:
+                        a=float(self.sw_amp2.text()); f=float(self.freq2.text() or 1000.0); o=float(self.off2.text() or 0.0); wf=self.wave2.currentText(); d=float(self.duty2.text()) if self.duty2.text().strip() else None
+                        fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=2, port=pt, proto=pr)
+                    except Exception as e:
+                        self._log(self.gen_log,f"Amp set CH2 failed: {e}")
+                fy_sweep(pt,2,pr,st,en,ts,md,True)
+                self._log(self.gen_log,f"SWEEP START CH2: {st}→{en} Hz, {ts}s, {md}")
+        except Exception as e:
+            self._log(self.gen_log,f"Sweep start error: {e}")
+
+    def stop_sweep_side(self, side):
+        try:
+            if side==1:
+                pr=self.proto1.currentText(); pt=self.port1.text().strip() or find_fy_port()
+                fy_sweep(pt,1,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH1")
+            else:
+                pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
+                fy_sweep(pt,2,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH2")
+        except Exception as e:
+            self._log(self.gen_log,f"Sweep stop error: {e}")
+
+    def scope_measure(self, ch=1, typ='RMS'):
+        if not HAVE_PYVISA: raise ImportError(f"pyvisa not available. {INSTALL_HINTS['pyvisa']}")
+        r = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
+        rm = _pyvisa.ResourceManager(); sc = rm.open_resource(r or self.scope_res)
+        try:
+            try: sc.timeout = 5000
+            except Exception: pass
+            # Allow 'MATH' as a source
+            try:
+                if isinstance(ch, str) and ch.strip().upper() == 'MATH':
+                    sc.write("MEASU:IMM:SOURCE MATH")
+                else:
+                    sc.write(f"MEASU:IMM:SOURCE CH{int(ch)}")
+            except Exception:
+                sc.write(f"MEASU:IMM:SOURCE CH{int(ch)}")
+            sc.write(f"MEASU:IMM:TYP {typ}")
+            v = float(sc.query("MEASU:IMM:VAL?")); return v
+        finally:
+            try: sc.close()
+            except Exception: pass
+
+    # ---- Scope
+    def tab_scope(self):
+        return build_scope_tab(self)
+
+    def list_visa(self):
+        if not HAVE_PYVISA:
+            self._log(self.scope_log,f"pyvisa missing → {INSTALL_HINTS['pyvisa']}"); return
+        try:
+            res = _pyvisa.ResourceManager().list_resources(); self._log(self.scope_log, ", ".join(res) if res else "(none)")
+            tek = [r for r in res if r.startswith("USB0::0x0699::")]
+            if tek: self.scope_edit.setText(tek[0])
+        except Exception as e: self._log(self.scope_log, f"VISA error: {e}")
+
+    def capture_scope(self):
+        try:
+            r = self.scope_edit.text().strip() or self.scope_res; ch = int(self.scope_ch.currentText())
+            d = scope_capture(r, ch=ch); self._log(self.scope_log, f"Captured CH{ch} {len(d)} pts: {d[:10]}")
+        except Exception as e: self._log(self.scope_log, f"Error: {e}")
+
+    def save_shot(self):
+        try:
+            r = self.scope_edit.text().strip() or self.scope_res; ch = int(self.scope_ch.currentText())
+            fn = os.path.join('results', f'scope_ch{ch}.png'); path = scope_screenshot(fn, r, ch=ch); self._log(self.scope_log, f"Saved: {path}")
+        except Exception as e: self._log(self.scope_log, f"Error: {e}")
+
+    def save_csv(self):
+        try:
+            r = self.scope_edit.text().strip() or self.scope_res; ch = int(self.scope_ch.currentText())
+            fn = os.path.join('results', f'ch{ch}.csv'); t, v = scope_capture_calibrated(r, timeout_ms=15000, ch=ch)
+            with open(fn,'w') as f:
+                f.write('t,volts\n')
+                for i in range(len(v)):
+                    f.write(f"{t[i]},{v[i]}\n")
+            self._log(self.scope_log, f"Saved: {fn}")
+        except Exception as e: self._log(self.scope_log, f"Error: {e}")
+
+    # ---- DAQ (U3) with sub-tabs
+    def tab_daq(self):
+        from amp_benchkit.gui.daq_tab import build_daq_tab
+        return build_daq_tab(self)
+
+
+    def _selected_channels(self):
+        return [i for i,cb in enumerate(self.chan_boxes) if cb.isChecked()]
+
+        # ---- DAQ simple readers (used by Read/Stream tab)
+    def read_daq_once(self):
+        if not HAVE_U3:
+            self._log(self.daq_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        chs = self._selected_channels() or [0]
+        try:
+            vals = u3_read_multi(chs, samples=1)
+            self._log(self.daq_log, " | ".join(f"AIN{c}:{vals[0][i]:.4f} V" for i,c in enumerate(chs)))
+        except Exception as e:
+            self._log(self.daq_log, f"Read error: {e}")
+
+    def read_daq_multi(self):
+        if not HAVE_U3:
+            self._log(self.daq_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        chs = self._selected_channels() or [0]
+        ns = self.daq_nsamp.value(); delay = self.daq_delay.value()/1000.0
+        try:
+            vals = u3_read_multi(chs, samples=ns, delay_s=delay)
+            for k,row in enumerate(vals):
+                line = f"[{k+1}/{ns}] " + " | ".join(f"AIN{c}:{row[i]:.4f} V" for i,c in enumerate(chs))
+                self._log(self.daq_log, line)
+        except Exception as e:
+            self._log(self.daq_log, f"Loop error: {e}")
+
+    # ---- Test Panel runtime loop
+    def start_test_panel(self):
+        if not HAVE_U3:
+            self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            if self.test_factory.isChecked():
+                d = u3_open();
+                try: d.setToFactoryDefaults()
+                finally:
+                    try: d.close()
+                    except Exception: pass
+        except Exception as e:
+            self._log(self.test_log, f"Factory reset warn: {e}")
+            self._test_status(str(e), 'error')
+        if not hasattr(self, 'test_timer') or self.test_timer is None:
+            self.test_timer = QTimer(self)
+        self.test_timer.setInterval(1000)
+        self.test_timer.timeout.connect(self.tick_test_panel)
+        self.test_timer.start()
+        self._log(self.test_log, "Test Panel started")
+        self._test_status("OK", 'info')
+
+    def stop_test_panel(self):
+        t = getattr(self, 'test_timer', None)
+        if t: t.stop()
+        self._log(self.test_log, "Test Panel stopped")
+
+    def tick_test_panel(self):
+        # Apply current UI state to U3 once per second; read AINs
+        if not HAVE_U3:
+            return
+        # Directions
+        try:
+            for i,cb in enumerate(getattr(self, 'test_fio_dir', [])):
+                u3_set_dir(f"FIO{i}", 1 if cb.isChecked() else 0)
+            for i,cb in enumerate(getattr(self, 'test_eio_dir', [])):
+                u3_set_dir(f"EIO{i}", 1 if cb.isChecked() else 0)
+            for i,cb in enumerate(getattr(self, 'test_cio_dir', [])):
+                u3_set_dir(f"CIO{i}", 1 if cb.isChecked() else 0)
+        except Exception as e:
+            self._log(self.test_log, f"Dir write warn: {e}")
+            self._test_status(str(e), 'error')
+        # States (desired)
+        try:
+            for i,cb in enumerate(getattr(self, 'test_fio_state', [])):
+                u3_set_line(f"FIO{i}", 1 if cb.isChecked() else 0)
+            for i,cb in enumerate(getattr(self, 'test_eio_state', [])):
+                u3_set_line(f"EIO{i}", 1 if cb.isChecked() else 0)
+            for i,cb in enumerate(getattr(self, 'test_cio_state', [])):
+                u3_set_line(f"CIO{i}", 1 if cb.isChecked() else 0)
+        except Exception as e:
+            self._log(self.test_log, f"State write warn: {e}")
+            self._test_status(str(e), 'error')
+        # Readback states (DI) and per-port masks
+        try:
+            d = u3_open()
+            try:
+                states = d.getFeedback(_u3.PortStateRead())[0]  # dict {'FIO':byte, 'EIO':byte, 'CIO':byte}
+                dirs   = d.getFeedback(_u3.PortDirRead())[0]
+            finally:
+                try: d.close()
+                except Exception: pass
+            sF, sE, sC = states.get('FIO',0), states.get('EIO',0), states.get('CIO',0)
+            dF, dE, dC = dirs.get('FIO',0),   dirs.get('EIO',0),   dirs.get('CIO',0)
+            for i,cb in enumerate(getattr(self, 'test_fio_rb', [])):
+                cb.setChecked( bool((sF>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_eio_rb', [])):
+                cb.setChecked( bool((sE>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_cio_rb', [])):
+                cb.setChecked( bool((sC>>i)&1) )
+            def fm(x):
+                return f"0x{x:02X} ({x:08b})"
+            self.test_dir_fio.setText(fm(dF)); self.test_dir_eio.setText(fm(dE)); self.test_dir_cio.setText(fm(dC))
+            self.test_st_fio.setText(fm(sF));  self.test_st_eio.setText(fm(sE));  self.test_st_cio.setText(fm(sC))
+        except Exception as e:
+            self._log(self.test_log, f"Readback warn: {e}")
+            self._test_status(str(e), 'error')
+        # DACs
+        try:
+            d = u3_open()
+            try:
+                dv0 = max(0.0, min(5.0, float(self.test_dac0.text() or '0')))
+                dv1 = max(0.0, min(5.0, float(self.test_dac1.text() or '0')))
+                try:
+                    d.getFeedback(_u3.DAC0_8(Value=int(dv0/5.0*255)), _u3.DAC1_8(Value=int(dv1/5.0*255)))
+                except Exception:
+                    pass
+            finally:
+                try: d.close()
+                except Exception: pass
+        except Exception as e:
+            self._log(self.test_log, f"DAC warn: {e}")
+            self._test_status(str(e), 'error')
+        # AIN readings
+        try:
+            for i in range(4):
+                v = u3_read_ain(i)
+                self.test_ain_lbls[i].setText(f"{v:.4f}")
+        except Exception as e:
+            self._log(self.test_log, f"AIN read warn: {e}")
+            self._test_status(str(e), 'error')
+        # Counters
+        try:
+            d = u3_open()
+            try:
+                try:
+                    c0 = d.getFeedback(_u3.Counter0(Reset=False))[0]
+                except Exception:
+                    c0 = None
+                try:
+                    c1 = d.getFeedback(_u3.Counter1(Reset=False))[0]
+                except Exception:
+                    c1 = None
+            finally:
+                try: d.close()
+                except Exception: pass
+            if c0 is not None:
+                self.test_c0.setText(str(c0))
+            if c1 is not None:
+                self.test_c1.setText(str(c1))
+        except Exception as e:
+            self._log(self.test_log, f"Counter read warn: {e}")
+            self._test_status(str(e), 'error')
+
+    def reset_counter(self, which: int):
+        if not HAVE_U3:
+            return
+        try:
+            d = u3_open()
+            try:
+                if which == 0:
+                    d.getFeedback(_u3.Counter0(Reset=True))
+                    self._log(self.test_log, "Counter0 reset")
+                else:
+                    d.getFeedback(_u3.Counter1(Reset=True))
+                    self._log(self.test_log, "Counter1 reset")
+            finally:
+                try: d.close()
+                except Exception: pass
+        except Exception as e:
+            self._log(self.test_log, f"Counter reset warn: {e}")
+            self._test_status(str(e), 'error')
+
+    # ---- Whole-port writers (Test Panel)
+    def _parse_mask_text(self, txt: str) -> int:
+        s = (txt or '').strip()
+        try:
+            if s.lower().startswith('0x') or s.lower().startswith('0b'):
+                return max(0, min(255, int(s, 0)))
+            # allow binary like 10101010
+            if all(c in '01' for c in s) and len(s) <= 8:
+                return int(s, 2)
+            return max(0, min(255, int(s)))
+        except Exception:
+            return 0
+
+    def apply_port_dir(self, port: str):
+        if not HAVE_U3:
+            self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        port = (port or 'FIO').upper()
+        vF=vE=vC=0; mF=mE=mC=0
+        if port=='FIO':
+            vF = self._parse_mask_text(getattr(self,'test_wdir_fio').text())
+            mF = 0xFF
+        elif port=='EIO':
+            vE = self._parse_mask_text(getattr(self,'test_wdir_eio').text())
+            mE = 0xFF
+        else:
+            vC = self._parse_mask_text(getattr(self,'test_wdir_cio').text())
+            mC = 0xFF
+        try:
+            d = u3_open()
+            try:
+                d.getFeedback(_u3.PortDirWrite(Direction=[vF,vE,vC], WriteMask=[mF,mE,mC]))
+            finally:
+                try: d.close()
+                except Exception: pass
+            self._log(self.test_log, f"Dir write {port}: 0x{(vF if port=='FIO' else vE if port=='EIO' else vC):02X}")
+            self._test_status("OK", 'info')
+        except Exception as e:
+            self._log(self.test_log, f"Dir write error: {e}")
+            self._test_status(str(e), 'error')
+
+    def apply_port_state(self, port: str):
+        if not HAVE_U3:
+            self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        port = (port or 'FIO').upper()
+        vF=vE=vC=0; mF=mE=mC=0
+        if port=='FIO':
+            vF = self._parse_mask_text(getattr(self,'test_wst_fio').text())
+            mF = 0xFF
+        elif port=='EIO':
+            vE = self._parse_mask_text(getattr(self,'test_wst_eio').text())
+            mE = 0xFF
+        else:
+            vC = self._parse_mask_text(getattr(self,'test_wst_cio').text())
+            mC = 0xFF
+        try:
+            d = u3_open()
+            try:
+                d.getFeedback(_u3.PortStateWrite(State=[vF,vE,vC], WriteMask=[mF,mE,mC]))
+            finally:
+                try: d.close()
+                except Exception: pass
+            self._log(self.test_log, f"State write {port}: 0x{(vF if port=='FIO' else vE if port=='EIO' else vC):02X}")
+            self._test_status("OK", 'info')
+        except Exception as e:
+            self._log(self.test_log, f"State write error: {e}")
+            self._test_status(str(e), 'error')
+
+    def apply_all_ports(self):
+        if not HAVE_U3:
+            self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            df = self._parse_mask_text(getattr(self,'test_wdir_fio').text()); de = self._parse_mask_text(getattr(self,'test_wdir_eio').text()); dc = self._parse_mask_text(getattr(self,'test_wdir_cio').text())
+            sf = self._parse_mask_text(getattr(self,'test_wst_fio').text()); se = self._parse_mask_text(getattr(self,'test_wst_eio').text()); sc = self._parse_mask_text(getattr(self,'test_wst_cio').text())
+            d = u3_open()
+            try:
+                d.getFeedback(_u3.PortDirWrite(Direction=[df,de,dc], WriteMask=[0xFF,0xFF,0xFF]))
+                d.getFeedback(_u3.PortStateWrite(State=[sf,se,sc], WriteMask=[0xFF,0xFF,0xFF]))
+            finally:
+                try: d.close()
+                except Exception: pass
+            self._log(self.test_log, f"Applied all: Dir=[0x{df:02X},0x{de:02X},0x{dc:02X}] State=[0x{sf:02X},0x{se:02X},0x{sc:02X}]")
+            self._test_status("OK", 'info')
+        except Exception as e:
+            self._log(self.test_log, f"Apply all error: {e}")
+            self._test_status(str(e), 'error')
+
+    def load_masks_from_device(self):
+        if not HAVE_U3:
+            self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            d = u3_open()
+            try:
+                states = d.getFeedback(_u3.PortStateRead())[0]
+                dirs   = d.getFeedback(_u3.PortDirRead())[0]
+            finally:
+                try: d.close()
+                except Exception: pass
+            sF, sE, sC = states.get('FIO',0), states.get('EIO',0), states.get('CIO',0)
+            dF, dE, dC = dirs.get('FIO',0),   dirs.get('EIO',0),   dirs.get('CIO',0)
+            # Fill editable mask fields
+            self.test_wdir_fio.setText(f"0x{dF:02X}"); self.test_wdir_eio.setText(f"0x{dE:02X}"); self.test_wdir_cio.setText(f"0x{dC:02X}")
+            self.test_wst_fio.setText(f"0x{sF:02X}");  self.test_wst_eio.setText(f"0x{sE:02X}");  self.test_wst_cio.setText(f"0x{sC:02X}")
+            # Optionally sync desired checkboxes to device
+            for i,cb in enumerate(getattr(self, 'test_fio_dir', [])): cb.setChecked( bool((dF>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_eio_dir', [])): cb.setChecked( bool((dE>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_cio_dir', [])): cb.setChecked( bool((dC>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_fio_state', [])): cb.setChecked( bool((sF>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_eio_state', [])): cb.setChecked( bool((sE>>i)&1) )
+            for i,cb in enumerate(getattr(self, 'test_cio_state', [])): cb.setChecked( bool((sC>>i)&1) )
+            self._log(self.test_log, "Loaded masks from device")
+            self._test_status("OK", 'info')
+        except Exception as e:
+            self._log(self.test_log, f"Read masks error: {e}")
+            self._test_status(str(e), 'error')
+
+    def fill_masks_from_checks(self):
+        def mfrom(checks):
+            m=0
+            for i,cb in enumerate(checks):
+                if cb.isChecked(): m|=(1<<i)
+            return m
+        try:
+            dF = mfrom(getattr(self,'test_fio_dir', [])); dE = mfrom(getattr(self,'test_eio_dir', [])); dC = mfrom(getattr(self,'test_cio_dir', []))
+            sF = mfrom(getattr(self,'test_fio_state', [])); sE = mfrom(getattr(self,'test_eio_state', [])); sC = mfrom(getattr(self,'test_cio_state', []))
+            self.test_wdir_fio.setText(f"0x{dF:02X}"); self.test_wdir_eio.setText(f"0x{dE:02X}"); self.test_wdir_cio.setText(f"0x{dC:02X}")
+            self.test_wst_fio.setText(f"0x{sF:02X}");  self.test_wst_eio.setText(f"0x{sE:02X}");  self.test_wst_cio.setText(f"0x{sC:02X}")
+            self._log(self.test_log, "Filled mask editors from checkboxes")
+        except Exception as e:
+            self._log(self.test_log, f"Fill masks error: {e}")
+            self._test_status(str(e), 'error')
+
+    # ---- U3 config helpers/actions
+    def _mask_from_checks(self, checks):
+        m=0
+        for i,cb in enumerate(checks):
+            if cb.isChecked(): m|=(1<<i)
+        return m
+
+    def u3_read_current(self):
+        if not HAVE_U3:
+            self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            d=u3_open()
+            info=d.configIO()
+            self._log(self.cfg_log, str(info))
+        except Exception as e:
+            self._log(self.cfg_log, f"Read error: {e}")
+        finally:
+            try: d.close()
+            except Exception: pass
+
+    def u3_write_factory(self):
+        if not HAVE_U3:
+            self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            d=u3_open()
+            # Set power-up defaults back to factory via Device API
+            d.setToFactoryDefaults()
+            self._log(self.cfg_log, "Factory defaults restored")
+        except Exception as e:
+            self._log(self.cfg_log, f"Factory write error: {e}")
+        finally:
+            try: d.close()
+            except Exception: pass
+
+    def u3_write_values(self):
+        if not HAVE_U3:
+            self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
+        try:
+            d=u3_open()
+            # Analog inputs / directions + Counters
+            fio_an=self._mask_from_checks(self.ai_checks)
+            fio_dir=self._mask_from_checks(self.fio_dir_box); eio_dir=self._mask_from_checks(self.eio_dir_box); cio_dir=self._mask_from_checks(self.cio_dir_box)
+            # Set default directions/analog settings at boot via configU3
+            try:
+                d.configU3(FIOAnalog=fio_an, FIODirection=fio_dir, EIODirection=eio_dir, CIODirection=cio_dir)
+            except Exception:
+                pass
+            # Digital states (defaults + current)
+            fio_state=self._mask_from_checks(self.fio_state_box); eio_state=self._mask_from_checks(self.eio_state_box); cio_state=self._mask_from_checks(self.cio_state_box)
+            try:
+                d.configU3(FIOState=fio_state, EIOState=eio_state, CIOState=cio_state)
+            except Exception:
+                pass
+            fb=[]
+            # Use global IO numbering: FIO0-7 → 0..7, EIO0-7 → 8..15, CIO0-3 → 16..19
+            for i in range(8):
+                fb.append(_u3.BitStateWrite(i, 1 if (fio_state>>i)&1 else 0))
+            for i in range(8):
+                fb.append(_u3.BitStateWrite(8+i, 1 if (eio_state>>i)&1 else 0))
+            for i in range(4):
+                fb.append(_u3.BitStateWrite(16+i, 1 if (cio_state>>i)&1 else 0))
+            # DAC outputs (8-bit mode by default)
+            try:
+                dv0=max(0.0,min(5.0,float(self.dac0.text() or '0'))); dv1=max(0.0,min(5.0,float(self.dac1.text() or '0')))
+                fb.append(_u3.DAC0_8(Value=int(dv0/5.0*255)))
+                fb.append(_u3.DAC1_8(Value=int(dv1/5.0*255)))
+            except Exception:
+                pass
+            # Timer/Counter clock setup
+            if self.t_clkbase.currentText()=="48MHz": base=48
+            elif self.t_clkbase.currentText()=="750kHz": base=750
+            else: base=4
+            try:
+                d.configTimerClock(TimerClockBase=base, TimerClockDivisor=self.t_div.value())
+                d.configIO(NumberOfTimersEnabled=self.t_num.value(), TimerCounterPinOffset=self.t_pin.value(),
+                           EnableCounter0=self.counter0.isChecked(), EnableCounter1=self.counter1.isChecked(),
+                           FIOAnalog=fio_an)
+            except Exception:
+                pass
+            # Apply digital state writes
+            try:
+                d.getFeedback(*fb)
+            except Exception:
+                # Fallback to immediate per-pin writes
+                try:
+                    for i in range(8):
+                        d.setDOState(i, 1 if (fio_state>>i)&1 else 0)
+                    for i in range(8):
+                        d.setDOState(8+i, 1 if (eio_state>>i)&1 else 0)
+                    for i in range(4):
+                        d.setDOState(16+i, 1 if (cio_state>>i)&1 else 0)
+                except Exception:
+                    pass
+            # Persist current configuration as power-up defaults
+            try:
+                d.setDefaults()
+            except Exception:
+                pass
+            # Watchdog (best-effort mapping of extra options)
+            if self.wd_en.isChecked():
+                try:
+                    timeout = int(float(self.wd_to.text() or '100'))
+                    reset = self.wd_reset.isChecked()
+                    set_dio = False; dio_num = 0; dio_state = 0
+                    wline = getattr(self, 'wd_line', None)
+                    if wline and wline.currentText() != 'None':
+                        pin = wline.currentText()  # e.g., 'FIO3', 'EIO1', 'CIO0'
+                        base = 0
+                        if pin.startswith('FIO'): base = 0
+                        elif pin.startswith('EIO'): base = 8
+                        elif pin.startswith('CIO'): base = 16
+                        try:
+                            idx = int(pin[3:])
+                            dio_num = base + idx
+                            dio_state = 1 if self.wd_state.currentText()=="High" else 0
+                            set_dio = True
+                        except Exception:
+                            set_dio = False
+                    d.watchdog(ResetOnTimeout=reset,
+                               SetDIOStateOnTimeout=set_dio,
+                               TimeoutPeriod=timeout,
+                               DIOState=dio_state,
+                               DIONumber=dio_num)
+                except Exception:
+                    pass
+            # Backward-compat flags (placeholders; ignored on unsupported firmwares)
+            try:
+                # Not directly supported by configU3; left as no-op
+                pass
+            except Exception:
+                pass
+            self._log(self.cfg_log, "Values written")
+        except Exception as e:
+            self._log(self.cfg_log, f"Write error: {e}")
+        finally:
+            try: d.close()
+            except Exception: pass
+
+    # Apply current DAQ config selections for this run (no persist unless requested)
+    def u3_autoconfig_runtime(self, base: str = 'Keep Current', pulse_line: str = 'None', persist: bool = False):
+        if not HAVE_U3:
+            return
+        d = None
+        try:
+            d = u3_open()
+            # Optional factory base
+            if isinstance(base, str) and base.lower().startswith('factory'):
+                try:
+                    d.setToFactoryDefaults()
+                except Exception:
+                    pass
+            # Collect masks from current UI
+            fio_an = self._mask_from_checks(self.ai_checks) if hasattr(self,'ai_checks') else 0x0F
+            fio_dir = self._mask_from_checks(self.fio_dir_box) if hasattr(self,'fio_dir_box') else 0
+            eio_dir = self._mask_from_checks(self.eio_dir_box) if hasattr(self,'eio_dir_box') else 0
+            cio_dir = self._mask_from_checks(self.cio_dir_box) if hasattr(self,'cio_dir_box') else 0
+            fio_state = self._mask_from_checks(self.fio_state_box) if hasattr(self,'fio_state_box') else 0
+            eio_state = self._mask_from_checks(self.eio_state_box) if hasattr(self,'eio_state_box') else 0
+            cio_state = self._mask_from_checks(self.cio_state_box) if hasattr(self,'cio_state_box') else 0
+            # Configure directions and analog mode at boot/current
+            try:
+                d.configU3(FIOAnalog=fio_an, FIODirection=fio_dir, EIODirection=eio_dir, CIODirection=cio_dir)
+            except Exception:
+                pass
+            # Digital states (apply now)
+            fb=[]
+            for i in range(8): fb.append(_u3.BitStateWrite(i, 1 if (fio_state>>i)&1 else 0))
+            for i in range(8): fb.append(_u3.BitStateWrite(8+i, 1 if (eio_state>>i)&1 else 0))
+            for i in range(4): fb.append(_u3.BitStateWrite(16+i, 1 if (cio_state>>i)&1 else 0))
+            try:
+                d.getFeedback(*fb)
+            except Exception:
+                try:
+                    for i in range(8): d.setDOState(i, 1 if (fio_state>>i)&1 else 0)
+                    for i in range(8): d.setDOState(8+i, 1 if (eio_state>>i)&1 else 0)
+                    for i in range(4): d.setDOState(16+i, 1 if (cio_state>>i)&1 else 0)
+                except Exception:
+                    pass
+            # DAC outputs from UI if present
+            try:
+                dv0=max(0.0,min(5.0,float(self.dac0.text() or '0'))); dv1=max(0.0,min(5.0,float(self.dac1.text() or '0')))
+                try:
+                    d.getFeedback(_u3.DAC0_8(Value=int(dv0/5.0*255)), _u3.DAC1_8(Value=int(dv1/5.0*255)))
+                except Exception:
+                    pass
+            except Exception:
+                pass
+            # Timers / Counters
+            try:
+                if self.t_clkbase.currentText()=="48MHz": base_clk=48
+                elif self.t_clkbase.currentText()=="750kHz": base_clk=750
+                else: base_clk=4
+                d.configTimerClock(TimerClockBase=base_clk, TimerClockDivisor=self.t_div.value())
+                d.configIO(NumberOfTimersEnabled=self.t_num.value(), TimerCounterPinOffset=self.t_pin.value(),
+                           EnableCounter0=self.counter0.isChecked(), EnableCounter1=self.counter1.isChecked(),
+                           FIOAnalog=fio_an)
+            except Exception:
+                pass
+            # Watchdog if enabled in UI
+            try:
+                if self.wd_en.isChecked():
+                    timeout = int(float(self.wd_to.text() or '100'))
+                    reset = self.wd_reset.isChecked()
+                    set_dio = False; dio_num = 0; dio_state = 0
+                    wline = getattr(self, 'wd_line', None)
+                    if wline and wline.currentText() != 'None':
+                        pin = wline.currentText()
+                        basep = 0
+                        if pin.startswith('FIO'): basep = 0
+                        elif pin.startswith('EIO'): basep = 8
+                        elif pin.startswith('CIO'): basep = 16
+                        try:
+                            idx = int(pin[3:]); dio_num = basep + idx
+                            dio_state = 1 if self.wd_state.currentText()=="High" else 0
+                            set_dio = True
+                        except Exception:
+                            set_dio = False
+                    d.watchdog(ResetOnTimeout=reset,
+                               SetDIOStateOnTimeout=set_dio,
+                               TimeoutPeriod=timeout,
+                               DIOState=dio_state,
+                               DIONumber=dio_num)
+            except Exception:
+                pass
+            # Ensure pulse line (if any) is an output
+            try:
+                if pulse_line and pulse_line.strip().lower() != 'none':
+                    u3_set_dir(pulse_line, 1)
+            except Exception:
+                pass
+            # Persist current as power-up defaults if requested
+            if persist:
+                try:
+                    d.setDefaults()
+                except Exception:
+                    pass
+        finally:
+            try:
+                if d: d.close()
+            except Exception:
+                pass
+
+    # ---- Automation
+    def tab_automation(self):
+        from amp_benchkit.gui.automation_tab import build_automation_tab
+        return build_automation_tab(self)
+
+    def stop_sweep_scope(self):
+        self._sweep_abort = True
+
+    def run_sweep_scope_fixed(self):
+        try:
+            ch = int(self.auto_ch.currentText()); sch = int(self.auto_scope_ch.currentText())
+            start = float(self.auto_start.text()); stop = float(self.auto_stop.text()); step = float(self.auto_step.text())
+            amp = float(self.auto_amp.text()); dwell = max(0.0, float(self.auto_dwell.text())/1000.0)
+            metric = self.auto_metric.currentText()
+            freqs=[]; f=start
+            while f <= stop + 1e-9:
+                freqs.append(round(f,6)); f += step
+            out=[]; self._sweep_abort=False; n=len(freqs)
+            pr = (self.auto_proto.currentText() if hasattr(self,'auto_proto') else "FY ASCII 9600")
+            pt = ((self.auto_port.text().strip() if hasattr(self,'auto_port') else '') or find_fy_port())
+            # Optional math / ext trigger
+            use_math = bool(self.auto_use_math.isChecked()) if hasattr(self,'auto_use_math') else False
+            order = (self.auto_math_order.currentText() if hasattr(self,'auto_math_order') else 'CH1-CH2')
+            use_ext = bool(self.auto_use_ext.isChecked()) if hasattr(self,'auto_use_ext') else False
+            ext_slope = (self.auto_ext_slope.currentText() if hasattr(self,'auto_ext_slope') else 'Rise')
+            try:
+                ext_level = float(self.auto_ext_level.text()) if hasattr(self,'auto_ext_level') and self.auto_ext_level.text().strip() else None
+            except Exception:
+                ext_level = None
+            try:
+                pre_ms = float(self.auto_ext_pre_ms.text()) if hasattr(self,'auto_ext_pre_ms') and self.auto_ext_pre_ms.text().strip() else 5.0
+            except Exception:
+                pre_ms = 5.0
+            rsrc = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
+            # Optional U3 auto-config: apply current DAQ selections
+            try:
+                if hasattr(self,'auto_u3_autocfg') and self.auto_u3_autocfg.isChecked():
+                    base = self.auto_u3_base.currentText() if hasattr(self,'auto_u3_base') else 'Keep Current'
+                    self.u3_autoconfig_runtime(base=base, pulse_line='None', persist=False)
+            except Exception as e:
+                self._log(self.auto_log, f"U3 auto-config warn: {e}")
+            for i,f in enumerate(freqs):
+                if self._sweep_abort: break
+                try:
+                    fy_apply(freq_hz=f, amp_vpp=amp, wave="Sine", off_v=0.0, duty=None, ch=ch, port=pt, proto=pr)
+                except Exception as e:
+                    self._log(self.auto_log, f"FY error @ {f} Hz: {e}"); continue
+                time.sleep(dwell)
+                typ = 'RMS' if metric=='RMS' else 'PK2PK'
+                # Configure math and ext trigger if requested
+                if use_math:
+                    try:
+                        scope_configure_math_subtract(rsrc or self.scope_res, order=order)
+                    except Exception as e:
+                        self._log(self.auto_log, f"MATH config error: {e}")
+                if use_ext:
+                    try:
+                        scope_set_trigger_ext(rsrc or self.scope_res, slope=ext_slope, level=ext_level)
+                        scope_arm_single(rsrc or self.scope_res)
+                        if pre_ms > 0: time.sleep(pre_ms/1000.0)
+                        scope_wait_single_complete(rsrc or self.scope_res, timeout_s=max(1.0, dwell*2+0.5))
+                    except Exception as e:
+                        self._log(self.auto_log, f"EXT trig wait error: {e}")
+                try:
+                    src = 'MATH' if use_math else sch
+                    val = self.scope_measure(src, typ)
+                except Exception as e:
+                    self._log(self.auto_log, f"Scope error @ {f} Hz: {e}"); val = float('nan')
+                out.append((f,val))
+                self._log(self.auto_log, f"{f:.3f} Hz → {metric} {val:.4f} ({'MATH' if use_math else f'CH{sch}'})")
+                self.auto_prog.setValue(int((i+1)/n*100)); QApplication.processEvents()
+            os.makedirs('results', exist_ok=True)
+            fn = os.path.join('results','sweep_scope.csv')
+            with open(fn,'w') as fh:
+                fh.write('freq_hz,metric\n')
+                for f,val in out: fh.write(f"{f},{val}\n")
+            self._log(self.auto_log, f"Saved: {fn}")
+        except Exception as e:
+            self._log(self.auto_log, f"Sweep error: {e}")
+
+    def run_audio_kpis(self):
+        """Sweep using FY + scope, compute Vrms/PkPk and THD, then report -dB knees if requested."""
+        try:
+            ch = int(self.auto_ch.currentText()); sch = int(self.auto_scope_ch.currentText())
+            start = float(self.auto_start.text()); stop = float(self.auto_stop.text()); step = float(self.auto_step.text())
+            amp = float(self.auto_amp.text()); dwell = max(0.0, float(self.auto_dwell.text())/1000.0)
+            # FY override
+            pr = (self.auto_proto.currentText() if hasattr(self,'auto_proto') else "FY ASCII 9600")
+            pt = ((self.auto_port.text().strip() if hasattr(self,'auto_port') else '') or find_fy_port())
+            # U3 orchestration + EXT trigger
+            pulse_line = self.auto_u3_line.currentText() if hasattr(self, 'auto_u3_line') else 'None'
+            try:
+                pulse_ms = float(self.auto_u3_pwidth.text()) if hasattr(self,'auto_u3_pwidth') and self.auto_u3_pwidth.text().strip() else 0.0
+            except Exception:
+                pulse_ms = 0.0
+            use_ext = bool(self.auto_use_ext.isChecked()) if hasattr(self,'auto_use_ext') else False
+            ext_slope = (self.auto_ext_slope.currentText() if hasattr(self,'auto_ext_slope') else 'Rise')
+            try:
+                ext_level = float(self.auto_ext_level.text()) if hasattr(self,'auto_ext_level') and self.auto_ext_level.text().strip() else None
+            except Exception:
+                ext_level = None
+            try:
+                pre_ms = float(self.auto_ext_pre_ms.text()) if hasattr(self,'auto_ext_pre_ms') and self.auto_ext_pre_ms.text().strip() else 5.0
+            except Exception:
+                pre_ms = 5.0
+            # MATH use
+            use_math = bool(self.auto_use_math.isChecked()) if hasattr(self,'auto_use_math') else False
+            order = (self.auto_math_order.currentText() if hasattr(self,'auto_math_order') else 'CH1-CH2')
+            # U3 auto-config (base: factory/current) using current DAQ selections
+            try:
+                if hasattr(self,'auto_u3_autocfg') and self.auto_u3_autocfg.isChecked():
+                    base = self.auto_u3_base.currentText() if hasattr(self,'auto_u3_base') else 'Keep Current'
+                    self.u3_autoconfig_runtime(base=base, pulse_line=pulse_line, persist=False)
+            except Exception as e:
+                self._log(self.auto_log, f"U3 auto-config warn: {e}")
+            # Build frequency list
+            freqs=[]; f=start
+            while f <= stop + 1e-9:
+                freqs.append(round(f,6)); f += step
+            self._sweep_abort = False
+            n = len(freqs)
+            # Scope resource
+            rsrc = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
+            out = []
+            for i,f in enumerate(freqs):
+                if self._sweep_abort: break
+                # Set generator
+                try:
+                    fy_apply(freq_hz=f, amp_vpp=amp, wave="Sine", off_v=0.0, duty=None, ch=ch, port=pt, proto=pr)
+                except Exception as e:
+                    self._log(self.auto_log, f"FY error @ {f} Hz: {e}")
+                    continue
+                # Optional EXT trigger workflow
+                try:
+                    if use_ext:
+                        # Configure and arm single; brief pre-arm delay; then pulse U3 to trigger
+                        scope_set_trigger_ext(rsrc or self.scope_res, slope=ext_slope, level=ext_level)
+                        scope_arm_single(rsrc or self.scope_res)
+                        if pre_ms > 0: time.sleep(pre_ms/1000.0)
+                    # U3 pulse (either used as EXT trigger or general control)
+                    if HAVE_U3 and pulse_line and pulse_line != 'None' and pulse_ms > 0.0:
+                        u3_pulse_line(pulse_line, width_ms=pulse_ms, level=1)
+                except Exception as e:
+                    self._log(self.auto_log, f"U3/EXT trig error: {e}")
+                # Wait for acquisition complete or dwell fallback
+                done = False
+                if use_ext:
+                    try:
+                        done = scope_wait_single_complete(rsrc or self.scope_res, timeout_s=max(1.0, dwell*2+0.5))
+                    except Exception:
+                        done = False
+                if not done and dwell > 0:
+                    time.sleep(dwell)
+                # Configure MATH if requested
+                if use_math:
+                    try:
+                        scope_configure_math_subtract(rsrc or self.scope_res, order=order)
+                    except Exception as e:
+                        self._log(self.auto_log, f"MATH config error: {e}")
+                # Capture calibrated waveform
+                try:
+                    src = 'MATH' if use_math else sch
+                    t, v = scope_capture_calibrated(rsrc or self.scope_res, timeout_ms=15000, ch=src)
+                except Exception as e:
+                    self._log(self.auto_log, f"Scope capture error @ {f} Hz: {e}")
+                    t = []; v = []
+                # Compute KPIs
+                vr = _dsp.vrms(v) if v else float('nan')
+                pp = _dsp.vpp(v) if v else float('nan')
+                thd_ratio = float('nan'); thd_percent = float('nan')
+                if getattr(self, 'auto_do_thd', None) and self.auto_do_thd.isChecked() and v:
+                    try:
+                        thd_ratio, f_est, _ = _dsp.thd_fft(t, v, f0=f, nharm=10, window='hann')
+                        thd_percent = float(thd_ratio*100.0) if np.isfinite(thd_ratio) else float('nan')
+                    except Exception as e:
+                        self._log(self.auto_log, f"THD calc error @ {f} Hz: {e}")
+                        thd_ratio = float('nan'); thd_percent = float('nan')
+                out.append((f, vr, pp, thd_ratio, thd_percent))
+                msg = f"{f:.3f} Hz → Vrms {vr:.4f} V, PkPk {pp:.4f} V"
+                if np.isfinite(thd_percent):
+                    msg += f", THD {thd_percent:.3f}%"
+                self._log(self.auto_log, msg)
+                self.auto_prog.setValue(int((i+1)/n*100)); QApplication.processEvents()
+            # Save CSV
+            os.makedirs('results', exist_ok=True)
+            fn = os.path.join('results','audio_kpis.csv')
+            with open(fn,'w') as fh:
+                fh.write('freq_hz,vrms,pkpk,thd_ratio,thd_percent\n')
+                for row in out:
+                    fh.write(f"{row[0]},{row[1]},{row[2]},{row[3]},{row[4]}\n")
+            self._log(self.auto_log, f"Saved: {fn}")
+            # Knees
+            if getattr(self, 'auto_do_knees', None) and self.auto_do_knees.isChecked() and out:
+                try:
+                    freqs = [r[0] for r in out]; amps = [r[2] for r in out]  # use PkPk by default
+                    drop = float(self.auto_knee_db.text() or '3.0')
+                    ref_mode = (self.auto_ref_mode.currentText() if hasattr(self,'auto_ref_mode') else 'Max')
+                    ref_hz = float(self.auto_ref_hz.text() or '1000') if ref_mode.lower().startswith('1k') else 1000.0
+                    f_lo, f_hi, ref_amp, ref_db = _dsp.find_knees(freqs, amps, ref_mode=('freq' if ref_mode.lower().startswith('1k') else 'max'), ref_hz=ref_hz, drop_db=drop)
+                    summ = f"Knees @ -{drop:.2f} dB (ref {ref_mode}): low≈{f_lo:.2f} Hz, high≈{f_hi:.2f} Hz (ref_amp={ref_amp:.4f} V, ref_dB={ref_db:.2f} dB)"
+                    self._log(self.auto_log, summ)
+                    with open(os.path.join('results','audio_knees.txt'),'w') as fh:
+                        fh.write(summ+"\n")
+                except Exception as e:
+                    self._log(self.auto_log, f"Knee calc error: {e}")
+        except Exception as e:
+            self._log(self.auto_log, f"KPI sweep error: {e}")
+
+    # ---- Diagnostics
+    def tab_diag(self):
+        from amp_benchkit.gui.diag_tab import build_diagnostics_tab
+        return build_diagnostics_tab(self)
+
+    def run_diag(self):
+        out = ["Dependencies: "+dep_msg()]
+        if HAVE_SERIAL:
+            ps = list_ports(); out.append("Serial: "+(", ".join(p.device for p in ps) if ps else "(none)"))
+        else:
+            out.append(f"pyserial missing → {INSTALL_HINTS['pyserial']}")
+        if HAVE_PYVISA:
+            try:
+                res = _pyvisa.ResourceManager().list_resources()
+                out.append("VISA: " + (", ".join(res) if res else "(none)"))
+            except Exception as e:
+                out.append(f"VISA error: {e}")
+        else:
+            out.append(f"pyvisa missing → {INSTALL_HINTS['pyvisa']}")
+        if HAVE_U3:
+            try:
+                v = u3_read_ain(0)
+                out.append(f"U3 AIN0 read OK: {v:.4f} V")
+            except Exception as e:
+                out.append(f"U3 error: {e}")
+        else:
+            out.append(f"u3 missing → {INSTALL_HINTS['u3']}")
+        self._log(self.diag, "\n".join(out))
+
+    @staticmethod
+    def _log(w, t):
+        w.append(t)
+
+    # ---- Test Panel status/history helpers
+    def _test_status(self, text: str, level: str = 'error'):
+        try:
+            ts = time.strftime('%H:%M:%S')
+            tag = 'ERROR' if str(level).lower().startswith('err') else 'INFO'
+            entry = f"[{ts}] {tag}: {text}"
+            if not hasattr(self, '_test_hist') or self._test_hist is None:
+                self._test_hist = []
+            self._test_hist.append(entry)
+            # keep last 50 entries
+            if len(self._test_hist) > 50:
+                self._test_hist = self._test_hist[-50:]
+            if hasattr(self, 'test_last') and self.test_last is not None:
+                self.test_last.setText(text)
+            if hasattr(self, 'test_hist') and self.test_hist is not None:
+                self.test_hist.setPlainText("\n".join(self._test_hist))
+        except Exception:
+            pass
+
+
+def main():
+    ap = argparse.ArgumentParser(description='Unified GUI (Lite+U3)')
+    ap.add_argument('--gui', action='store_true', help='Launch Qt GUI')
+    ap.add_argument('-v', '--verbose', action='store_true', help='Verbose logging (debug)')
+    sub = ap.add_subparsers(dest='cmd')
+    sub.add_parser('diag')
+    sub.add_parser('gui')
+    sub.add_parser('selftest')
+    sub.add_parser('config-dump')
+    sub.add_parser('config-reset')
+    args = ap.parse_args()
+
+    setup_logging(verbose=getattr(args,'verbose',False))
+    log = get_logger()
+
+    if args.cmd == 'diag':
+        print('Dependency status:', dep_msg())
+        if HAVE_SERIAL:
+            ps = list_ports()
+            print('Serial:', ", ".join(p.device for p in ps) if ps else '(none)')
+        else:
+            print('pyserial missing →', INSTALL_HINTS['pyserial'])
+        if HAVE_PYVISA:
+            try:
+                print('VISA:', ", ".join(_pyvisa.ResourceManager().list_resources()) or '(none)')
+            except Exception as e:
+                print('VISA error:', e)
+        else:
+            print('pyvisa missing →', INSTALL_HINTS['pyvisa'])
+        if HAVE_U3:
+            try:
+                print('U3 AIN0:', f"{u3_read_ain(0):.4f} V")
+            except Exception as e:
+                print('U3 error:', e)
+        else:
+            print('u3 missing →', INSTALL_HINTS['u3'])
+        return
+
+    if args.cmd == 'selftest':
+        ok = True
+    if args.cmd == 'config-dump':
+        try:
+            from amp_benchkit.config import load_config, CONFIG_PATH
+            cfg = load_config()
+            print('Config file:', CONFIG_PATH)
+            print(cfg)
+        except Exception as e:
+            print('Config dump error:', e)
+        return
+
+    if args.cmd == 'config-reset':
+        try:
+            from amp_benchkit.config import save_config, CONFIG_PATH
+            save_config({})
+            print('Config reset ->', CONFIG_PATH)
+        except Exception as e:
+            print('Config reset error:', e)
+        return
+        try:
+            # Test1: baud/EOL tuples
+            assert FY_BAUD_EOLS == [(9600, "\n"), (115200, "\r\n")]
+            print('Test1 OK: baud/EOL tuples valid')
+
+            # Test2: command formatting
+            for ch in (1, 2):
+                cmds = build_fy_cmds(1000, 2.0, 0.0, 'Sine', duty=12.3, ch=ch)
+                assert any(c.startswith(('bd', 'dd')) for c in cmds)
+                assert cmds[-1].startswith(('ba', 'da'))
+                assert all(len(c)+1 <= 15 for c in cmds)
+            print('Test2 OK: command formatting (duty 3-digit, amplitude last, length ≤15)')
+
+            # Test3: centi-Hz scaling
+            assert build_fy_cmds(1000, 2.0, 0.0, 'Sine', None, 1)[1].endswith(f"{1000*100:09d}")
+            print('Test3 OK: centi-Hz scaling (1000 Hz → 100000)')
+
+            # Test4: sweep start/end centi-Hz and 9-digit padding
+            st = 123.45; en = 678.9
+            start_cmd = f"b{int(st*100):09d}"; end_cmd = f"e{int(en*100):09d}"
+            assert start_cmd == "b000012345" and end_cmd == "e000067890"
+            print('Test4 OK: sweep start/end centi-Hz and 9-digit padding')
+
+            # Test5: duty 12.3% → d123
+            cmds = build_fy_cmds(1000, 2.0, 0.0, 'Sine', duty=12.3, ch=1)
+            duty_cmd = [c for c in cmds if c.startswith('bd')][0]
+            assert duty_cmd.endswith('123')
+            print('Test5 OK: duty 12.3% → d123')
+
+            # Test6: clamp extremes
+            cm = build_fy_cmds(1000, 120.0, 0.0, 'Sine', duty=123.4, ch=1)
+            assert any(x.endswith('999') for x in cm if x.startswith('bd'))
+            assert cm[-1].endswith('99.99')
+            cm2 = build_fy_cmds(1000, -5.0, 0.005, 'Sine', duty=0.04, ch=2)
+            assert cm2[-1].endswith('0.00')
+            assert any(x.endswith('000') for x in cm2 if x.startswith('dd'))
+            assert not any(x.endswith('0.01') for x in cm2 if x.startswith('do'))
+            print('Test6 OK: clamps for duty/amp/offset')
+
+            # Test7: IEEE block decode
+            raw = b'#3100' + bytes(range(100)) + b'extra'
+            dec = _decode_ieee_block(raw)
+            assert len(dec) == 100 and dec[0] == 0 and dec[-1] == 99
+            hdr = 't,volts\n'; assert hdr.endswith('\n') and hdr.startswith('t,volts')
+            print('Test7 OK: block decode and CSV header')
+
+            # Test8: passthrough when not IEEE block
+            dec2 = _decode_ieee_block(b'hello')
+            assert dec2 == b'hello'
+            print('Test8 OK: raw (non-#) IEEE block passthrough')
+
+            # Test9: duty clamp at 0%
+            cm3 = build_fy_cmds(1000, 2.0, 0.0, 'Sine', duty=-5.0, ch=1)
+            assert any(x.endswith('000') for x in cm3 if x.startswith('bd'))
+            print('Test9 OK: duty clamp at 0% → d000')
+            # Test10: THD estimator sanity (sine + 10% 2nd harmonic)
+            fs = 50000.0; f0 = 1000.0; N = 4096
+            t = np.arange(N)/fs
+            sig = np.sin(2*np.pi*f0*t) + 0.1*np.sin(2*np.pi*2*f0*t)
+            thd, f_est, _ = thd_fft(t, sig, f0=f0, nharm=5, window='hann')
+            assert abs(thd - 0.1) < 0.03  # within a few % points due to window/leakage
+            print('Test10 OK: THD ~10% on 2nd harmonic')
+        except Exception as e:
+            ok = False
+            print('Selftest FAIL:', e)
+        sys.exit(0 if ok else 1)
+
+    # Launch GUI
+    if args.gui or args.cmd == 'gui':
+        if not HAVE_QT:
+            print('Qt not available (PySide6/PyQt5). Install with:', INSTALL_HINTS['pyside6'], 'or', INSTALL_HINTS['pyqt5'])
+            print('Python exe:', sys.executable)
+            return
+        app = QApplication(sys.argv); win = UnifiedGUI(); win.show()
+        # PySide6 has app.exec(), PyQt5 uses app.exec_()
+        if hasattr(app, 'exec'):
+            sys.exit(app.exec())
+        else:
+            sys.exit(app.exec_())
+    else:
+        ap.print_help()
+        print('\nTip: install PySide6 or PyQt5 to launch GUI:', INSTALL_HINTS['pyside6'])
+
+
+if __name__ == '__main__':
+    main()

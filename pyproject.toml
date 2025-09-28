@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amp-benchkit"
+version = "0.2.0"
+description = "Unified GUI + LabJack tooling and installer helpers"
+authors = [ { name = "Your Name", email = "you@example.com" } ]
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["labjack", "instrumentation", "gui", "automation"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux"
+]
+
+# Core runtime deps (mirrors requirements.txt)
+dependencies = [
+  "numpy==2.3.3",
+  "matplotlib==3.10.6",
+  "pyvisa==1.15.0",
+  "pyserial==3.5",
+  "LabJackPython==2.1.0",
+  # Leave GUI bindings as optional extras below
+]
+
+[project.optional-dependencies]
+# Install with: pip install .[gui]
+ gui = ["PySide6==6.9.2", "PyQt5==5.15.11"]
+ dev = ["black", "ruff", "mypy"]
+ test = ["pytest", "pytest-cov"]
+
+[project.scripts]
+amp-benchkit = "unified_gui_layout:main"
+amp-benchkit-gui = "unified_gui_layout:main"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
+
+[tool.mypy]
+ignore_missing_imports = true
