@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amp-benchkit"
-version = "0.3.1.dev1"
+version = "0.3.1.dev2"
 description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Your Name", email = "you@example.com" } ]
 readme = "README.md"
@@ -51,8 +51,8 @@ dependencies = [
  publish = ["build", "twine", "wheel", "setuptools"]
 
 [project.scripts]
-amp-benchkit = "unified_gui_layout:main"
-amp-benchkit-gui = "unified_gui_layout:main"
+amp-benchkit = "amp_benchkit.cli:main"
+amp-benchkit-gui = "amp_benchkit.cli:main_gui"
 
 [tool.setuptools]
 packages = ["amp_benchkit"]
