@@ -182,7 +182,7 @@ Steps to cut a release (example for 0.2.0 already performed):
 4. Tag locally: `git tag vX.Y.Z` (lightweight or annotated `-a`).
 5. Build artifacts locally (optional pre-check): `python -m build --sdist --wheel`.
 6. Push branch and tag: `git push && git push origin vX.Y.Z`.
-7. GitHub Actions CI will build & test; if a publish workflow exists with `PYPI_API_TOKEN`, it will upload.
+7. GitHub Actions CI will build & test; if a publish workflow exists with `PYPI_API_TOKEN` (an API token from PyPI stored as an Actions secret), it will upload.
 8. Draft GitHub Release, attach release notes (can pull from changelog), verify assets.
 9. Post-release: bump version to next dev (e.g., 0.2.1.dev0) if ongoing changes expected.
 
