@@ -16,9 +16,6 @@ classifiers = [
   "Operating System :: POSIX :: Linux"
 ]
 
-[project.license-files]
-paths = ["LICENSE", "EXODRIVER.md"]
-
 # Core runtime deps (mirrors requirements.txt)
 dependencies = [
   "numpy==2.3.3",
