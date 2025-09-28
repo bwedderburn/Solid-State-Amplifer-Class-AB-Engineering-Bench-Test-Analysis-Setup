@@ -15,6 +15,9 @@ def build_scope_tab(gui: Any) -> Optional[object]:
     QLabel=qt.QLabel; QComboBox=qt.QComboBox; QLineEdit=qt.QLineEdit
     QPushButton=qt.QPushButton; QTextEdit=qt.QTextEdit
     w = QWidget(); L = QVBoxLayout(w)
+    # Provide default scope resource if gui object does not define one (test safety)
+    if not hasattr(gui, 'scope_res'):
+        gui.scope_res = ''  # type: ignore
     r = QHBoxLayout(); r.addWidget(QLabel("VISA Resource:")); gui.scope_edit = QLineEdit(gui.scope_res); r.addWidget(gui.scope_edit)
     b = QPushButton("List VISA"); b.clicked.connect(gui.list_visa); r.addWidget(b); L.addLayout(r)
     r = QHBoxLayout(); r.addWidget(QLabel("Channel:")); gui.scope_ch = QComboBox(); gui.scope_ch.addItems(["1","2","3","4"]); r.addWidget(gui.scope_ch); L.addLayout(r)

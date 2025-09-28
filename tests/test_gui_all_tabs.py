@@ -13,11 +13,16 @@ from amp_benchkit.gui import build_all_tabs
 
 class DummyGUI:
     def _log(self, tgt, msg): pass
+    scope_res = ''
     # Generator stubs
     def apply_gen_side(self, side): pass
     def start_sweep_side(self, side): pass
     def stop_sweep_side(self, side): pass
     def scan_serial_into(self, target): pass
+    def list_visa(self): pass
+    def capture_scope(self): pass
+    def save_shot(self): pass
+    def save_csv(self): pass
     # Automation stubs
     def run_sweep_scope_fixed(self): pass
     def run_audio_kpis(self): pass

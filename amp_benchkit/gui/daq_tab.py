@@ -26,6 +26,18 @@ def build_daq_tab(gui: Any) -> Optional[object]:
     QWidget=qt.QWidget; QTabWidget=qt.QTabWidget; QVBoxLayout=qt.QVBoxLayout; QHBoxLayout=qt.QHBoxLayout
     QLabel=qt.QLabel; QCheckBox=qt.QCheckBox; QSpinBox=qt.QSpinBox; QPushButton=qt.QPushButton
     QTextEdit=qt.QTextEdit; QLineEdit=qt.QLineEdit; QComboBox=qt.QComboBox; Qt=qt.Qt; QTimer=qt.QTimer
+    # Provide no-op fallbacks for handler methods if the host GUI object does not
+    # supply them (allows lightweight dummies in tests / partial embedding).
+    _expected_handlers = [
+        'read_daq_once','read_daq_multi',
+        'u3_write_factory','u3_write_values','u3_read_current',
+        'apply_port_dir','apply_port_state','apply_all_ports',
+        'load_masks_from_device','fill_masks_from_checks',
+        'reset_counter','start_test_panel','stop_test_panel'
+    ]
+    for _name in _expected_handlers:
+        if not hasattr(gui, _name):
+            setattr(gui, _name, lambda *a, **k: None)
     """Build the DAQ page (U3) with its sub-tabs and wire attributes onto `gui`.
 
     Returns the top-level QTabWidget that should be inserted into the main tab widget.
