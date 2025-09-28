@@ -1,3 +1,38 @@
+PYTHON := python
+
+.PHONY: install-dev test lint type format build dist clean install-exodriver pre-commit
+
+install-dev:
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e .[dev,test,gui]
+	pre-commit install || true
+
+test:
+	pytest -q
+
+lint:
+	ruff check .
+
+type:
+	mypy amp_benchkit || true
+
+format:
+	black .
+	ruff check --fix .
+
+build:
+	$(PYTHON) -m build --sdist --wheel
+
+dist: clean build
+
+clean:
+	rm -rf build dist *.egg-info
+
+install-exodriver:
+	./scripts/install_exodriver_alpine.sh
+
+pre-commit:
+	pre-commit run --all-files
 # Convenience Makefile for amp-benchkit
 SHELL := /bin/bash
 VENV = .venv
