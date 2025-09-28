@@ -105,6 +105,8 @@ done
 ```
 
 Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) and direct KPI sweep command.
+
+> Note: Direct invocation via `python unified_gui_layout.py ...` still works but is considered a legacy path. Prefer the installed console scripts (`amp-benchkit`, `amp-benchkit-gui`) for forward compatibility; future releases may relocate the legacy file.
 ```
 
 Add `--verbose` to any of the above to elevate logging to DEBUG.

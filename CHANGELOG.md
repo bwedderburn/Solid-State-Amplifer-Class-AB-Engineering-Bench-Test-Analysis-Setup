@@ -1,9 +1,21 @@
 Changelog
 =========
 
-All notable changes to this project will be documented in this file. The format is
-Keep a Changelog, and this project adheres to Semantic Versioning (SemVer) starting
-with 0.x pre‑release phases.
+All notable changes to this project will be documented in this file.
+The format is Keep a Changelog, and this project adheres to Semantic Versioning (SemVer)
+starting with 0.x pre‑release phases.
+
+## [Unreleased]
+### Added
+- `sweep` CLI subcommand producing linear or log-spaced frequency point lists (headless usage).
+- `amp_benchkit.cli` wrapper module and console script entry points: `amp-benchkit`, `amp-benchkit-gui`.
+- README documentation for sweep usage and examples.
+
+### Changed
+- Recommended invocation now via console scripts instead of `python unified_gui_layout.py`.
+
+### Internal / Tooling
+- Added tests for entrypoint wrapper (SystemExit handling, linear sweep output).
 
 ## [0.3.0] - 2025-09-28
 ### Added
@@ -59,36 +71,3 @@ with 0.x pre‑release phases.
 ---
 
 Unreleased changes will accumulate here until the next tagged version.
-# Changelog
-
-All notable changes to this project will be documented in this file.
-
-The format is based on Keep a Changelog and this project adheres to Semantic Versioning.
-
-## [0.1.1] - 2025-09-28
-## [0.1.2] - 2025-09-28
-### Added
-- Extracted DSP functions into `amp_benchkit.dsp` module (vrms, vpp, thd_fft, find_knees).
-- DSP unit tests and deprecation tests.
-- Release workflow (`release.yml`) for tag-based PyPI publishing.
-
-### Changed
-- Added deprecation wrappers in `unified_gui_layout` emitting `DeprecationWarning` for migrated DSP functions.
-
-### Added
-- GitHub Actions CI (Python 3.11/3.12) with coverage, lint, type-check steps.
-- Rotating file logging under XDG cache/state directory.
-- Hardware-in-loop (HIL) test scaffold (env gated via `AMP_HIL=1`).
-- Public API section in README.
-- Makefile targets: lint, format, test, coverage, type.
-- Custom exceptions (`FYError`, `FYTimeoutError`, `TekError`, `TekTimeoutError`).
-
-### Changed
-- Refined error handling for FY serial and Tek VISA operations.
-- Added test extra in `pyproject.toml` and bumped version to 0.1.1.
-
-## [0.1.0] - 2025-09-28
-### Added
-- Initial modularization (deps, fy, tek, u3util, u3config) extracted from monolith.
-- Logging subsystem and JSON config persistence.
-- Core pytest suite and config tests.
