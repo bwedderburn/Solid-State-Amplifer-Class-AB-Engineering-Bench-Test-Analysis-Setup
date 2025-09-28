@@ -1,4 +1,4 @@
-# Release v0.3.0 (Draft)
+# Release v0.3.0
 
 > Automation module extraction, packaging polish, CI pipelines, and history cleanup groundwork.
 
@@ -18,7 +18,7 @@
 - Added release version tagging guidance and dev version bump convention.
 
 ## Quality & Tooling
-- Introduced pre-commit (after 0.3.0, recommended going forward) with ruff, black, mypy, large file & virtualenv guards.
+- Introduced pre-commit (post 0.3.0 release adoption) with ruff, black, mypy, large file & virtualenv guards.
 - Makefile targets (planned/initial) for env, deps, selftest, GUI.
 - Logging subsystem centralizes structured output to console and rotating file.
 
@@ -42,7 +42,7 @@
 - Exodriver patching approach documented (`patches/`).
 
 ## History Cleanup Note
-Earlier repository history (pre-0.3.0 push) inadvertently contained a committed `.venv/` including large Qt binaries (>100MB). A history rewrite removed these artifacts. Contributors who cloned before the cleanup must reclone or hard reset:
+Earlier repository history inadvertently contained a committed `.venv/` including large Qt binaries (>100MB). A history rewrite removed these artifacts. Contributors who cloned before the cleanup must reclone or hard reset:
 ```bash
 git fetch origin
 git reset --hard origin/main
@@ -54,7 +54,7 @@ Pre-commit hooks now guard against recurrence.
 - Reinstall extras to access new automation functions: `pip install -e .[gui,test,dev]`.
 - Console scripts now wrap `unified_gui_layout:main`; direct script invocation still supported.
 
-## Next Roadmap (Post 0.3.0)
+## Roadmap (Post 0.3.0)
 - Remaining GUI tab refinements & layout polishing.
 - Additional automation metrics (SNR, IMD, noise floor).
 - Hardware-in-loop optional CI stage (gated / manual trigger).
@@ -70,4 +70,4 @@ Refer to `CHANGELOG.md` for granular commit-level entries. Key categories:
 - chore/refactor: dependency abstraction, logging, config persistence
 
 ---
-Prepared as a draft – adjust wording, add contributor acknowledgements, and publish under GitHub Releases as v0.3.0.
+Published as GitHub Release v0.3.0.
