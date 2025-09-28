@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file. The format 
 Keep a Changelog, and this project adheres to Semantic Versioning (SemVer) starting
 with 0.x pre‑release phases.
 
+## [0.3.0] - 2025-09-28
+### Added
+- New `amp_benchkit.automation` module exposing headless sweep helpers (`build_freq_list`, `sweep_scope_fixed`, `sweep_audio_kpis`).
+- Unit tests for automation orchestration (freq list, sweep KPI path, THD/knees logic injection).
+- Community documents: `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`.
+- TestPyPI release candidate workflow (`.github/workflows/testpypi.yml`) for tags like `v0.3.0-rc1`.
+- README badges (CI, License, Python versions, PyPI) and Development section (lint/format/type instructions).
+
+### Changed
+- `unified_gui_layout.py` now delegates sweep/KPI methods to the automation module; original behavior preserved.
+- Improved internal separation between GUI widgets and orchestration logic for easier scripting reuse.
+
+### Fixed
+- Resolved ambiguous truthiness check on NumPy arrays when computing KPI metrics (explicit length check in automation module).
+
+### Internal / Tooling
+- Expanded test count (now covers automation flows without hardware by dependency injection).
+- Added release candidate publishing path distinct from stable PyPI tags.
+
 ## [0.2.0] - 2025-09-28
 ### Added
 - Completed extraction of all GUI tabs into `amp_benchkit.gui` (`generator`, `scope`, `daq`, `automation`, `diagnostics`).

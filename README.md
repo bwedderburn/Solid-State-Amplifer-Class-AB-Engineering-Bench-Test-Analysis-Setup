@@ -3,6 +3,10 @@
 Unified GUI + LabJack instrumentation helper environment.
 
 [![CI](https://github.com/your-org-or-user/amp-benchkit/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
+![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
+![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
+
 
 ## Contents
 
@@ -135,6 +139,36 @@ Planned:
 - `make check-usb` – run health script.
 - `make gui` – launch GUI.
 - `make selftest` – headless tests.
+
+## Development (Lint / Format / Type)
+
+We use `ruff` (lint), `mypy` (types). Formatting is kept Black-compatible (you can optionally run `ruff format` in newer versions).
+
+Manual invocations:
+
+```bash
+ruff check .          # lint
+ruff check . --fix    # autofix simple issues
+mypy .                 # type check
+pytest -q             # tests
+```
+
+If you add a Makefile target locally, suggested grouping:
+
+```bash
+make lint   # ruff check
+make type   # mypy
+make test   # pytest
+make ci-local  # run all of the above
+```
+
+Pre-commit is configured; enable with:
+
+```bash
+pre-commit install
+```
+
+Then commits will auto-run ruff / mypy (if configured) on changed files.
 
 ## Troubleshooting
 

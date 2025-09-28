@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amp-benchkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Your Name", email = "you@example.com" } ]
 readme = "README.md"

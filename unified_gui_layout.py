@@ -959,18 +959,16 @@ class UnifiedGUI(BaseGUI):
         self._sweep_abort = True
 
     def run_sweep_scope_fixed(self):
+        from amp_benchkit.automation import build_freq_list, sweep_scope_fixed
         try:
             ch = int(self.auto_ch.currentText()); sch = int(self.auto_scope_ch.currentText())
             start = float(self.auto_start.text()); stop = float(self.auto_stop.text()); step = float(self.auto_step.text())
             amp = float(self.auto_amp.text()); dwell = max(0.0, float(self.auto_dwell.text())/1000.0)
             metric = self.auto_metric.currentText()
-            freqs=[]; f=start
-            while f <= stop + 1e-9:
-                freqs.append(round(f,6)); f += step
-            out=[]; self._sweep_abort=False; n=len(freqs)
+            freqs = build_freq_list(start, stop, step)
+            self._sweep_abort = False
             pr = (self.auto_proto.currentText() if hasattr(self,'auto_proto') else "FY ASCII 9600")
             pt = ((self.auto_port.text().strip() if hasattr(self,'auto_port') else '') or find_fy_port())
-            # Optional math / ext trigger
             use_math = bool(self.auto_use_math.isChecked()) if hasattr(self,'auto_use_math') else False
             order = (self.auto_math_order.currentText() if hasattr(self,'auto_math_order') else 'CH1-CH2')
             use_ext = bool(self.auto_use_ext.isChecked()) if hasattr(self,'auto_use_ext') else False
@@ -984,43 +982,36 @@ class UnifiedGUI(BaseGUI):
             except Exception:
                 pre_ms = 5.0
             rsrc = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
-            # Optional U3 auto-config: apply current DAQ selections
-            try:
+            # optional u3 auto config closure
+            def _u3_autocfg():
                 if hasattr(self,'auto_u3_autocfg') and self.auto_u3_autocfg.isChecked():
                     base = self.auto_u3_base.currentText() if hasattr(self,'auto_u3_base') else 'Keep Current'
                     self.u3_autoconfig_runtime(base=base, pulse_line='None', persist=False)
-            except Exception as e:
-                self._log(self.auto_log, f"U3 auto-config warn: {e}")
-            for i,f in enumerate(freqs):
-                if self._sweep_abort: break
-                try:
-                    fy_apply(freq_hz=f, amp_vpp=amp, wave="Sine", off_v=0.0, duty=None, ch=ch, port=pt, proto=pr)
-                except Exception as e:
-                    self._log(self.auto_log, f"FY error @ {f} Hz: {e}"); continue
-                time.sleep(dwell)
-                typ = 'RMS' if metric=='RMS' else 'PK2PK'
-                # Configure math and ext trigger if requested
-                if use_math:
-                    try:
-                        scope_configure_math_subtract(rsrc or self.scope_res, order=order)
-                    except Exception as e:
-                        self._log(self.auto_log, f"MATH config error: {e}")
-                if use_ext:
-                    try:
-                        scope_set_trigger_ext(rsrc or self.scope_res, slope=ext_slope, level=ext_level)
-                        scope_arm_single(rsrc or self.scope_res)
-                        if pre_ms > 0: time.sleep(pre_ms/1000.0)
-                        scope_wait_single_complete(rsrc or self.scope_res, timeout_s=max(1.0, dwell*2+0.5))
-                    except Exception as e:
-                        self._log(self.auto_log, f"EXT trig wait error: {e}")
-                try:
-                    src = 'MATH' if use_math else sch
-                    val = self.scope_measure(src, typ)
-                except Exception as e:
-                    self._log(self.auto_log, f"Scope error @ {f} Hz: {e}"); val = float('nan')
-                out.append((f,val))
-                self._log(self.auto_log, f"{f:.3f} Hz → {metric} {val:.4f} ({'MATH' if use_math else f'CH{sch}'})")
-                self.auto_prog.setValue(int((i+1)/n*100)); QApplication.processEvents()
+            out = sweep_scope_fixed(
+                freqs,
+                channel=ch,
+                scope_channel=sch,
+                amp_vpp=amp,
+                dwell_s=dwell,
+                metric=metric,
+                fy_apply=lambda **kw: fy_apply(port=pt, proto=pr, **kw),
+                scope_measure=lambda src, typ: self.scope_measure(src, typ),
+                scope_configure_math_subtract=lambda res, order: scope_configure_math_subtract(rsrc or self.scope_res, order=order),
+                scope_set_trigger_ext=lambda res, slope, level: scope_set_trigger_ext(rsrc or self.scope_res, slope=slope, level=level),
+                scope_arm_single=lambda res: scope_arm_single(rsrc or self.scope_res),
+                scope_wait_single_complete=lambda res, timeout_s: scope_wait_single_complete(rsrc or self.scope_res, timeout_s=timeout_s),
+                use_math=use_math,
+                math_order=order,
+                use_ext=use_ext,
+                ext_slope=ext_slope,
+                ext_level=ext_level,
+                pre_ms=pre_ms,
+                scope_resource=rsrc or self.scope_res,
+                logger=lambda s: self._log(self.auto_log, s),
+                progress=lambda i,n: (self.auto_prog.setValue(int(i/n*100)), QApplication.processEvents()),
+                abort_flag=lambda: getattr(self,'_sweep_abort', False),
+                u3_autoconfig=_u3_autocfg,
+            )
             os.makedirs('results', exist_ok=True)
             fn = os.path.join('results','sweep_scope.csv')
             with open(fn,'w') as fh:
@@ -1032,14 +1023,13 @@ class UnifiedGUI(BaseGUI):
 
     def run_audio_kpis(self):
         """Sweep using FY + scope, compute Vrms/PkPk and THD, then report -dB knees if requested."""
+        from amp_benchkit.automation import build_freq_list, sweep_audio_kpis
         try:
             ch = int(self.auto_ch.currentText()); sch = int(self.auto_scope_ch.currentText())
             start = float(self.auto_start.text()); stop = float(self.auto_stop.text()); step = float(self.auto_step.text())
             amp = float(self.auto_amp.text()); dwell = max(0.0, float(self.auto_dwell.text())/1000.0)
-            # FY override
             pr = (self.auto_proto.currentText() if hasattr(self,'auto_proto') else "FY ASCII 9600")
             pt = ((self.auto_port.text().strip() if hasattr(self,'auto_port') else '') or find_fy_port())
-            # U3 orchestration + EXT trigger
             pulse_line = self.auto_u3_line.currentText() if hasattr(self, 'auto_u3_line') else 'None'
             try:
                 pulse_ms = float(self.auto_u3_pwidth.text()) if hasattr(self,'auto_u3_pwidth') and self.auto_u3_pwidth.text().strip() else 0.0
@@ -1055,100 +1045,64 @@ class UnifiedGUI(BaseGUI):
                 pre_ms = float(self.auto_ext_pre_ms.text()) if hasattr(self,'auto_ext_pre_ms') and self.auto_ext_pre_ms.text().strip() else 5.0
             except Exception:
                 pre_ms = 5.0
-            # MATH use
             use_math = bool(self.auto_use_math.isChecked()) if hasattr(self,'auto_use_math') else False
             order = (self.auto_math_order.currentText() if hasattr(self,'auto_math_order') else 'CH1-CH2')
-            # U3 auto-config (base: factory/current) using current DAQ selections
-            try:
+            freqs = build_freq_list(start, stop, step)
+            self._sweep_abort = False
+            rsrc = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
+            def _u3_autocfg():
                 if hasattr(self,'auto_u3_autocfg') and self.auto_u3_autocfg.isChecked():
                     base = self.auto_u3_base.currentText() if hasattr(self,'auto_u3_base') else 'Keep Current'
                     self.u3_autoconfig_runtime(base=base, pulse_line=pulse_line, persist=False)
-            except Exception as e:
-                self._log(self.auto_log, f"U3 auto-config warn: {e}")
-            # Build frequency list
-            freqs=[]; f=start
-            while f <= stop + 1e-9:
-                freqs.append(round(f,6)); f += step
-            self._sweep_abort = False
-            n = len(freqs)
-            # Scope resource
-            rsrc = self.scope_edit.text().strip() if hasattr(self,'scope_edit') else self.scope_res
-            out = []
-            for i,f in enumerate(freqs):
-                if self._sweep_abort: break
-                # Set generator
-                try:
-                    fy_apply(freq_hz=f, amp_vpp=amp, wave="Sine", off_v=0.0, duty=None, ch=ch, port=pt, proto=pr)
-                except Exception as e:
-                    self._log(self.auto_log, f"FY error @ {f} Hz: {e}")
-                    continue
-                # Optional EXT trigger workflow
-                try:
-                    if use_ext:
-                        # Configure and arm single; brief pre-arm delay; then pulse U3 to trigger
-                        scope_set_trigger_ext(rsrc or self.scope_res, slope=ext_slope, level=ext_level)
-                        scope_arm_single(rsrc or self.scope_res)
-                        if pre_ms > 0: time.sleep(pre_ms/1000.0)
-                    # U3 pulse (either used as EXT trigger or general control)
-                    if HAVE_U3 and pulse_line and pulse_line != 'None' and pulse_ms > 0.0:
-                        u3_pulse_line(pulse_line, width_ms=pulse_ms, level=1)
-                except Exception as e:
-                    self._log(self.auto_log, f"U3/EXT trig error: {e}")
-                # Wait for acquisition complete or dwell fallback
-                done = False
-                if use_ext:
-                    try:
-                        done = scope_wait_single_complete(rsrc or self.scope_res, timeout_s=max(1.0, dwell*2+0.5))
-                    except Exception:
-                        done = False
-                if not done and dwell > 0:
-                    time.sleep(dwell)
-                # Configure MATH if requested
-                if use_math:
-                    try:
-                        scope_configure_math_subtract(rsrc or self.scope_res, order=order)
-                    except Exception as e:
-                        self._log(self.auto_log, f"MATH config error: {e}")
-                # Capture calibrated waveform
-                try:
-                    src = 'MATH' if use_math else sch
-                    t, v = scope_capture_calibrated(rsrc or self.scope_res, timeout_ms=15000, ch=src)
-                except Exception as e:
-                    self._log(self.auto_log, f"Scope capture error @ {f} Hz: {e}")
-                    t = []; v = []
-                # Compute KPIs
-                vr = _dsp.vrms(v) if v else float('nan')
-                pp = _dsp.vpp(v) if v else float('nan')
-                thd_ratio = float('nan'); thd_percent = float('nan')
-                if getattr(self, 'auto_do_thd', None) and self.auto_do_thd.isChecked() and v:
-                    try:
-                        thd_ratio, f_est, _ = _dsp.thd_fft(t, v, f0=f, nharm=10, window='hann')
-                        thd_percent = float(thd_ratio*100.0) if np.isfinite(thd_ratio) else float('nan')
-                    except Exception as e:
-                        self._log(self.auto_log, f"THD calc error @ {f} Hz: {e}")
-                        thd_ratio = float('nan'); thd_percent = float('nan')
-                out.append((f, vr, pp, thd_ratio, thd_percent))
-                msg = f"{f:.3f} Hz → Vrms {vr:.4f} V, PkPk {pp:.4f} V"
-                if np.isfinite(thd_percent):
-                    msg += f", THD {thd_percent:.3f}%"
-                self._log(self.auto_log, msg)
-                self.auto_prog.setValue(int((i+1)/n*100)); QApplication.processEvents()
-            # Save CSV
+            res = sweep_audio_kpis(
+                freqs,
+                channel=ch,
+                scope_channel=sch,
+                amp_vpp=amp,
+                dwell_s=dwell,
+                fy_apply=lambda **kw: fy_apply(port=pt, proto=pr, **kw),
+                scope_capture_calibrated=lambda resrc, ch: scope_capture_calibrated(rsrc or self.scope_res, timeout_ms=15000, ch=ch),
+                dsp_vrms=_dsp.vrms,
+                dsp_vpp=_dsp.vpp,
+                dsp_thd_fft=(lambda t,v,f0: _dsp.thd_fft(t,v,f0=f0,nharm=10,window='hann')) if getattr(self,'auto_do_thd', None) and self.auto_do_thd.isChecked() else None,
+                dsp_find_knees=_dsp.find_knees if getattr(self,'auto_do_knees', None) and self.auto_do_knees.isChecked() else None,
+                do_thd=bool(getattr(self,'auto_do_thd', None) and self.auto_do_thd.isChecked()),
+                do_knees=bool(getattr(self,'auto_do_knees', None) and self.auto_do_knees.isChecked()),
+                knee_drop_db=float(self.auto_knee_db.text() or '3.0') if getattr(self,'auto_knee_db', None) else 3.0,
+                knee_ref_mode=(self.auto_ref_mode.currentText() if hasattr(self,'auto_ref_mode') else 'Max'),
+                knee_ref_hz=float(self.auto_ref_hz.text() or '1000') if getattr(self,'auto_ref_hz', None) else 1000.0,
+                use_math=use_math,
+                math_order=order,
+                use_ext=use_ext,
+                ext_slope=ext_slope,
+                ext_level=ext_level,
+                pre_ms=pre_ms,
+                pulse_line=pulse_line,
+                pulse_ms=pulse_ms,
+                u3_pulse_line=(lambda line, width_ms, level: u3_pulse_line(line, width_ms=width_ms, level=level)) if HAVE_U3 else None,
+                scope_set_trigger_ext=lambda resrc, slope, level: scope_set_trigger_ext(rsrc or self.scope_res, slope=slope, level=level),
+                scope_arm_single=lambda resrc: scope_arm_single(rsrc or self.scope_res),
+                scope_wait_single_complete=lambda resrc, timeout_s: scope_wait_single_complete(rsrc or self.scope_res, timeout_s=timeout_s),
+                scope_configure_math_subtract=lambda resrc, order: scope_configure_math_subtract(rsrc or self.scope_res, order=order),
+                scope_resource=rsrc or self.scope_res,
+                logger=lambda s: self._log(self.auto_log, s),
+                progress=lambda i,n: (self.auto_prog.setValue(int(i/n*100)), QApplication.processEvents()),
+                abort_flag=lambda: getattr(self,'_sweep_abort', False),
+                u3_autoconfig=_u3_autocfg,
+            )
+            rows = res["rows"]
             os.makedirs('results', exist_ok=True)
             fn = os.path.join('results','audio_kpis.csv')
             with open(fn,'w') as fh:
                 fh.write('freq_hz,vrms,pkpk,thd_ratio,thd_percent\n')
-                for row in out:
+                for row in rows:
                     fh.write(f"{row[0]},{row[1]},{row[2]},{row[3]},{row[4]}\n")
             self._log(self.auto_log, f"Saved: {fn}")
-            # Knees
-            if getattr(self, 'auto_do_knees', None) and self.auto_do_knees.isChecked() and out:
+            if res.get('knees'):
                 try:
-                    freqs = [r[0] for r in out]; amps = [r[2] for r in out]  # use PkPk by default
-                    drop = float(self.auto_knee_db.text() or '3.0')
+                    f_lo, f_hi, ref_amp, ref_db = res['knees']
+                    drop = float(self.auto_knee_db.text() or '3.0') if getattr(self,'auto_knee_db', None) else 3.0
                     ref_mode = (self.auto_ref_mode.currentText() if hasattr(self,'auto_ref_mode') else 'Max')
-                    ref_hz = float(self.auto_ref_hz.text() or '1000') if ref_mode.lower().startswith('1k') else 1000.0
-                    f_lo, f_hi, ref_amp, ref_db = _dsp.find_knees(freqs, amps, ref_mode=('freq' if ref_mode.lower().startswith('1k') else 'max'), ref_hz=ref_hz, drop_db=drop)
                     summ = f"Knees @ -{drop:.2f} dB (ref {ref_mode}): low≈{f_lo:.2f} Hz, high≈{f_hi:.2f} Hz (ref_amp={ref_amp:.4f} V, ref_dB={ref_db:.2f} dB)"
                     self._log(self.auto_log, summ)
                     with open(os.path.join('results','audio_knees.txt'),'w') as fh:
