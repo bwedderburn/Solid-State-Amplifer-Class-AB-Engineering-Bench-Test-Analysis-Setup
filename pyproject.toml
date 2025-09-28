@@ -9,13 +9,15 @@ description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Your Name", email = "you@example.com" } ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }  # SPDX expression form
+license = {text = "MIT"}
 keywords = ["labjack", "instrumentation", "gui", "automation"]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: POSIX :: Linux"
 ]
+
+[project.license-files]
+paths = ["LICENSE", "EXODRIVER.md"]
 
 # Core runtime deps (mirrors requirements.txt)
 dependencies = [
@@ -40,6 +42,12 @@ amp-benchkit-gui = "unified_gui_layout:main"
 [tool.setuptools]
 packages = ["amp_benchkit"]
 py-modules = ["unified_gui_layout"]
+
+[project.urls]
+Homepage = "https://github.com/your-org-or-user/amp-benchkit"
+Repository = "https://github.com/your-org-or-user/amp-benchkit.git"
+Issues = "https://github.com/your-org-or-user/amp-benchkit/issues"
+Changelog = "https://github.com/your-org-or-user/amp-benchkit/blob/main/CHANGELOG.md"
 
 [tool.black]
 line-length = 100

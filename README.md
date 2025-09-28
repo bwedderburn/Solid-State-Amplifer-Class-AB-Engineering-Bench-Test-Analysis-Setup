@@ -172,6 +172,31 @@ Planned / open:
 
 See `CHANGELOG.md` for a full list of versions and changes. Highlight 0.2.0: all GUI tabs modular, deprecated DSP wrappers removed, shared lazy Qt import helper.
 
+## Release & Publishing
+
+Steps to cut a release (example for 0.2.0 already performed):
+
+1. Update version in `pyproject.toml` & confirm tests pass.
+2. Update `CHANGELOG.md` (add new heading, date, notes).
+3. Commit: `git commit -am "release: vX.Y.Z"`.
+4. Tag locally: `git tag vX.Y.Z` (lightweight or annotated `-a`).
+5. Build artifacts locally (optional pre-check): `python -m build --sdist --wheel`.
+6. Push branch and tag: `git push && git push origin vX.Y.Z`.
+7. GitHub Actions CI will build & test; if a publish workflow exists with `PYPI_API_TOKEN`, it will upload.
+8. Draft GitHub Release, attach release notes (can pull from changelog), verify assets.
+9. Post-release: bump version to next dev (e.g., 0.2.1.dev0) if ongoing changes expected.
+
+Dry-run publish (validate metadata):
+```bash
+python -m build
+twine check dist/*
+```
+
+Install from a specific tag directly:
+```bash
+pip install git+https://github.com/your-org-or-user/amp-benchkit@v0.2.0
+```
+
 ## Next Steps / Roadmap
 
 - Add `requirements.txt` or `pyproject.toml` for pinned dependencies.
