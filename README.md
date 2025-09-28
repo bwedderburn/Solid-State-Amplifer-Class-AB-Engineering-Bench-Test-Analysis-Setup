@@ -106,28 +106,21 @@ If LabJack USB still not detected on Alpine (musl) add:
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```
 
-## Exodriver Strategies
+## Exodriver (LabJack USB Driver)
 
-| Strategy | When to Use | Pros | Cons |
-|----------|-------------|------|------|
-| Wrapper script (current) | Local dev, containers | Clean, repeatable | Needs network clone |
-| Patch file | Re-apply minimal change to upstream checkout | Upstream diff isolated | Must re-apply after pulls |
-| Fork repo | Long‑lived customizations / PR | Version control of changes | Maintenance overhead |
+We vendor a minimal, source‑only snapshot of Exodriver under `exodriver/` (no `.git`, no compiled objects). See `EXODRIVER.md` for rationale, update procedure, and upstream attribution. For a full clone (e.g. to inspect history or contribute upstream), run:
 
-## Patch Workflow
-
-Create / refresh:
-```bash
-(cd exodriver && git format-patch -1 HEAD --stdout > ../patches/exodriver-install-alpine.patch)
-```
-Apply in fresh clone:
 ```bash
 git clone https://github.com/labjack/exodriver.git
-cd exodriver
-git apply ../patches/exodriver-install-alpine.patch
 ```
 
-## Health Check (after install)
+Then either build directly or point our helper script at it:
+
+```bash
+EXO_DIR=exodriver ./scripts/install_exodriver_alpine.sh
+```
+
+### Health Check (after install)
 ```bash
 python -c "import u3; print('u3 import OK')" || echo "LabJack Python import failed"
 ```
