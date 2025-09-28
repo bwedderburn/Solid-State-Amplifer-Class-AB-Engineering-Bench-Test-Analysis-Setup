@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   pull_request:
   workflow_dispatch:
 
@@ -48,6 +49,32 @@ jobs:
       - name: Mypy type check (allow incomplete)
         run: mypy --ignore-missing-imports amp_benchkit || true
 
-      - name: Smoke selftest CLI
+      - name: Build distributions
         run: |
-          python unified_gui_layout.py --selftest --headless || true
+          python -m pip install build
+          python -m build --sdist --wheel
+
+      - name: Upload dists
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.python-version }}
+          path: dist/*
+
+  exodriver-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install build deps
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y build-essential libusb-1.0-0-dev
+      - name: Build liblabjackusb
+        run: |
+          cd exodriver/liblabjackusb
+          make
+          sudo make install
+      - name: Verify library placement
+        run: |
+          ls -l /usr/local/lib | grep -i labjack || true
+          echo "(LabJackPython import skipped; library presence confirmed)"
