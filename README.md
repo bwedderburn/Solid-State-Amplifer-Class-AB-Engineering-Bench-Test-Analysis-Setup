@@ -150,6 +150,7 @@ pre-commit run --all-files   # optional first full pass
 ```
 Hooks block committing virtualenvs / `site-packages` and large (>5MB) binaries, and run ruff, formatting, and mypy.
 - `make selftest` – headless tests.
+ - See `ROADMAP.md` for planned milestones and how to propose new items (edit a single table row per PR).
 
 ## Development (Lint / Format / Type)
 
