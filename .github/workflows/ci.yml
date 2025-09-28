@@ -34,8 +34,8 @@ jobs:
           pip install -e .[test,dev]
           pip install mypy ruff
 
-      - name: Run tests with coverage
-        run: pytest -q --cov=amp_benchkit --cov-report=term-missing --cov-report=xml
+      - name: Run tests with coverage (threshold)
+        run: pytest -q --cov=amp_benchkit --cov-report=term-missing --cov-report=xml --cov-fail-under=70
 
       - name: Upload coverage XML
         uses: actions/upload-artifact@v4
