@@ -138,6 +138,17 @@ Planned:
 - `make install-exodriver` – run wrapper.
 - `make check-usb` – run health script.
 - `make gui` – launch GUI.
+- `make selftest` – run headless integrations.
+
+## Development Hygiene
+
+Install and enable pre-commit hooks to catch style and oversized file issues early:
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files   # optional first full pass
+```
+Hooks block committing virtualenvs / `site-packages` and large (>5MB) binaries, and run ruff, formatting, and mypy.
 - `make selftest` – headless tests.
 
 ## Development (Lint / Format / Type)

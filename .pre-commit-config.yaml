@@ -1,15 +1,39 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 24.8.0
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
     hooks:
-      - id: black
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.6.9
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: mixed-line-ending
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.2
     hooks:
       - id: ruff
         args: ["--fix"]
+      - id: ruff-format
+  - repo: https://github.com/psf/black
+    rev: 25.9.0
+    hooks:
+      - id: black
+        language_version: python3.12
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+    rev: v1.18.2
     hooks:
       - id: mypy
         additional_dependencies: []
+        args: ["--ignore-missing-imports", "--no-warn-unused-ignores"]
+  - repo: local
+    hooks:
+      - id: forbid-virtualenv-commits
+        name: Forbid committed virtualenv or site-packages
+        entry: bash -c 'git diff --cached --name-only | grep -E "^(\\.venv/|venv/|env/|.*site-packages)" && echo "Error: virtualenv artifacts staged; remove before committing." && exit 1 || exit 0'
+        language: system
+        pass_filenames: false
+      - id: forbid-large-binaries
+        name: Forbid >5MB binary blobs (except patches)
+        entry: bash -c 'git diff --cached --name-only | while read f; do if [ -f "$f" ]; then sz=$(wc -c < "$f"); if [ $sz -gt 5000000 ]; then echo "Large file blocked ($f, $sz bytes). Use Git LFS or exclude."; exit 1; fi; fi; done; exit 0'
+        language: system
+        pass_filenames: false

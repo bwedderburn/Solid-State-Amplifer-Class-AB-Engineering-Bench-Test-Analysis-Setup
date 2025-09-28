@@ -11,6 +11,7 @@ make changes, and propose them for inclusion.
 - [Linting & Formatting](#linting--formatting)
 - [Type Checking](#type-checking)
 - [Release Process](#release-process)
+- [Pre-Commit Hooks](#pre-commit-hooks)
 - [Issue Reporting](#issue-reporting)
 - [Security](#security)
 - [Code of Conduct](#code-of-conduct)
@@ -105,6 +106,43 @@ Incrementally add type hints—focus on stable public modules (`fy.py`, `tek.py`
 6. Post-release: bump to `X.Y.(Z+1).dev0` if continuing development.
 
 Release Candidates (TestPyPI): create a tag like `v0.3.0-rc1` (workflow forthcoming) to publish to TestPyPI.
+
+## Pre-Commit Hooks
+
+We use [pre-commit](https://pre-commit.com) to catch issues early and prevent oversized / unintended files from entering history.
+
+Install once after setting up your virtualenv:
+```bash
+pip install pre-commit
+pre-commit install
+```
+This installs a Git hook that runs automatically on `git commit`.
+
+Included hooks:
+* Style / hygiene: trailing whitespace, end-of-file newline, mixed line endings, merge conflict markers.
+* Lint & format: `ruff` (with autofix) + `ruff-format` and `black` for consistent style.
+* Types: `mypy` (best-effort; non-blocking refinement encouraged).
+* Safeguards: block staging of virtual environment / `site-packages` content and binary blobs >5MB.
+
+Manual run over all files:
+```bash
+pre-commit run --all-files
+```
+
+### Why these safeguards?
+Earlier history accidentally included a full `.venv/` directory (large Qt binaries), bloating the repository and triggering GitHub rejection. We performed a history rewrite to remove it. These hooks make a recurrence very unlikely.
+
+If you truly need to add a large artifact, prefer:
+1. Generating it in CI at build/test time, or
+2. Using Git LFS (only after discussion), or
+3. Publishing it as a release attachment / external asset.
+
+### Updating Hooks
+After editing `.pre-commit-config.yaml` run:
+```bash
+pre-commit autoupdate
+```
+Commit the resulting version bumps in a single `chore(deps): update pre-commit hook revs` commit.
 
 ## Issue Reporting
 
