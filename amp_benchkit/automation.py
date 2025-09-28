@@ -46,6 +46,36 @@ def build_freq_list(start: Number, stop: Number, step: Number) -> List[Number]:
     return freqs
 
 
+def build_freq_points(*, start: Number, stop: Number, points: int, mode: str = 'log') -> List[Number]:
+    """Build a list of frequency points.
+
+    Parameters
+    ----------
+    start, stop : Number
+        Sweep endpoints (inclusive).
+    points : int
+        Number of points >= 2.
+    mode : str
+        'log' for logarithmic (geometric) spacing, 'linear' for uniform spacing.
+    """
+    if points < 2:
+        raise ValueError('points must be >= 2')
+    if start <= 0 or stop <= 0:
+        raise ValueError('start/stop must be > 0')
+    if stop < start:
+        raise ValueError('stop must be >= start')
+    mode = mode.lower()
+    if mode not in ('log','linear'):
+        raise ValueError("mode must be 'log' or 'linear'")
+    if mode == 'linear':
+        step = (stop - start)/(points - 1)
+        return [round(start + i*step, 6) for i in range(points)]
+    # log
+    r = (stop/start)**(1/(points - 1))
+    out = [start * (r**i) for i in range(points)]
+    return [round(x, 6) for x in out]
+
+
 def sweep_scope_fixed(
     freqs: Sequence[Number],
     channel: int,

@@ -1,4 +1,3 @@
-
 #!/usr/bin/env python3
 """
 Unified GUI Layout (LITE+U3)
@@ -1175,6 +1174,11 @@ def main():
     sub.add_parser('selftest')
     sub.add_parser('config-dump')
     sub.add_parser('config-reset')
+    sp_sweep = sub.add_parser('sweep', help='Generate frequency list (headless)')
+    sp_sweep.add_argument('--start', type=float, required=True, help='Start frequency Hz')
+    sp_sweep.add_argument('--stop', type=float, required=True, help='Stop frequency Hz')
+    sp_sweep.add_argument('--points', type=int, required=True, help='Number of points (>=2)')
+    sp_sweep.add_argument('--mode', choices=['log','linear'], default='log', help='Spacing mode')
     args = ap.parse_args()
 
     setup_logging(verbose=getattr(args,'verbose',False))
@@ -1199,12 +1203,28 @@ def main():
                 print('U3 AIN0:', f"{u3_read_ain(0):.4f} V")
             except Exception as e:
                 print('U3 error:', e)
+                print('U3 error:', e)
         else:
             print('u3 missing →', INSTALL_HINTS['u3'])
         return
 
     if args.cmd == 'selftest':
         ok = True
+    if args.cmd == 'sweep':
+        rc = 0
+        try:
+            from amp_benchkit.automation import build_freq_points
+            freqs = build_freq_points(start=args.start, stop=args.stop, points=args.points, mode=args.mode)
+            for f in freqs:
+                if 0.1 <= f < 100000:
+                    s = f"{f:.6f}".rstrip('0').rstrip('.')
+                else:
+                    s = str(f)
+                print(s)
+        except Exception as e:
+            print('Sweep error:', e, file=sys.stderr)
+            rc = 1
+        sys.exit(rc)
     if args.cmd == 'config-dump':
         try:
             from amp_benchkit.config import load_config, CONFIG_PATH
