@@ -9,7 +9,7 @@ description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Your Name", email = "you@example.com" } ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = { text = "MIT" }  # SPDX expression form
 keywords = ["labjack", "instrumentation", "gui", "automation"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -30,12 +30,16 @@ dependencies = [
 [project.optional-dependencies]
 # Install with: pip install .[gui]
  gui = ["PySide6==6.9.2", "PyQt5==5.15.11"]
- dev = ["black", "ruff", "mypy"]
+ dev = ["black", "ruff", "mypy", "pre-commit"]
  test = ["pytest", "pytest-cov"]
 
 [project.scripts]
 amp-benchkit = "unified_gui_layout:main"
 amp-benchkit-gui = "unified_gui_layout:main"
+
+[tool.setuptools]
+packages = ["amp_benchkit"]
+py-modules = ["unified_gui_layout"]
 
 [tool.black]
 line-length = 100
