@@ -29,13 +29,11 @@ repos:
     hooks:
       - id: forbid-virtualenv-commits
         name: Forbid committed virtualenv or site-packages
-        entry: >
-          bash -c 'git diff --cached --name-only | grep -E "^(\.venv/|venv/|env/|.*site-packages)" && echo "Error: virtualenv artifacts staged; remove before committing." && exit 1 || exit 0'
+        entry: bash -c 'git diff --cached --name-only | grep -E "^(\.venv/|venv/|env/|.*site-packages)" >/dev/null && { echo "Error: virtualenv artifacts staged; remove before committing."; exit 1; } || exit 0'
         language: system
         pass_filenames: false
       - id: forbid-large-binaries
         name: Forbid >5MB binary blobs (except patches)
-        entry: >
-          bash -c 'git diff --cached --name-only | while read f; do if [ -f "$f" ]; then sz=$(wc -c < "$f"); if [ $sz -gt 5000000 ]; then echo "Large file blocked ($f, $sz bytes). Use Git LFS."; exit 1; fi; fi; done; exit 0'
+        entry: bash -c 'git diff --cached --name-only | while read -r f; do [ -f "$f" ] || continue; case "$f" in *.patch) continue ;; esac; sz=$(wc -c < "$f"); if [ "$sz" -gt 5000000 ]; then echo "Large file blocked ($f, $sz bytes). Use Git LFS instead."; exit 1; fi; done; exit 0'
         language: system
         pass_filenames: false
