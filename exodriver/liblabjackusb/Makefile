@@ -11,7 +11,7 @@ DESTINATION = $(DESTDIR)$(PREFIX)/lib
 HEADER = labjackusb.h
 HEADER_DESTINATION = $(DESTDIR)$(PREFIX)/include
 LIBFLAGS = -lusb-1.0 -lc
-ADD_LDCONFIG_PATH = ./add_ldconfig_path.sh
+# ADD_LDCONFIG_PATH = ./add_ldconfig_path.sh  # No longer used; replaced with direct ldconfig check
 
 ifeq ($(UNAME),Darwin)
 	#Mac OS X operating system macros
@@ -70,8 +70,12 @@ install: $(TARGET)
 	test -z $(HEADER_DESTINATION) || mkdir -p $(HEADER_DESTINATION)
 	install $(HEADER) $(HEADER_DESTINATION)
 ifeq ($(RUN_LDCONFIG),1)
-	@$(ADD_LDCONFIG_PATH) $(DESTINATION)
-	ldconfig
+	@if command -v ldconfig >/dev/null 2>&1; then \
+		echo "Running ldconfig"; \
+		ldconfig; \
+	else \
+		echo "ldconfig not found; skipping (expected on some minimal/musl systems)"; \
+	fi
 endif
 ifeq ($(LINK_SO),1)
 	ln -i -s $(DESTINATION)/$(TARGET) $(DESTINATION)/liblabjackusb.$(ext)
