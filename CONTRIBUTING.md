@@ -144,6 +144,41 @@ pre-commit autoupdate
 ```
 Commit the resulting version bumps in a single `chore(deps): update pre-commit hook revs` commit.
 
+## Signed Commits (GPG)
+
+We encourage (and may enforce) GPG-signed commits for provenance. To enable signing with the
+project maintainer's pattern:
+
+1. Generate (or use) an OpenPGP key matching an email on your GitHub account:
+	```bash
+	gpg --full-generate-key
+	gpg --list-secret-keys --keyid-format=long
+	```
+2. Tell Git which key to use and enable signing:
+	```bash
+	git config --global user.signingkey <YOUR_KEY_ID>
+	git config --global commit.gpgsign true
+	```
+3. Ensure a working TTY for pinentry (add to shell init):
+	```bash
+	export GPG_TTY=$(tty)
+	```
+4. Export your public key and add it at GitHub Settings → SSH and GPG keys:
+	```bash
+	gpg --armor --export <YOUR_KEY_ID>
+	```
+5. Make a test commit and verify it shows "Verified" on GitHub.
+
+If working in a headless environment and pinentry fails, add `allow-loopback-pinentry` to
+`~/.gnupg/gpg-agent.conf` and restart the agent:
+```bash
+echo allow-loopback-pinentry >> ~/.gnupg/gpg-agent.conf
+gpgconf --kill gpg-agent
+```
+
+Historical commits are not retroactively re-signed to avoid disruptive history rewrites.
+Only new commits need to be signed unless a security advisory states otherwise.
+
 ## Issue Reporting
 
 When filing an issue, include:

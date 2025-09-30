@@ -1,61 +1,49 @@
 # Copilot / AI Agent Project Instructions
 
-Concise, project‑specific guidance to make productive, safe changes. Focus on these patterns; avoid generic boilerplate.
+Concise, codebase-specific guidance for productive, safe AI-driven changes. Focus on actionable, project-unique patterns and workflows.
 
-## 1. Architecture Snapshot
-- Legacy monolithic entry: `unified_gui_layout.py` (still ~1300 lines) orchestrates CLI + multi‑tab GUI. New code should prefer extracted modules.
-- Modularized helpers (preferred touch points):
-  - `amp_benchkit.deps`: optional dependency + Qt binding detection (never re‑import heavy libs redundantly). Gate GUI logic via `HAVE_QT`.
-  - `amp_benchkit.fy`, `amp_benchkit.tek`, `amp_benchkit.u3util`, `amp_benchkit.u3config`: instrument abstraction layers (FY function gen SCPI‑like serial, Tektronix VISA, LabJack U3).
-  - `amp_benchkit.dsp`: numerical signal KPIs (RMS, PkPk, THD FFT, bandwidth knees). Always return floats, `nan` on invalid input.
-  - `amp_benchkit.automation`: sweep orchestration (headless); inject instrument functions (DI friendly, used by GUI + tests).
-  - `amp_benchkit.gui/*.py`: progressively extracted tab builders (generator, scope, DAQ, automation, diagnostics). Future tabs should mimic this pattern: a pure function returning a QWidget given shared context.
-- Public (provisional) API enumerated in README; do not break signatures without bumping minor version.
+## 1. Architecture & Key Patterns
+- **Legacy entrypoint**: `unified_gui_layout.py` (monolithic, ~1300 lines) orchestrates CLI and multi-tab GUI. New logic should be extracted to modules in `amp_benchkit/`.
+- **Modular helpers**:
+  - `amp_benchkit.deps`: Dependency detection (Qt, pyvisa, pyserial, LabJack). Always gate hardware/GUI logic via flags like `HAVE_QT`.
+  - `amp_benchkit.fy`, `tek`, `u3util`, `u3config`: Instrument abstraction layers (FY function gen, Tektronix VISA, LabJack U3). Use/reuse custom exceptions (`FYError`, `TekError`).
+  - `amp_benchkit.dsp`: Signal KPIs (RMS, PkPk, THD FFT, bandwidth knees). Always return Python floats or tuples; return `nan` on invalid input.
+  - `amp_benchkit.automation`: Headless sweep orchestration; inject instrument functions for testability. Used by both GUI and CLI.
+  - `amp_benchkit.gui/*.py`: Each tab is a pure builder function returning a `QWidget` given a context. No side effects; follow the extraction pattern.
+- **Public API**: Only functions listed in README's "Public API" section are stable. Do not break signatures without a minor version bump.
 
-## 2. CLI / Entry Points
-- Console scripts (`amp-benchkit`, `amp-benchkit-gui`) map to `amp_benchkit.cli:main` / `main_gui`, which delegate to legacy `unified_gui_layout.main()`.
-- Add new subcommands by editing `unified_gui_layout.py` argument parsing (search for `argparse`) BUT prefer extracting logic into a new small module first, then calling from legacy.
-- Headless sweeps (frequency list output) rely on `automation.build_freq_points`; preserve 6‑decimal rounding and inclusive endpoints.
+## 2. CLI & Entry Points
+- Use console scripts (`amp-benchkit`, `amp-benchkit-gui`)—these map to `amp_benchkit.cli:main`/`main_gui` and delegate to `unified_gui_layout.main()`.
+- Add new CLI subcommands by extracting logic to a new module, then wiring into `unified_gui_layout.py` (see `argparse`).
+- Frequency sweeps: Use `automation.build_freq_points` (6-decimal rounding, inclusive endpoints). Tests assert tight tolerances.
 
 ## 3. Dependency & Environment Handling
-- Always feature‑detect using flags from `deps.py` (e.g. `HAVE_QT`, `HAVE_PYVISA`) before importing / executing hardware code. Provide graceful fallback (return, or raise ImportError with INSTALL_HINTS message for CLI paths).
-- GUI must run headless tests: any Qt usage is guarded; matplotlib forced to Agg early (`matplotlib.use('Agg')`). Keep this at top if editing.
-- LabJack driver (Exodriver) is optional; tests skip hardware assumptions. Never hard‑fail CI if USB absent—wrap in try/except.
+- Always feature-detect using flags from `deps.py` (e.g., `HAVE_QT`, `HAVE_PYVISA`).
+- GUI must run headless: guard all Qt usage; force `matplotlib.use('Agg')` at top.
+- LabJack/Exodriver is optional; tests must not hard-fail if USB is absent. Wrap hardware access in try/except.
 
 ## 4. Conventions & Patterns
-- Rounding: frequency point generation rounds to 6 decimals; tests assert tight tolerances. Maintain this when adding modes (e.g., future JSON output).
-- Logging: use `amp_benchkit.logging.get_logger()`; DEBUG enabled via top‑level `--verbose`. Avoid `print()` except for deliberate CLI stdout data (e.g., sweep numerical list).
-- Config: use `amp_benchkit.config.update_config(...)` / `load_config()`; never write ad‑hoc files in cwd except intended outputs under `results/`.
-- Return shapes: DSP functions return `float` or tuple of primitives; THD returns `(thd_ratio, f0_est, fund_amp)`. Keep numpy → Python float conversions explicit (`float(...)`).
-- Fail soft: instrument operations catch and log individual frequency failures but continue the sweep (`automation.sweep_*`). Preserve that resilience.
+- **Logging**: Use `amp_benchkit.logging.get_logger()`. Enable DEBUG with `--verbose`. Avoid `print()` except for CLI output.
+- **Config**: Use `amp_benchkit.config.update_config(...)`/`load_config()`. Never write ad-hoc files; config persists under `~/.config/amp-benchkit/`.
+- **DSP return shapes**: Always return Python floats or tuples. THD returns `(thd_ratio, f0_est, fund_amp)`.
+- **Fail soft**: Instrument operations must catch/log individual frequency failures but continue sweeps.
+- **Testing**: Use `pytest` (see `tests/`). New features require at least one targeted test unless purely internal. Coverage gate: 70% (CI).
+- **Pre-commit**: Enable with `pre-commit install`. Blocks large binaries/venvs and runs ruff/mypy.
 
-## 5. Testing Expectations
-- Pytest suite (`tests/`) exercises CLI sweep, entry point delegation, DSP math, automation helpers, and tab builders (import safety). New features require at least one targeted test unless purely internal refactor.
-- Coverage gate: 70% (CI). Keep added code testable headless: inject dependencies instead of hard imports (follow patterns in `automation.py`).
-- For command output tests, mimic existing style: capture stdout lines, compare numeric invariants not exact formatting beyond what's stable.
+## 5. GUI Tab Extraction
+- New tabs: Add `build_<name>_tab(ctx) -> QWidget` in `amp_benchkit/gui/`. Wire into `unified_gui_layout.UnifiedGUI.__init__` using `tabs.addTab(builder(...), "Label")`.
+- Use `deps.fixed_font()` and feature flags. Avoid blocking calls in GUI thread.
 
-## 6. Adding Instrument Features
-- Extend existing module (e.g., `fy.py`) with pure functions; raise custom exceptions (`FYError`, `TekError`) already defined—re‑use them. Update README public API list if becoming user‑facing.
-- For new SCPI / serial commands: centralize string building (pattern in `build_fy_cmds`) to keep formatting consistent for tests/logging.
+## 6. Build, Test, and Release
+- Use `make` targets: `make selftest`, `make gui`, `make lint`, `make type`, `make test`, `make coverage`.
+- Manual: `ruff check .`, `mypy .`, `pytest -q`.
+- Release: Update `pyproject.toml` and `CHANGELOG.md`, tag, build, and push. See README for full steps.
 
-## 7. GUI Tab Additions
-- New tab builder: `def build_<name>_tab(ctx) -> QWidget:` placed in `amp_benchkit/gui/`. Minimal side effects; rely on `deps.fixed_font()` and flags. Wire into main window in `unified_gui_layout.UnifiedGUI.__init__` using existing `tabs.addTab(builder(...), "Label")` pattern.
-- Avoid blocking calls in GUI thread (use small timers or background threads if future long operations needed).
-
-## 8. Release & Versioning
-- Version in `pyproject.toml`. For release automation, README outlines manual steps (update changelog, tag). Keep semantic: incompatible API changes → minor bump, internal refactors → patch.
-
-## 9. Safe Change Checklist (Apply Before PR)
-1. Run: `make test` (or `pytest -q`).
-2. Run: `ruff check .` (autofix trivial issues first if desired).
-3. Optional: `mypy amp_benchkit` (ensure no new type regressions).
-4. If touching sweep logic, re‑run `tests/test_cli_sweep.py` locally.
-5. Update README only if user‑visible behavior changes (CLI params, public API).
-
-## 10. Non‑Goals For Agents
-- Do NOT attempt to fully rewrite `unified_gui_layout.py` in one PR; incremental extraction only.
-- Do NOT introduce new heavyweight dependencies without discussion.
-- Avoid adding global state or singleton patterns—prefer injected callables like existing automation functions.
+## 7. Non-Goals for Agents
+- Do **not** attempt to fully rewrite `unified_gui_layout.py` in one PR; extract incrementally.
+- Do **not** add new heavyweight dependencies without discussion.
+- Avoid global state/singletons—prefer dependency injection as in `automation.py`.
 
 ---
+For unclear or missing patterns, propose a diff for this file. Maintainers will clarify and refine.
 Questions or missing patterns? Provide a diff proposal; maintainers can clarify to refine these instructions.
