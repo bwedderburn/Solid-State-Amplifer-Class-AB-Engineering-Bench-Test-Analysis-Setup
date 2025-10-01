@@ -8,4 +8,12 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.3.3"  # Single-source version
+# Re-export advanced DSP API if available
+try:
+    from .dsp_ext import thd_fft_waveform, harmonic_table  # type: ignore
+    __all__.extend(["thd_fft_waveform", "harmonic_table"])
+except Exception:  # pragma: no cover
+    pass
+
+# Version bump (must remain simple semver: enforced by tests)
+__version__ = "0.3.4"

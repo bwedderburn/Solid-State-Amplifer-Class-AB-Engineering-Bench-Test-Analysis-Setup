@@ -114,3 +114,11 @@ The GUI now includes an optional "THD" tab (shown when Qt & `dsp` extra are inst
 - Export button writing a `results/harmonics.csv` table: `k,freq_hz,mag`.
 
 If advanced DSP is unavailable, the tab displays a stub notice instead of failing.
+
+### Real-Time THD Tab Enhancements (Unreleased)
+The THD tab now:
+- Uses a background capture thread (reduces UI jitter).
+- Adds a Show Spectrum button (saves `results/spectrum.png`).
+- Persists resource / f0 / harmonic count / refresh interval between runs.
+
+If `matplotlib` is not installed the Spectrum button reports the missing dependency gracefully.
