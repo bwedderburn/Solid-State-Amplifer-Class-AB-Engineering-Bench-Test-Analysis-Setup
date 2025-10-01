@@ -2,10 +2,13 @@
 
 Unified GUI + LabJack instrumentation helper environment.
 
-[![CI](https://github.com/your-org-or-user/amp-benchkit/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+![Release](https://img.shields.io/github/v/release/bwedderburn/amp-benchkit)
+[![CI](https://github.com/bwedderburn/amp-benchkit/actions/workflows/ci.yml/badge.svg)](https://github.com/bwedderburn/amp-benchkit/actions/workflows/ci.yml)
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 ![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
 ![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
+
+> Documentation reflects the released 0.3.0 baseline. A future headless frequency sweep CLI (`sweep` subcommand) referenced in earlier development drafts is **deferred** and intentionally omitted here until implemented on a feature branch.
 
 
 ## Contents
