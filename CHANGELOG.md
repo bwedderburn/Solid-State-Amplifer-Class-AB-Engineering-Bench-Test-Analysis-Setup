@@ -8,6 +8,9 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 ### Added
 - CI coverage reporting artifacts (coverage XML per Python version).
 - Automated publish workflow (`publish.yml`) for tag-based PyPI release (token required).
+- Multi-OS distribution build & smoke test job.
+- All-extras install job ensuring dependency compatibility.
+- Optional Codecov upload + enforced 70% minimum coverage threshold.
 
 ### Changed
 - (placeholder)

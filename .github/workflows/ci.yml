@@ -14,6 +14,13 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: buildtest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            buildtest-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -27,11 +34,19 @@ jobs:
           python -m pip install coverage
           coverage run -m pytest -q
           coverage xml -o coverage.xml
+          coverage report --fail-under=70
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.python-version }}.xml
           path: coverage.xml
+      - name: Upload to Codecov (optional)
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: py${{ matrix.python-version }}
 
   minimal-no-dsp:
     runs-on: ubuntu-latest
@@ -40,6 +55,13 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: nodsp-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            nodsp-${{ runner.os }}-${{ matrix.python-version }}-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -63,6 +85,33 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: dist-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            dist-${{ runner.os }}-
+  all-extras:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install all extras
+        run: |
+          python -m pip install --upgrade pip
+          # Combine extras: gui,dsp,serial,visa,labjack,test
+          python -m pip install .[gui,dsp,serial,visa,labjack,test]
+      - name: Import smoke
+        run: |
+          python - <<'PY'
+import amp_benchkit, unified_gui_layout as ugl
+print('all-extras version:', amp_benchkit.__version__)
+print('thd-mode check:', 'advanced' if 'advanced' in __import__('subprocess').check_output(['python','unified_gui_layout.py','thd-mode']).decode() else 'stub')
+PY
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
