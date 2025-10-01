@@ -222,6 +222,7 @@ ruff check .          # lint
 ruff check . --fix    # autofix simple issues
 mypy .                 # type check
 pytest -q             # tests
+pytest --cov=amp_benchkit --cov-report=term-missing --cov-fail-under=70  # tests with coverage (CI threshold: 70%)
 ```
 
 If you add a Makefile target locally, suggested grouping:
@@ -240,6 +241,8 @@ pre-commit install
 ```
 
 Then commits will auto-run ruff / mypy (if configured) on changed files.
+
+**Note**: CI enforces a 70% test coverage threshold. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 ## Troubleshooting
 

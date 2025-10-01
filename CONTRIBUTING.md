@@ -74,6 +74,17 @@ pytest tests/test_dsp.py::test_thd_fft
 ```
 Add tests for new public functions or bug fixes. Prefer deterministic synthetic data for DSP tests.
 
+### Coverage Threshold
+
+The project enforces a minimum test coverage threshold of **70%** in CI. This prevents regressions while allowing incremental improvement.
+
+Run tests with coverage locally:
+```bash
+pytest --cov=amp_benchkit --cov-report=term-missing --cov-fail-under=70
+```
+
+When coverage comfortably exceeds the threshold for two consecutive releases, maintainers may raise the threshold incrementally.
+
 ## Linting & Formatting
 
 We use `ruff` for linting (and light autofix) plus Black-compatible style (enforced via ruff's formatting evolution if enabled later).
