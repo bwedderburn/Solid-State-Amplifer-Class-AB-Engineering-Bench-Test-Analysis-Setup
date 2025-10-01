@@ -27,12 +27,15 @@ jobs:
 
   minimal-no-dsp:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
       - name: Install (core only, no extras)
         run: |
           python -m pip install --upgrade pip
@@ -44,3 +47,29 @@ jobs:
           if [ "$MODE" != "stub" ]; then echo "Expected stub mode without dsp extra" && exit 1; fi
       - name: Run tests (should auto-skip advanced path parts)
         run: pytest -q
+
+  build-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build distributions
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build
+          ls -l dist
+      - name: Install wheel
+        run: |
+          WHEEL=$(ls dist/*.whl | head -n1)
+          python -m pip install "$WHEEL"
+      - name: Smoke test import & version
+        run: |
+          python - <<'PY'
+import amp_benchkit, importlib
+print('version:', amp_benchkit.__version__)
+import unified_gui_layout as ugl
+print('thd-mode:', 'advanced' if hasattr(ugl, 'thd_fft') else 'missing')
+PY
