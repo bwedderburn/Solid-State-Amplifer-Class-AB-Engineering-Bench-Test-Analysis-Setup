@@ -3,8 +3,12 @@
 Stores small user preferences like last used FY port, protocol, scope resource.
 """
 from __future__ import annotations
-import json, os, pathlib, threading
-from typing import Any, Dict
+
+import json
+import os
+import pathlib
+import threading
+from typing import Any
 
 CONFIG_DIR = pathlib.Path(os.path.expanduser('~/.config/amp-benchkit'))
 CONFIG_PATH = CONFIG_DIR / 'config.json'
@@ -15,9 +19,9 @@ _DEFAULT = {
     "scope_resource": "",
 }
 
-_cached: Dict[str, Any] | None = None
+_cached: dict[str, Any] | None = None
 
-def load_config() -> Dict[str, Any]:
+def load_config() -> dict[str, Any]:
     global _cached
     with _lock:
         if _cached is not None:
@@ -35,7 +39,7 @@ def load_config() -> Dict[str, Any]:
         _cached = cfg
         return dict(cfg)
 
-def save_config(cfg: Dict[str, Any]):
+def save_config(cfg: dict[str, Any]):
     with _lock:
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         data = dict(_DEFAULT); data.update(cfg or {})

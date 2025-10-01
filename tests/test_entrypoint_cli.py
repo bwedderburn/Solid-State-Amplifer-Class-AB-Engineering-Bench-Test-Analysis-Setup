@@ -1,5 +1,7 @@
 import sys
+
 from amp_benchkit import cli
+
 
 def test_cli_sweep_invoke(monkeypatch, capsys):
     # Provide arguments to generate a small linear sweep

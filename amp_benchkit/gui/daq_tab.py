@@ -6,20 +6,17 @@ containing the three sub-tabs: Read/Stream, Config Defaults, Test Panel.
 """
 from __future__ import annotations
 
+from typing import Any
+
 # NOTE: We intentionally avoid importing PySide6 at module import time so that
 # headless test environments (no libEGL) can still import this module. The
 # actual Qt classes are imported inside the builder.
-
 # Reuse existing helpers / symbols from monolith context (import lazily to avoid heavy deps at import time)
-from ..deps import fixed_font, HAVE_U3, INSTALL_HINTS  # type: ignore
-from ..u3util import u3_open, u3_read_ain, u3_set_dir, u3_set_line, u3_read_multi  # type: ignore
-import u3 as _u3  # type: ignore
+from ..deps import fixed_font  # type: ignore
 from ._qt import require_qt
 
 
-from typing import Any, Optional
-
-def build_daq_tab(gui: Any) -> Optional[object]:
+def build_daq_tab(gui: Any) -> object | None:
     qt = require_qt()
     if qt is None:
         return None

@@ -8,8 +8,8 @@ Public functions:
 - main_gui(): convenience alias (still needs --gui flag for GUI launch)
 """
 from __future__ import annotations
+
 import sys
-from typing import List, Optional
 
 # Re-export version for convenience
 try:
@@ -19,7 +19,7 @@ except Exception:  # pragma: no cover - best effort
     __version__ = "0.0.0"
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Entry point for `amp-benchkit` console script.
 
     Parameters

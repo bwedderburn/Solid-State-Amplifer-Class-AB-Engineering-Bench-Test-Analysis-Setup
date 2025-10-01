@@ -17,18 +17,19 @@ This file is intentionally standalone and does not depend on the rest of the pro
 """
 
 from __future__ import annotations
+
 import json
 import os
 import tkinter as tk
 from tkinter import messagebox, simpledialog
-from typing import List, Dict, Any
+from typing import Any
 
 DATA_FILE = "todo_data.json"
 
-def load_tasks() -> List[Dict[str, Any]]:
+def load_tasks() -> list[dict[str, Any]]:
     if os.path.exists(DATA_FILE):
         try:
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
+            with open(DATA_FILE, encoding="utf-8") as f:
                 data = json.load(f)
             # Basic validation
             if isinstance(data, list):
@@ -55,7 +56,7 @@ def load_tasks() -> List[Dict[str, Any]]:
             )
     return []
 
-def save_tasks(tasks: List[Dict[str, Any]]) -> None:
+def save_tasks(tasks: list[dict[str, Any]]) -> None:
     tmp = DATA_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(tasks, f, indent=2)
@@ -70,7 +71,7 @@ class TodoApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("To-Do List")
-        self.tasks: List[Dict[str, Any]] = load_tasks()
+        self.tasks: list[dict[str, Any]] = load_tasks()
         self.filter_mode = self.FILTER_ALL
 
         # ---- UI Layout
@@ -161,7 +162,7 @@ class TodoApp:
         self.entry.delete(0, tk.END)
         self.persist_and_refresh()
 
-    def get_visible_indices(self) -> List[int]:
+    def get_visible_indices(self) -> list[int]:
         # Map listbox row -> task index
         visible = []
         for idx, task in enumerate(self.tasks):

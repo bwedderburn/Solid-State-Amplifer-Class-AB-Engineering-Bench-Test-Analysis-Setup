@@ -4,7 +4,11 @@ Provides a get_logger() helper and setup_logging() to configure root handlers.
 GUI and CLI can route textual output through this for consistency.
 """
 from __future__ import annotations
-import logging, sys, os, pathlib
+
+import logging
+import os
+import pathlib
+import sys
 from logging.handlers import RotatingFileHandler
 
 _DEFAULT_FORMAT = "[%(levelname).1s %(asctime)s] %(message)s"

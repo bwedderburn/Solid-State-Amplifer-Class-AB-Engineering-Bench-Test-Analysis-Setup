@@ -3,8 +3,10 @@
 Split out from unified_gui_layout for reuse and easier testing.
 """
 from __future__ import annotations
+
 import time
-from .deps import HAVE_U3, _u3, INSTALL_HINTS
+
+from .deps import HAVE_U3, _u3
 from .u3util import open_u3_safely as u3_open
 
 __all__ = [

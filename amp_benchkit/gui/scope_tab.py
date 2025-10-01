@@ -1,13 +1,14 @@
 """Scope tab UI construction helper."""
 from __future__ import annotations
-from ._qt import require_qt
 
-from typing import Any, Optional
+from typing import Any
+
+from ._qt import require_qt
 
 __all__ = ["build_scope_tab"]
 
 
-def build_scope_tab(gui: Any) -> Optional[object]:
+def build_scope_tab(gui: Any) -> object | None:
     qt = require_qt()
     if qt is None:
         return None

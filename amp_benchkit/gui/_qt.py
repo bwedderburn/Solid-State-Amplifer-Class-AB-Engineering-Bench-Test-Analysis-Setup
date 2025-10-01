@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+
 def require_qt():  # pragma: no cover - thin import wrapper
     """Attempt to import Qt widgets from PySide6, falling back to PyQt5.
 
@@ -16,19 +17,39 @@ def require_qt():  # pragma: no cover - thin import wrapper
     """
     binding = None
     try:  # Prefer PySide6
-        from PySide6.QtWidgets import (
-            QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit,
-            QPushButton, QTextEdit, QTabWidget, QProgressBar, QCheckBox, QSpinBox
-        )
         from PySide6.QtCore import Qt, QTimer
+        from PySide6.QtWidgets import (
+            QCheckBox,
+            QComboBox,
+            QHBoxLayout,
+            QLabel,
+            QLineEdit,
+            QProgressBar,
+            QPushButton,
+            QSpinBox,
+            QTabWidget,
+            QTextEdit,
+            QVBoxLayout,
+            QWidget,
+        )
         binding = 'PySide6'
     except Exception:
         try:  # Fallback to PyQt5
-            from PyQt5.QtWidgets import (
-                QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QLineEdit,
-                QPushButton, QTextEdit, QTabWidget, QProgressBar, QCheckBox, QSpinBox
-            )
             from PyQt5.QtCore import Qt, QTimer
+            from PyQt5.QtWidgets import (
+                QCheckBox,
+                QComboBox,
+                QHBoxLayout,
+                QLabel,
+                QLineEdit,
+                QProgressBar,
+                QPushButton,
+                QSpinBox,
+                QTabWidget,
+                QTextEdit,
+                QVBoxLayout,
+                QWidget,
+            )
             binding = 'PyQt5'
         except Exception:
             return None

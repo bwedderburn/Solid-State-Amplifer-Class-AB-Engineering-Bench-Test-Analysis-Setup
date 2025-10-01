@@ -5,14 +5,13 @@ methods (run_sweep_scope_fixed, run_audio_kpis, stop_sweep_scope).
 """
 from __future__ import annotations
 
+from typing import Any
+
 from ..fy import FY_PROTOCOLS  # type: ignore
-from ..deps import find_fy_port  # type: ignore
 from ._qt import require_qt
 
 
-from typing import Any, Optional
-
-def build_automation_tab(gui: Any) -> Optional[object]:
+def build_automation_tab(gui: Any) -> object | None:
     qt = require_qt()
     if qt is None:
         return None

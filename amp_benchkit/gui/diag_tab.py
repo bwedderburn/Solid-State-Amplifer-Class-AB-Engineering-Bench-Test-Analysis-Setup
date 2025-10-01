@@ -5,10 +5,12 @@ Imports Qt lazily to remain headless-test friendly.
 """
 from __future__ import annotations
 
-from ._qt import require_qt
-from typing import Any, Optional
+from typing import Any
 
-def build_diagnostics_tab(gui: Any) -> Optional[object]:
+from ._qt import require_qt
+
+
+def build_diagnostics_tab(gui: Any) -> object | None:
     qt = require_qt()
     if qt is None:
         return None

@@ -1,8 +1,5 @@
 import importlib
 import json
-from pathlib import Path
-
-import pytest
 
 
 def test_config_roundtrip(tmp_path):

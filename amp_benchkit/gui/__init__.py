@@ -9,11 +9,11 @@ Extracted tabs:
 
 Pending extraction (planned): Automation/Sweep, Diagnostics.
 """
-from .gen_tab import build_generator_tab    # noqa: F401
-from .scope_tab import build_scope_tab      # noqa: F401
-from .daq_tab import build_daq_tab              # noqa: F401
 from .automation_tab import build_automation_tab  # noqa: F401
-from .diag_tab import build_diagnostics_tab       # noqa: F401
+from .daq_tab import build_daq_tab  # noqa: F401
+from .diag_tab import build_diagnostics_tab  # noqa: F401
+from .gen_tab import build_generator_tab  # noqa: F401
+from .scope_tab import build_scope_tab  # noqa: F401
 
 __all__ = [
 	'build_generator_tab','build_scope_tab','build_daq_tab',

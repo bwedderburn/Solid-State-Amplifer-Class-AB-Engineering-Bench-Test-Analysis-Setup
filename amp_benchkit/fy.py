@@ -4,9 +4,15 @@ Contains command building logic and convenience wrappers for applying settings
 and configuring sweeps. Hardware access requires pyserial.
 """
 from __future__ import annotations
+
 import time
-from .deps import HAVE_SERIAL, INSTALL_HINTS, _serial
-from .deps import find_fy_port  # reuse existing port finder
+
+from .deps import (
+    HAVE_SERIAL,
+    INSTALL_HINTS,
+    _serial,
+    find_fy_port,  # reuse existing port finder
+)
 
 FY_BAUD_EOLS = [(9600, "\n"), (115200, "\r\n")]
 FY_PROTOCOLS = ["FY ASCII 9600", "Auto (115200/CRLF→9600/LF)"]
@@ -45,7 +51,6 @@ def build_fy_cmds(freq_hz, amp_vpp, off_v, wave, duty=None, ch=1):
 def fy_apply(freq_hz=1000, amp_vpp=2.0, wave="Sine", off_v=0.0, duty=None, ch=1, port=None, proto="FY ASCII 9600"):
     if not HAVE_SERIAL:
         raise ImportError(f"pyserial not available. {INSTALL_HINTS['pyserial']}")
-    from .deps import find_fy_port  # local import to avoid cycles
     port = port or find_fy_port()
     if not port:
         raise RuntimeError("No serial ports found.")

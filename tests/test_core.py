@@ -1,8 +1,11 @@
 import math
+
 import numpy as np
+
+from amp_benchkit.dsp import find_knees, thd_fft
 from amp_benchkit.fy import build_fy_cmds
-from amp_benchkit.dsp import thd_fft, find_knees
 from unified_gui_layout import _decode_ieee_block
+
 
 def test_build_fy_cmds_basic():
     cmds = build_fy_cmds(1000, 2.0, 0.0, 'Sine', duty=12.3, ch=1)

@@ -1,4 +1,6 @@
-import os, sys, types
+import os
+import sys
+
 import pytest
 
 # Attempt to import Qt binding only when available; skip otherwise.
@@ -8,9 +10,13 @@ except Exception:  # pragma: no cover - headless / missing Qt
     QApplication = None  # type: ignore
 
 from amp_benchkit.gui import (
-    build_generator_tab, build_scope_tab, build_daq_tab,
-    build_automation_tab, build_diagnostics_tab
+    build_automation_tab,
+    build_daq_tab,
+    build_diagnostics_tab,
+    build_generator_tab,
+    build_scope_tab,
 )
+
 
 class DummyGUI:
     def _log(self, tgt, msg):

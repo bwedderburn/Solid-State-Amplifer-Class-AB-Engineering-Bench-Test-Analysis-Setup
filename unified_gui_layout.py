@@ -9,43 +9,64 @@ Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftest
 - NEW: U3 Config tab adds Watchdog "Reset on Timeout" + (optional) Set DIO State,
        Backward-compat checkboxes, and Counter enable mapping to configIO when possible.
 """
-import sys, os, time, argparse
-import numpy as np
-import warnings
+import argparse
+import os
+import sys
+import time
+
 import matplotlib
+import numpy as np
+
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 # Import extracted dependency detection & helpers
 from amp_benchkit.deps import (
-    HAVE_PYVISA, HAVE_SERIAL, HAVE_QT, HAVE_U3,
-    QT_BINDING, PYVISA_ERR, SERIAL_ERR, QT_ERR, U3_ERR,
-    dep_msg, list_ports, find_fy_port, INSTALL_HINTS,
-    _serial, _pyvisa, _u3
+    HAVE_PYVISA,
+    HAVE_QT,
+    HAVE_SERIAL,
+    HAVE_U3,
+    INSTALL_HINTS,
+    _pyvisa,
+    _u3,
+    dep_msg,
+    find_fy_port,
+    list_ports,
 )
+
 # Imported refactored helpers
-from amp_benchkit.fy import fy_apply, fy_sweep, build_fy_cmds, FY_BAUD_EOLS, WAVE_CODE, SWEEP_MODE
+from amp_benchkit.fy import FY_BAUD_EOLS, build_fy_cmds, fy_apply, fy_sweep
+from amp_benchkit.gui import build_generator_tab, build_scope_tab
+from amp_benchkit.logging import get_logger, setup_logging
 from amp_benchkit.tek import (
-    TEK_RSRC_DEFAULT, tek_setup_channel as _tek_setup_channel,
-    tek_capture_block as _tek_capture_block, read_curve_block as _read_curve_block,
-    parse_ieee_block as _decode_ieee_block, scope_set_trigger_ext, scope_arm_single,
-    scope_wait_single_complete, scope_configure_math_subtract, scope_capture_calibrated,
-    scope_screenshot
+    TEK_RSRC_DEFAULT,
+    scope_arm_single,
+    scope_capture_calibrated,
+    scope_configure_math_subtract,
+    scope_screenshot,
+    scope_set_trigger_ext,
+    scope_wait_single_complete,
+)
+from amp_benchkit.tek import parse_ieee_block as _decode_ieee_block
+from amp_benchkit.tek import tek_capture_block as _tek_capture_block
+from amp_benchkit.u3config import (
+    u3_autoconfigure_for_automation,
+    u3_pulse_line,
+    u3_read_ain,
+    u3_read_multi,
+    u3_set_dir,
+    u3_set_line,
 )
 from amp_benchkit.u3util import open_u3_safely as u3_open
-from amp_benchkit.u3config import (
-    u3_read_ain, u3_read_multi, u3_set_line, u3_set_dir, u3_pulse_line, u3_autoconfigure_for_automation
-)
-from amp_benchkit.logging import setup_logging, get_logger
-from amp_benchkit.gui import build_generator_tab, build_scope_tab
+
 try:  # Qt symbol imports (available if HAVE_QT True)
-    from amp_benchkit.deps import (
-        QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-        QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-        QCheckBox, QSpinBox, Qt
-    )
     from PySide6.QtCore import QTimer  # or PyQt5 equivalent already resolved inside deps
     from PySide6.QtGui import QFont
+
+    from amp_benchkit.deps import (
+        QApplication,
+        QMainWindow,
+        QTabWidget,
+    )
 except Exception:
     # If Qt not available, placeholders are already None in deps
     pass
@@ -118,6 +139,7 @@ def scope_capture(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
 # -----------------------------
 
 from amp_benchkit import dsp as _dsp
+
 # Deprecated DSP wrappers removed; import users should now use amp_benchkit.dsp directly.
 
 # -----------------------------
@@ -246,7 +268,7 @@ def u3_autoconfigure_for_automation(pulse_line: str, base: str = 'current'):
 if HAVE_QT:
     BaseGUI = QMainWindow
 else:
-    class BaseGUI(object): pass
+    class BaseGUI: pass
 
 class UnifiedGUI(BaseGUI):
     def __init__(self):
@@ -439,7 +461,7 @@ class UnifiedGUI(BaseGUI):
             self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
         try:
             if self.test_factory.isChecked():
-                d = u3_open();
+                d = u3_open()
                 try: d.setToFactoryDefaults()
                 finally:
                     try: d.close()
@@ -595,13 +617,13 @@ class UnifiedGUI(BaseGUI):
         port = (port or 'FIO').upper()
         vF=vE=vC=0; mF=mE=mC=0
         if port=='FIO':
-            vF = self._parse_mask_text(getattr(self,'test_wdir_fio').text())
+            vF = self._parse_mask_text(self.test_wdir_fio.text())
             mF = 0xFF
         elif port=='EIO':
-            vE = self._parse_mask_text(getattr(self,'test_wdir_eio').text())
+            vE = self._parse_mask_text(self.test_wdir_eio.text())
             mE = 0xFF
         else:
-            vC = self._parse_mask_text(getattr(self,'test_wdir_cio').text())
+            vC = self._parse_mask_text(self.test_wdir_cio.text())
             mC = 0xFF
         try:
             d = u3_open()
@@ -622,13 +644,13 @@ class UnifiedGUI(BaseGUI):
         port = (port or 'FIO').upper()
         vF=vE=vC=0; mF=mE=mC=0
         if port=='FIO':
-            vF = self._parse_mask_text(getattr(self,'test_wst_fio').text())
+            vF = self._parse_mask_text(self.test_wst_fio.text())
             mF = 0xFF
         elif port=='EIO':
-            vE = self._parse_mask_text(getattr(self,'test_wst_eio').text())
+            vE = self._parse_mask_text(self.test_wst_eio.text())
             mE = 0xFF
         else:
-            vC = self._parse_mask_text(getattr(self,'test_wst_cio').text())
+            vC = self._parse_mask_text(self.test_wst_cio.text())
             mC = 0xFF
         try:
             d = u3_open()
@@ -647,8 +669,8 @@ class UnifiedGUI(BaseGUI):
         if not HAVE_U3:
             self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}"); return
         try:
-            df = self._parse_mask_text(getattr(self,'test_wdir_fio').text()); de = self._parse_mask_text(getattr(self,'test_wdir_eio').text()); dc = self._parse_mask_text(getattr(self,'test_wdir_cio').text())
-            sf = self._parse_mask_text(getattr(self,'test_wst_fio').text()); se = self._parse_mask_text(getattr(self,'test_wst_eio').text()); sc = self._parse_mask_text(getattr(self,'test_wst_cio').text())
+            df = self._parse_mask_text(self.test_wdir_fio.text()); de = self._parse_mask_text(self.test_wdir_eio.text()); dc = self._parse_mask_text(self.test_wdir_cio.text())
+            sf = self._parse_mask_text(self.test_wst_fio.text()); se = self._parse_mask_text(self.test_wst_eio.text()); sc = self._parse_mask_text(self.test_wst_cio.text())
             d = u3_open()
             try:
                 d.getFeedback(_u3.PortDirWrite(Direction=[df,de,dc], WriteMask=[0xFF,0xFF,0xFF]))
@@ -1227,7 +1249,7 @@ def main():
         sys.exit(rc)
     if args.cmd == 'config-dump':
         try:
-            from amp_benchkit.config import load_config, CONFIG_PATH
+            from amp_benchkit.config import CONFIG_PATH, load_config
             cfg = load_config()
             print('Config file:', CONFIG_PATH)
             print(cfg)
@@ -1237,7 +1259,7 @@ def main():
 
     if args.cmd == 'config-reset':
         try:
-            from amp_benchkit.config import save_config, CONFIG_PATH
+            from amp_benchkit.config import CONFIG_PATH, save_config
             save_config({})
             print('Config reset ->', CONFIG_PATH)
         except Exception as e:

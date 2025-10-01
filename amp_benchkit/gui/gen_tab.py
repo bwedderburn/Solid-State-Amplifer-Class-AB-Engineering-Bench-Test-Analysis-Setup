@@ -4,15 +4,16 @@ Separated from monolithic unified_gui_layout for modularity.
 """
 from __future__ import annotations
 
-from ._qt import require_qt  # headless-safe import helper
+from typing import Any
 
-from typing import Any, Optional
 from amp_benchkit.fy import FY_PROTOCOLS  # central definition
+
+from ._qt import require_qt  # headless-safe import helper
 
 __all__ = ["build_generator_tab"]
 
 
-def build_generator_tab(gui: Any) -> Optional[object]:
+def build_generator_tab(gui: Any) -> object | None:
     """Build generator tab and return QWidget.
 
     Expects `gui` to supply:

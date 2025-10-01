@@ -5,7 +5,6 @@ further refactors can import these symbols without re-running detection
 in multiple places.
 """
 from __future__ import annotations
-import time
 
 PYVISA_ERR = SERIAL_ERR = QT_ERR = U3_ERR = None  # populated on import
 QT_BINDING = None  # type: ignore
@@ -50,23 +49,45 @@ except Exception as e:  # pragma: no cover
 # ------------------ Qt bindings ------------------
 HAVE_QT = False
 try:  # pragma: no cover
-    from PySide6.QtWidgets import (  # type: ignore
-        QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-        QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-        QCheckBox, QSpinBox
-    )
-    from PySide6.QtCore import Qt, QTimer  # type: ignore
+    from PySide6.QtCore import Qt  # type: ignore
     from PySide6.QtGui import QFont  # type: ignore
+    from PySide6.QtWidgets import (  # type: ignore
+        QApplication,
+        QCheckBox,
+        QComboBox,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QProgressBar,
+        QPushButton,
+        QSpinBox,
+        QTabWidget,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
+    )
     QT_BINDING = "PySide6"; HAVE_QT = True
 except Exception as e1:  # pragma: no cover
     try:
-        from PyQt5.QtWidgets import (  # type: ignore
-            QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-            QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-            QCheckBox, QSpinBox
-        )
-        from PyQt5.QtCore import Qt, QTimer  # type: ignore
+        from PyQt5.QtCore import Qt  # type: ignore
         from PyQt5.QtGui import QFont  # type: ignore
+        from PyQt5.QtWidgets import (  # type: ignore
+            QApplication,
+            QCheckBox,
+            QComboBox,
+            QHBoxLayout,
+            QLabel,
+            QLineEdit,
+            QMainWindow,
+            QProgressBar,
+            QPushButton,
+            QSpinBox,
+            QTabWidget,
+            QTextEdit,
+            QVBoxLayout,
+            QWidget,
+        )
         QT_BINDING = "PyQt5"; HAVE_QT = True
     except Exception as e2:  # pragma: no cover
         QT_ERR = (e1, e2)

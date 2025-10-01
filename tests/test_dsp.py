@@ -1,7 +1,7 @@
-import numpy as np
-import warnings
 
-from amp_benchkit.dsp import vrms, vpp, thd_fft, find_knees, snr_db, noise_floor_db
+import numpy as np
+
+from amp_benchkit.dsp import find_knees, noise_floor_db, snr_db, thd_fft, vpp, vrms
 
 
 def test_vrms_vpp():

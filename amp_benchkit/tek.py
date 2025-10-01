@@ -4,10 +4,10 @@ Encapsulates SCPI setup and waveform capture logic used by the unified GUI.
 Requires pyvisa to be available.
 """
 from __future__ import annotations
-import math
+
 import numpy as np
+
 from .deps import HAVE_PYVISA, INSTALL_HINTS, _pyvisa
-from typing import Tuple, List
 
 TEK_RSRC_DEFAULT = "USB0::0x0699::0x036A::C100563::INSTR"
 
@@ -210,7 +210,9 @@ def scope_capture_calibrated(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
 
 def scope_screenshot(filename="results/scope.png", resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
     _need_pyvisa()
-    import os, matplotlib.pyplot as _plt
+    import os
+
+    import matplotlib.pyplot as _plt
     os.makedirs(os.path.dirname(filename) or '.', exist_ok=True)
     t, v = scope_capture_calibrated(resource, timeout_ms, ch=ch)
     _plt.figure(); _plt.plot(t, v); _plt.xlabel('Time (s)'); _plt.ylabel('Voltage (V)'); _plt.title(f'Scope CH{ch} Waveform'); _plt.grid(True)

@@ -1,5 +1,6 @@
 import math
-from amp_benchkit.automation import build_freq_list, sweep_scope_fixed, sweep_audio_kpis
+
+from amp_benchkit.automation import build_freq_list, sweep_audio_kpis, sweep_scope_fixed
 
 
 def test_build_freq_list_basic():

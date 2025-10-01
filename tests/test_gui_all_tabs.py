@@ -1,8 +1,12 @@
-import os, sys
+import os
+import sys
+
 import pytest
 
 try:
-    from PySide6.QtWidgets import QApplication  # prefer PySide6; fallback attempted inside builder helper
+    from PySide6.QtWidgets import (
+        QApplication,  # prefer PySide6; fallback attempted inside builder helper
+    )
 except Exception:
     try:
         from PyQt5.QtWidgets import QApplication  # type: ignore
@@ -10,6 +14,7 @@ except Exception:
         QApplication = None  # type: ignore
 
 from amp_benchkit.gui import build_all_tabs
+
 
 class DummyGUI:
     def _log(self, tgt, msg): pass

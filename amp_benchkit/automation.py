@@ -17,27 +17,30 @@ Both functions accept callables for instrument operations so they can
 be monkey‑patched or replaced in tests.
 """
 from __future__ import annotations
-from typing import Callable, Iterable, List, Sequence, Tuple, Optional, Any, Dict
-import os, time, math
+
+import math
+import time
+from collections.abc import Callable, Sequence
+from typing import Any
 
 Number = float
 
 # Type aliases for dependency injection
 FyApplyFn = Callable[..., Any]
 ScopeMeasureFn = Callable[[Any, str], float]
-ScopeCaptureFn = Callable[[Any, int | str], Tuple[Sequence[float], Sequence[float]]]
+ScopeCaptureFn = Callable[[Any, int | str], tuple[Sequence[float], Sequence[float]]]
 DspVrmsFn = Callable[[Sequence[float]], float]
 DspVppFn = Callable[[Sequence[float]], float]
-ThdFn = Callable[[Sequence[float], Sequence[float], float], Tuple[float, float, Any]]  # (thd_ratio, f_est, spectrum)
-FindKneesFn = Callable[[Sequence[float], Sequence[float], str, float, float], Tuple[float, float, float, float]]
+ThdFn = Callable[[Sequence[float], Sequence[float], float], tuple[float, float, Any]]  # (thd_ratio, f_est, spectrum)
+FindKneesFn = Callable[[Sequence[float], Sequence[float], str, float, float], tuple[float, float, float, float]]
 
 class SweepAbort(Exception):
     """Raised internally to signal a user abort."""
 
 
-def build_freq_list(start: Number, stop: Number, step: Number) -> List[Number]:
+def build_freq_list(start: Number, stop: Number, step: Number) -> list[Number]:
     if step <= 0: raise ValueError("step must be > 0")
-    freqs: List[Number] = []
+    freqs: list[Number] = []
     f = start
     # Inclusive stop with small epsilon
     while f <= stop + 1e-9:
@@ -46,7 +49,7 @@ def build_freq_list(start: Number, stop: Number, step: Number) -> List[Number]:
     return freqs
 
 
-def build_freq_points(*, start: Number, stop: Number, points: int, mode: str = 'log') -> List[Number]:
+def build_freq_points(*, start: Number, stop: Number, points: int, mode: str = 'log') -> list[Number]:
     """Build a list of frequency points.
 
     Parameters
@@ -86,27 +89,27 @@ def sweep_scope_fixed(
     *,
     fy_apply: FyApplyFn,
     scope_measure: ScopeMeasureFn,
-    scope_configure_math_subtract: Optional[Callable[[Any, str], Any]] = None,
-    scope_set_trigger_ext: Optional[Callable[[Any, str, Optional[float]], Any]] = None,
-    scope_arm_single: Optional[Callable[[Any], Any]] = None,
-    scope_wait_single_complete: Optional[Callable[[Any, float], bool]] = None,
+    scope_configure_math_subtract: Callable[[Any, str], Any] | None = None,
+    scope_set_trigger_ext: Callable[[Any, str, float | None], Any] | None = None,
+    scope_arm_single: Callable[[Any], Any] | None = None,
+    scope_wait_single_complete: Callable[[Any, float], bool] | None = None,
     use_math: bool = False,
     math_order: str = "CH1-CH2",
     use_ext: bool = False,
     ext_slope: str = "Rise",
-    ext_level: Optional[float] = None,
+    ext_level: float | None = None,
     pre_ms: float = 5.0,
     scope_resource: Any = None,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
-    u3_autoconfig: Optional[Callable[[], Any]] = None,
-) -> List[Tuple[Number, float]]:
+    u3_autoconfig: Callable[[], Any] | None = None,
+) -> list[tuple[Number, float]]:
     """Perform a simple scope measurement sweep.
 
     Returns list of (freq_hz, metric_value).
     """
-    out: List[Tuple[Number, float]] = []
+    out: list[tuple[Number, float]] = []
     metric_key = 'RMS' if metric.upper() == 'RMS' else 'PK2PK'
     if u3_autoconfig:
         try:
@@ -157,11 +160,11 @@ def sweep_audio_kpis(
     dwell_s: Number,
     *,
     fy_apply: FyApplyFn,
-    scope_capture_calibrated: Callable[[Any, int | str], Tuple[Sequence[float], Sequence[float]]],
+    scope_capture_calibrated: Callable[[Any, int | str], tuple[Sequence[float], Sequence[float]]],
     dsp_vrms: DspVrmsFn,
     dsp_vpp: DspVppFn,
-    dsp_thd_fft: Optional[Callable[[Sequence[float], Sequence[float], float], Tuple[float, float, Any]]] = None,
-    dsp_find_knees: Optional[FindKneesFn] = None,
+    dsp_thd_fft: Callable[[Sequence[float], Sequence[float], float], tuple[float, float, Any]] | None = None,
+    dsp_find_knees: FindKneesFn | None = None,
     do_thd: bool = False,
     do_knees: bool = False,
     knee_drop_db: float = 3.0,
@@ -171,21 +174,21 @@ def sweep_audio_kpis(
     math_order: str = 'CH1-CH2',
     use_ext: bool = False,
     ext_slope: str = 'Rise',
-    ext_level: Optional[float] = None,
+    ext_level: float | None = None,
     pre_ms: float = 5.0,
     pulse_line: str = 'None',
     pulse_ms: float = 0.0,
-    u3_pulse_line: Optional[Callable[[str, float, int], Any]] = None,
-    scope_set_trigger_ext: Optional[Callable[[Any, str, Optional[float]], Any]] = None,
-    scope_arm_single: Optional[Callable[[Any], Any]] = None,
-    scope_wait_single_complete: Optional[Callable[[Any, float], bool]] = None,
-    scope_configure_math_subtract: Optional[Callable[[Any, str], Any]] = None,
+    u3_pulse_line: Callable[[str, float, int], Any] | None = None,
+    scope_set_trigger_ext: Callable[[Any, str, float | None], Any] | None = None,
+    scope_arm_single: Callable[[Any], Any] | None = None,
+    scope_wait_single_complete: Callable[[Any, float], bool] | None = None,
+    scope_configure_math_subtract: Callable[[Any, str], Any] | None = None,
     scope_resource: Any = None,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
-    u3_autoconfig: Optional[Callable[[], Any]] = None,
-) -> Dict[str, Any]:
+    u3_autoconfig: Callable[[], Any] | None = None,
+) -> dict[str, Any]:
     """Perform audio KPI sweep.
 
     Returns dict with keys:

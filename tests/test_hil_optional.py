@@ -1,4 +1,5 @@
 import os
+
 import pytest
 
 HIL_ENABLED = os.environ.get("AMP_HIL") == "1"

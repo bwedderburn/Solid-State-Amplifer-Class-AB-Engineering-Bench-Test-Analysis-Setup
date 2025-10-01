@@ -1,4 +1,6 @@
-import subprocess, sys, json, re, os, math
+import os
+import subprocess
+import sys
 
 SCRIPT = os.path.join(os.path.dirname(__file__), '..', 'unified_gui_layout.py')
 
@@ -15,7 +17,7 @@ def test_linear_sweep():
     assert floats[0] == 10
     assert floats[-1] == 100
     # Expect evenly spaced: 10, 32.5, 55, 77.5, 100
-    diffs = [b - a for a, b in zip(floats, floats[1:])]
+    diffs = [b - a for a, b in zip(floats, floats[1:], strict=False)]
     # All diffs equal within tiny tolerance
     assert max(diffs) - min(diffs) < 1e-6
 

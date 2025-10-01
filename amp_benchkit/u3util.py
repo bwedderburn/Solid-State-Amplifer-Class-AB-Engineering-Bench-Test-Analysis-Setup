@@ -4,9 +4,10 @@ Separates device opening and convenience wrappers from the monolithic GUI file.
 USB functionality depends on Exodriver / liblabjackusb. Fail gracefully when absent.
 """
 from __future__ import annotations
-from .deps import HAVE_U3, _u3, U3_ERR
+
 import time
-from typing import List
+
+from .deps import HAVE_U3, U3_ERR, _u3
 
 __all__ = [
     'have_u3','open_u3_safely','U3_ERR',
@@ -72,7 +73,7 @@ def u3_set_line(line: str, state: int):
         except Exception:
             pass
 
-def u3_read_multi(chs: List[int], samples: int = 1, delay_s: float = 0.0):
+def u3_read_multi(chs: list[int], samples: int = 1, delay_s: float = 0.0):
     out = []
     for _ in range(samples):
         row = []

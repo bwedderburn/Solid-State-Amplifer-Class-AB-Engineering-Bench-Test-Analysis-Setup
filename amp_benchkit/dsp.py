@@ -10,24 +10,34 @@ Public (provisional) API:
   noise_floor_db(t, v, f0=None, nharm=5, window='hann') -> float
 """
 from __future__ import annotations
+
+from typing import Literal
+
 import numpy as np
+from numpy.typing import ArrayLike
 
 __all__ = [
     'vrms','vpp','thd_fft','find_knees','snr_db','noise_floor_db'
 ]
 
-def _np_array(x):
+def _np_array(x: ArrayLike) -> np.ndarray:
     return x if isinstance(x, np.ndarray) else np.asarray(x)
 
-def vrms(v):
+def vrms(v: ArrayLike) -> float:
     v = _np_array(v)
     return float(np.sqrt(np.mean(np.square(v.astype(float))))) if v.size else float('nan')
 
-def vpp(v):
+def vpp(v: ArrayLike) -> float:
     v = _np_array(v)
-    return float((np.max(v) - np.min(v))) if v.size else float('nan')
+    return float(np.max(v) - np.min(v)) if v.size else float('nan')
 
-def thd_fft(t, v, f0=None, nharm=10, window='hann'):
+def thd_fft(
+    t: ArrayLike,
+    v: ArrayLike,
+    f0: float | None = None,
+    nharm: int = 10,
+    window: Literal['hann', 'hamming', 'none'] = 'hann'
+) -> tuple[float, float, float]:
     t = _np_array(t).astype(float); v = _np_array(v).astype(float)
     n = v.size
     if n < 16:
@@ -36,7 +46,6 @@ def thd_fft(t, v, f0=None, nharm=10, window='hann'):
     if dt <= 0:
         span = t[-1] - t[0]
         dt = span/(n-1) if span>0 else 1e-6
-    fs = 1.0/dt
     if window == 'hann':
         w = np.hanning(n)
     elif window == 'hamming':
@@ -55,7 +64,7 @@ def thd_fft(t, v, f0=None, nharm=10, window='hann'):
             idx = int(np.argmax(mag[1:])) + 1
     fund_amp = float(mag[idx])
     if fund_amp <= 0:
-        return float('nan'), float(f[idx]), float(0.0)
+        return float('nan'), float(f[idx]), 0.0
     s2 = 0.0
     for k in range(2, max(2,int(nharm))+1):
         target = k * f[idx]
@@ -68,7 +77,13 @@ def thd_fft(t, v, f0=None, nharm=10, window='hann'):
     thd = float(np.sqrt(s2) / fund_amp)
     return thd, float(f[idx]), fund_amp
 
-def find_knees(freqs, amps, ref_mode='max', ref_hz=1000.0, drop_db=3.0):
+def find_knees(
+    freqs: ArrayLike,
+    amps: ArrayLike,
+    ref_mode: Literal['max', 'freq'] = 'max',
+    ref_hz: float = 1000.0,
+    drop_db: float = 3.0
+) -> tuple[float, float, float, float]:
     f = _np_array(freqs).astype(float); a = _np_array(amps).astype(float)
     if f.size != a.size or f.size < 2:
         return float('nan'), float('nan'), float('nan'), float('nan')
@@ -108,7 +123,13 @@ def find_knees(freqs, amps, ref_mode='max', ref_hz=1000.0, drop_db=3.0):
     return f_lo, f_hi, ref_amp, ref_db
 
 
-def snr_db(t, v, f0=None, nharm=5, window='hann'):
+def snr_db(
+    t: ArrayLike,
+    v: ArrayLike,
+    f0: float | None = None,
+    nharm: int = 5,
+    window: Literal['hann', 'hamming', 'none'] = 'hann'
+) -> float:
     """Calculate Signal-to-Noise Ratio in dB using FFT-based bin exclusion.
     
     Parameters
@@ -197,7 +218,13 @@ def snr_db(t, v, f0=None, nharm=5, window='hann'):
     return float(snr)
 
 
-def noise_floor_db(t, v, f0=None, nharm=5, window='hann'):
+def noise_floor_db(
+    t: ArrayLike,
+    v: ArrayLike,
+    f0: float | None = None,
+    nharm: int = 5,
+    window: Literal['hann', 'hamming', 'none'] = 'hann'
+) -> float:
     """Calculate noise floor in dB relative to 1V RMS.
     
     Parameters

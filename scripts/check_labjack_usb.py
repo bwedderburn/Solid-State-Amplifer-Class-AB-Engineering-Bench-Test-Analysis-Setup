@@ -13,7 +13,8 @@ Goals:
     4 permission / OS level denial
 """
 from __future__ import annotations
-import sys, traceback
+
+import sys
 
 EXIT_MOD_MISSING = 1
 EXIT_DRIVER_FAIL = 2
