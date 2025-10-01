@@ -1,109 +1,60 @@
 #!/usr/bin/env python3
 """
-Unified GUI Layout (LITE+U3)
+Minimal unified CLI/GUI bridge.
 
-Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftests preserved.
-- NEW: Automation tab uses a single shared FY **Port override** and **Protocol** for sweeps,
-        regardless of which FY channel is selected. If left blank, it auto-finds a likely FY port.
-- NEW: DAQ (U3) page includes a "Config Defaults" sub‑tab modeled after the U3-HV Windows panel.
-- NEW: U3 Config tab adds Watchdog "Reset on Timeout" + (optional) Set DIO State,
-       Backward-compat checkboxes, and Counter enable mapping to configIO when possible.
+NOTE:
+Original large monolithic implementation was lost/truncated.
+This rebuilt version delegates to modular packages and preserves
+the public-facing commands used by existing console scripts:
+  - selftest
+  - sweep
+  - diag
+  - config-dump
+  - config-reset
+  - gui (stub if Qt unavailable)
+
+Future incremental extraction can reintroduce tabbed GUI logic
+under amp_benchkit.gui.* modules without expanding this file again.
 """
-import sys, os, time, argparse
+
+from __future__ import annotations
+
+import argparse
+import sys
+import json
+import math
+from typing import List
+
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
-PYVISA_ERR = SERIAL_ERR = QT_ERR = U3_ERR = None
-QT_BINDING = None  # "PySide6" or "PyQt5"
+from amp_benchkit.automation import build_freq_points
+from amp_benchkit.dsp import thd_fft
+from amp_benchkit.logging import setup_logging, get_logger
+from amp_benchkit.deps import (
+    HAVE_QT,
+    HAVE_SERIAL,
+    HAVE_PYVISA,
+    HAVE_U3,
+    dep_msg,
+    INSTALL_HINTS,
+)
 
-# -----------------------------
-# Optional dependencies
-# -----------------------------
+# Config handling (fail-soft)
 try:
-    import pyvisa as _pyvisa
-except Exception as e:
-    _pyvisa = None; PYVISA_ERR = e
+    from amp_benchkit.config import load_config, save_config, CONFIG_PATH
+except Exception:  # pragma: no cover
+    def load_config():
+        return {}
+    def save_config(data):
+        return
+    CONFIG_PATH = "(unavailable)"
+>>>>>>> Stashed changes
 
-try:
-    import serial as _serial; import serial.tools.list_ports as _lp
-except Exception as e:
-    _serial = _lp = None; SERIAL_ERR = e
 
-try:
-    import u3 as _u3
-    HAVE_U3 = True
-except Exception as e:
-    _u3 = None; U3_ERR = e; HAVE_U3 = False
+# -------------------- Internal Selftest ----------------------------------
 
-# ---- Qt: try PySide6 first, then PyQt5
-try:
-    from PySide6.QtWidgets import (
-        QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-        QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-        QCheckBox, QSpinBox
-    )
-    from PySide6.QtCore import Qt, QTimer
-    from PySide6.QtGui import QFont
-    QT_BINDING = "PySide6"; HAVE_QT = True
-except Exception as e1:
-    try:
-        from PyQt5.QtWidgets import (
-            QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-            QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-            QCheckBox, QSpinBox
-        )
-        from PyQt5.QtCore import Qt, QTimer
-        from PyQt5.QtGui import QFont
-        QT_BINDING = "PyQt5"; HAVE_QT = True
-    except Exception as e2:
-        (QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
-         QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-         QCheckBox, QSpinBox, Qt) = (None,)*15
-        HAVE_QT = False; QT_ERR = (e1, e2)
 
-HAVE_PYVISA = _pyvisa is not None
-HAVE_SERIAL = _serial is not None and _lp is not None
-INSTALL_HINTS = {
-    'pyvisa': 'pip install pyvisa',
-    'pyserial': 'pip install pyserial',
-    'pyside6': 'pip install PySide6',
-    'pyqt5': 'pip install PyQt5',
-    'u3': 'pip install LabJackPython'
-}
-
-TEK_RSRC_DEFAULT = "USB0::0x0699::0x036A::C100563::INSTR"
-FY_PROTOCOLS = ["FY ASCII 9600", "Auto (115200/CRLF→9600/LF)"]
-WAVE_CODE = {"Sine":"0","Square":"1","Pulse":"2","Triangle":"3"}
-SWEEP_MODE = {"Linear":"0","Log":"1"}
-
-# -----------------------------
-# Utility / status helpers
-# -----------------------------
-
-def dep_msg():
-    qt_str = f"Qt({QT_BINDING or 'none'})"
-    return " | ".join([
-        f"pyvisa: {'OK' if HAVE_PYVISA else 'MISSING'}",
-        f"pyserial: {'OK' if HAVE_SERIAL else 'MISSING'}",
-        f"{qt_str}: {'OK' if HAVE_QT else 'MISSING'}",
-        f"LabJack u3: {'OK' if HAVE_U3 else 'MISSING'}",
-    ])
-
-def list_ports():
-    return list(_lp.comports()) if HAVE_SERIAL else []
-
-def find_fy_port():
-    ps = list_ports()
-    for p in ps:
-        d = (p.device or '').lower()
-        if any(k in d for k in ['usbserial','tty.usb','wchusb','ftdi']):
-            return p.device
-    return ps[0].device if ps else None
-
-FY_BAUD_EOLS = [(9600, "\n"), (115200, "\r\n")]
-
+<<<<<<< Updated upstream
 # Prefer a fixed-width font when available (used in Test Panel)
 def fixed_font():
     try:
@@ -2068,10 +2019,211 @@ def main():
             sys.exit(app.exec())
         else:
             sys.exit(app.exec_())
+=======
+def _run_selftest() -> tuple[bool, List[str]]:
+    """
+    Lightweight, hardware-free validation of core math & orchestration expectations.
+    Returns (ok, messages)
+    """
+    msgs: List[str] = []
+    ok = True
+    try:
+        # Test 1: build_freq_points linear spacing inclusive
+        pts = build_freq_points(10, 100, points=5, mode="linear")
+        assert pts == [10.0, 32.5, 55.0, 77.5, 100.0]
+        msgs.append("Test1 OK: linear spacing")
+
+        # Test 2: log spacing monotonic & endpoints
+        log_pts = build_freq_points(10, 1000, points=4, mode="log")
+        assert abs(log_pts[0] - 10) < 1e-6 and abs(log_pts[-1] - 1000) < 1e-6
+        assert all(a < b for a, b in zip(log_pts, log_pts[1:]))
+        msgs.append("Test2 OK: log spacing")
+
+        # Test 3: THD sanity (one harmonic at 10%)
+        fs = 50_000.0
+        f0 = 1000.0
+        n = 4096
+        t = np.arange(n) / fs
+        sig = np.sin(2 * math.pi * f0 * t) + 0.1 * np.sin(2 * math.pi * 2 * f0 * t)
+        thd_ratio, f0_est, fund_amp = thd_fft(t, sig, f0=f0, nharm=5, window="hann")
+        assert abs(thd_ratio - 0.1) < 0.03
+        msgs.append("Test3 OK: THD FFT (~10%)")
+
+        # Test 4: config roundtrip (if available)
+        cfg = load_config()
+        if isinstance(cfg, dict):
+            save_config(cfg)
+            msgs.append("Test4 OK: config roundtrip (noop)")
+        else:
+            msgs.append("Test4 SKIP: config not dict")
+
+    except Exception as e:  # pragma: no cover (failure path)
+        ok = False
+        msgs.append(f"Selftest FAIL: {e}")
+
+    return ok, msgs
+
+
+# -------------------- Command Handlers -----------------------------------
+
+
+def _cmd_selftest(_args):
+    ok, msgs = _run_selftest()
+    for m in msgs:
+        print(m)
+    return 0 if ok else 1
+
+
+def _cmd_sweep(args):
+    try:
+        freqs = build_freq_points(
+            start=args.start,
+            stop=args.stop,
+            points=args.points,
+            mode=args.mode,
+        )
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 2
+    for f in freqs:
+        # Plain float output (6 decimal places preserved by build function)
+        print(f)
+    return 0
+
+
+def _cmd_diag(_args):
+    print("Dependency status:", dep_msg())
+    if HAVE_SERIAL:
+        try:
+            from serial.tools.list_ports import comports  # type: ignore
+            ports = list(comports())
+            print("Serial:", ", ".join(p.device for p in ports) if ports else "(none)")
+        except Exception as e:  # pragma: no cover
+            print("Serial enumeration error:", e)
+>>>>>>> Stashed changes
     else:
-        ap.print_help()
-        print('\nTip: install PySide6 or PyQt5 to launch GUI:', INSTALL_HINTS['pyside6'])
+        print("pyserial missing →", INSTALL_HINTS.get("pyserial", "pip install pyserial"))
+
+    if HAVE_PYVISA:
+        try:
+            import pyvisa  # type: ignore
+            rm = pyvisa.ResourceManager()
+            resources = rm.list_resources()
+            print("VISA:", ", ".join(resources) if resources else "(none)")
+        except Exception as e:  # pragma: no cover
+            print("VISA error:", e)
+    else:
+        print("pyvisa missing →", INSTALL_HINTS.get("pyvisa", "pip install pyvisa"))
+
+    if HAVE_U3:
+        try:
+            # Defer import; may not have driver installed
+            from amp_benchkit.u3util import safe_open  # type: ignore
+            dev = safe_open()
+            if dev:
+                # Just show we tried; avoid full read for speed
+                print("U3: detected (AIN probe skipped)")
+            else:
+                print("U3: not opened")
+        except Exception as e:  # pragma: no cover
+            print("U3 error:", e)
+    else:
+        print("u3 missing →", INSTALL_HINTS.get("u3", "pip install LabJackPython"))
+    return 0
 
 
-if __name__ == '__main__':
-    main()
+def _cmd_config_dump(_args):
+    cfg = load_config()
+    print(json.dumps(cfg, indent=2, sort_keys=True))
+    return 0
+
+
+def _cmd_config_reset(_args):
+    try:
+        save_config({})
+        print("Config reset ->", CONFIG_PATH)
+        return 0
+    except Exception as e:  # pragma: no cover
+        print("Config reset error:", e, file=sys.stderr)
+        return 3
+
+
+def _cmd_gui(args):
+    if not HAVE_QT:
+        print("GUI not available (PySide6 / PyQt5 missing). Install with extras: pip install 'amp-benchkit[gui]'", file=sys.stderr)
+        return 4
+    # Lazy import to avoid Qt boot on headless usage
+    try:
+        from amp_benchkit.gui import build_all_tabs  # hypothetical aggregator
+        # Placeholder simple Qt app (kept minimal)
+        from PySide6.QtWidgets import QApplication, QTabWidget
+        app = QApplication([])
+        tabs = QTabWidget()
+        for w, label in build_all_tabs():
+            tabs.addTab(w, label)
+        tabs.setWindowTitle("Amp BenchKit")
+        tabs.show()
+        return app.exec()
+    except Exception as e:  # pragma: no cover
+        print("GUI launch error:", e, file=sys.stderr)
+        return 5
+
+
+# -------------------- Main / Argparse ------------------------------------
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(
+        prog="amp-benchkit (unified)",
+        description="Bench automation toolkit (headless + GUI).",
+    )
+    p.add_argument("--verbose", action="store_true", help="Enable debug logging")
+    # Subparsers: do not force 'required' so a plain invocation prints help instead of a terse error
+    sub = p.add_subparsers(dest="cmd")
+
+    sp = sub.add_parser("selftest", help="Run lightweight internal selfchecks")
+    sp.set_defaults(func=_cmd_selftest)
+
+    sp = sub.add_parser("sweep", help="Generate frequency points (stdout)")
+    sp.add_argument("--start", type=float, required=True)
+    sp.add_argument("--stop", type=float, required=True)
+    sp.add_argument("--points", type=int, required=True)
+    sp.add_argument("--mode", choices=["linear", "log"], default="linear")
+    sp.set_defaults(func=_cmd_sweep)
+
+    sp = sub.add_parser("diag", help="Show dependency/hardware status")
+    sp.set_defaults(func=_cmd_diag)
+
+    sp = sub.add_parser("config-dump", help="Print current persisted config JSON")
+    sp.set_defaults(func=_cmd_config_dump)
+
+    sp = sub.add_parser("config-reset", help="Reset config to empty object")
+    sp.set_defaults(func=_cmd_config_reset)
+
+    sp = sub.add_parser("gui", help="Launch Qt GUI (if available)")
+    sp.set_defaults(func=_cmd_gui)
+
+    return p
+
+
+def main(argv: List[str] | None = None) -> int:
+    parser = build_parser()
+    # If no args provided (beyond program name), show help & exit code 2 (consistent with argparse error convention)
+    if argv is None and len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        return 2
+    if argv is not None and len(argv) == 0:
+        parser.print_help(sys.stderr)
+        return 2
+    args = parser.parse_args(argv)
+    setup_logging(verbose=args.verbose)
+    log = get_logger()
+    log.debug("Args: %s", args)
+
+    rc = args.func(args)  # type: ignore[attr-defined]
+    log.debug("Exit code: %s", rc)
+    return rc
+
+
+if __name__ == "__main__":  # pragma: no cover
+    sys.exit(main())
