@@ -1,16 +1,23 @@
 """Stub DSP helpers."""
 from __future__ import annotations
 from typing import Tuple
-import math
 
-def thd_fft(samples, fs_hz: float) -> Tuple[float, float, float]:  # simplistic placeholder
+
+# simplistic placeholder
+def thd_fft(samples, fs_hz: float) -> Tuple[float, float, float]:
+    """Very small placeholder: returns 0 THD and max sample amplitude.
+
+    Parameters
+    ----------
+    samples : sequence
+        Time-domain samples.
+    fs_hz : float
+        Sample rate in Hz (unused in stub).
+    """
     try:
-        n = len(samples)
-        if n == 0:
+        if not samples:
             return float('nan'), float('nan'), float('nan')
-        # Very naive fundamental estimate: max abs sample as amplitude (placeholder)
-        fund_amp = max(abs(x) for x in samples)
-        thd_ratio = 0.0  # not computed in stub
-        return thd_ratio, 1000.0, fund_amp
+        fund_amp = max(abs(float(x)) for x in samples)
+        return 0.0, 1000.0, fund_amp
     except Exception:
         return float('nan'), float('nan'), float('nan')

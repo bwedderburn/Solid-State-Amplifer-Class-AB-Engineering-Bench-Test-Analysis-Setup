@@ -1,12 +1,14 @@
 """Stub config persistence."""
 from __future__ import annotations
-import json, os
+import json
+import os
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / '.config' / 'amp-benchkit' / 'config.json'
 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 _cache = None
+
 
 def load_config():
     global _cache
@@ -21,8 +23,12 @@ def load_config():
         _cache = {}
     return _cache
 
+
 def save_config(data):
     CONFIG_PATH.write_text(json.dumps(data, indent=2))
 
+
 def update_config(**kv):
-    cfg = load_config(); cfg.update(kv); save_config(cfg)
+    cfg = load_config()
+    cfg.update(kv)
+    save_config(cfg)

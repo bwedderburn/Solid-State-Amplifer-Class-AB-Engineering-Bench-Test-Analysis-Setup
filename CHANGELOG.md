@@ -6,16 +6,18 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
-- (placeholder)
+- THD dual-dispatch (`thd_fft`) with advanced FFT path (requires `dsp` extra / NumPy) and lightweight stub fallback.
+- Optional `dsp` extra to avoid forcing NumPy for minimal installs.
+- `thd-mode` CLI subcommand to report whether advanced or stub THD path is active.
 
 ### Changed
-- (placeholder)
+- Moved NumPy from core dependency list into optional extras (`dsp`, `test`).
 
 ### Fixed
 - (placeholder)
 
 ### Notes / Follow-ups
-- (placeholder)
+- Consider extracting waveform DSP helpers from `unified_gui_layout.py` into `amp_benchkit.dsp` proper (keeping backward compatibility).
 
 ## [0.3.1] - 2025-10-01
 ### Added
