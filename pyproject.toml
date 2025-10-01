@@ -53,3 +53,15 @@ target-version = "py310"
 addopts = "-q"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["amp_benchkit", "unified_gui_layout.py"]
+omit = ["tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+	"pragma: no cover",
+	"if __name__ == '__main__':",
+]
+show_missing = true

@@ -1,5 +1,5 @@
 # Unified GUI Layout (Lite + U3)
-![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg)
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
 
 Cross-platform control panel for:
 - FeelTech FY3200S function generator (dual-channel)
@@ -61,6 +61,15 @@ Base installation keeps dependencies minimal. Enable optional capabilities:
 - Everything developers typically need: `pip install "amp-benchkit[gui,dsp,serial,visa,labjack,test]"`
 
 If NumPy is absent, `thd_fft` falls back to a stub (always 0 THD) while remaining features continue to work.
+
+### Release Helper
+Use the helper script to bump versions:
+
+```bash
+chmod +x scripts/release.sh
+./scripts/release.sh 0.3.3 --tag
+git push && git push --tags
+```
 
 ### CLI Helper: THD Mode
 To see whether the advanced FFT THD implementation is active (NumPy installed) or the stub fallback is in use:
