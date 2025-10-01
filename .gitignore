@@ -1,0 +1,32 @@
+# Core Python ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Tool caches
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# IDE / Editor
+.vscode/
+.idea/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Local keys / exported public keys (user manage separately)
+pubkey.asc
+
+# Generated test artifacts
+coverage.xml
+htmlcov/
