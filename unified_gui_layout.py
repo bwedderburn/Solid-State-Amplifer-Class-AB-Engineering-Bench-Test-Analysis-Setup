@@ -23,9 +23,69 @@ import argparse
 import sys
 import json
 import math
+import types
+import time
 from typing import List
 
-import numpy as np
+try:  # Optional dependency for certain numeric operations; not required for --help / no-arg path
+    import numpy as np  # type: ignore
+except Exception:  # pragma: no cover
+    np = None  # type: ignore
+
+# -------------------- Minimal placeholder symbols (stubs) --------------------
+# These prevent NameError during import for instrument helpers that are legacy holdovers.
+TEK_RSRC_DEFAULT = "USB::INSTR"  # Placeholder scope resource
+WAVE_CODE: dict[str, str] = {}
+SWEEP_MODE: dict[str, str] = {}
+
+# Serial stub
+class _SerialStub:
+    def __init__(self, *a, **k):
+        pass
+    def write(self, *a, **k):
+        return 0
+    def read(self, *a, **k):
+        return b""
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+class _SerialModuleStub(types.SimpleNamespace):
+    Serial = _SerialStub
+
+_serial = _SerialModuleStub()  # type: ignore
+
+# VISA stub
+class _VisaResource:
+    def __init__(self):
+        self.chunk_size = 1024
+        self.timeout = 1000
+    def write(self, *a, **k):
+        return None
+    def query(self, *a, **k):
+        return ""
+    def read_raw(self):
+        return b"#00"
+    def close(self):
+        return None
+
+class _VisaRM:
+    def open_resource(self, *a, **k):
+        return _VisaResource()
+
+class _PyVisaStub(types.SimpleNamespace):
+    ResourceManager = _VisaRM
+
+_pyvisa = _PyVisaStub()  # type: ignore
+
+# QFont stub used in fixed_font legacy helper
+class QFont:  # pragma: no cover - placeholder
+    TypeWriter = 0
+    def __init__(self, *a, **k):
+        pass
+    def setStyleHint(self, *a, **k):
+        pass
 
 from amp_benchkit.automation import build_freq_points
 from amp_benchkit.dsp import thd_fft
@@ -40,21 +100,20 @@ from amp_benchkit.deps import (
 )
 
 # Config handling (fail-soft)
-try:
+try:  # pragma: no cover
     from amp_benchkit.config import load_config, save_config, CONFIG_PATH
 except Exception:  # pragma: no cover
-    def load_config():
+    def load_config():  # type: ignore
         return {}
-    def save_config(data):
+    def save_config(data):  # type: ignore
         return
-    CONFIG_PATH = "(unavailable)"
->>>>>>> Stashed changes
+    CONFIG_PATH = "(unavailable)"  # type: ignore
 
 
 # -------------------- Internal Selftest ----------------------------------
 
 
-<<<<<<< Updated upstream
+# (Truncated legacy helpers removed during refactor)
 # Prefer a fixed-width font when available (used in Test Panel)
 def fixed_font():
     try:
@@ -2019,7 +2078,6 @@ def main():
             sys.exit(app.exec())
         else:
             sys.exit(app.exec_())
-=======
 def _run_selftest() -> tuple[bool, List[str]]:
     """
     Lightweight, hardware-free validation of core math & orchestration expectations.
@@ -2100,7 +2158,6 @@ def _cmd_diag(_args):
             print("Serial:", ", ".join(p.device for p in ports) if ports else "(none)")
         except Exception as e:  # pragma: no cover
             print("Serial enumeration error:", e)
->>>>>>> Stashed changes
     else:
         print("pyserial missing →", INSTALL_HINTS.get("pyserial", "pip install pyserial"))
 
