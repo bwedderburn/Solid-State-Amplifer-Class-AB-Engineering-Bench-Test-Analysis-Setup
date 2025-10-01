@@ -23,6 +23,7 @@ try:  # config persistence
 except Exception:  # pragma: no cover
     def load_config():  # type: ignore
         return {}
+
     def update_config(**kv):  # type: ignore
         return None
 
@@ -113,7 +114,8 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
     gui.thd_timer = QTimer()
     gui.thd_timer.setInterval(1000)  # 1 Hz refresh
     gui.thd_last_wave: Optional[Tuple[Any, Any]] = None
-    gui.thd_capture_queue: "queue.Queue[Tuple[Any, Any]]" = queue.Queue(maxsize=1)
+    gui.thd_capture_queue: "queue.Queue[Tuple[Any, Any]]" = queue.Queue(
+        maxsize=1)
     gui.thd_capture_thread: Optional[threading.Thread] = None
     gui.thd_capture_stop = threading.Event()
 
@@ -223,7 +225,8 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
             # Start capture thread if not running
             if gui.thd_capture_thread is None or not gui.thd_capture_thread.is_alive():
                 gui.thd_capture_stop.clear()
-                gui.thd_capture_thread = threading.Thread(target=_capture_worker, daemon=True)
+                gui.thd_capture_thread = threading.Thread(
+                    target=_capture_worker, daemon=True)
                 gui.thd_capture_thread.start()
             gui.thd_timer.start()
             _tick()

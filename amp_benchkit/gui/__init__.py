@@ -34,4 +34,5 @@ def build_all_tabs(gui: Any) -> List[Tuple[Any, str]]:
         pass
     return tabs
 
+
 __all__ = ["build_all_tabs"]
