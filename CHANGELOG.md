@@ -6,6 +6,19 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
+- (placeholder)
+
+### Changed
+- (placeholder)
+
+### Fixed
+- (placeholder)
+
+### Notes / Follow-ups
+- (placeholder)
+
+## [0.3.1] - 2025-10-01
+### Added
 - Concise AI contributor guide (`.github/copilot-instructions.md`) summarizing architecture, dependency gating, testing patterns.
 - Graceful no-argument CLI behavior: running `python unified_gui_layout.py` now prints help instead of an argparse error.
 - Gated (optional) LabJack U3 import in `amp_benchkit/gui/daq_tab.py` to avoid import failures when `LabJackPython` is absent.
@@ -27,5 +40,6 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 ### Added
 - (Backfill placeholder) Initial modular extraction groundwork; previous history reconstructed from repository.
 
-[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.1...HEAD
+[0.3.1]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/bwedderburn/amp-benchkit/releases/tag/0.3.0
