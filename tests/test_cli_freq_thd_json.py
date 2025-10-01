@@ -1,4 +1,9 @@
-import json, math, os, tempfile, subprocess, sys
+import json
+import math
+import os
+import tempfile
+import subprocess
+import sys
 import shutil
 
 BIN = [sys.executable, 'unified_gui_layout.py']
@@ -10,7 +15,8 @@ def run_cli(args):
 
 
 def test_freq_gen_json():
-    rc, out, err = run_cli(['freq-gen', '--start', '10', '--stop', '100', '--points', '5', '--mode', 'linear', '--format', 'json'])
+    rc, out, err = run_cli(['freq-gen', '--start', '10', '--stop',
+                           '100', '--points', '5', '--mode', 'linear', '--format', 'json'])
     assert rc == 0, err
     data = json.loads(out)
     assert data['start'] == 10
@@ -23,7 +29,8 @@ def test_freq_gen_json():
 
 
 def test_freq_gen_csv():
-    rc, out, err = run_cli(['freq-gen', '--start', '10', '--stop', '100', '--points', '5', '--mode', 'linear', '--format', 'csv'])
+    rc, out, err = run_cli(['freq-gen', '--start', '10', '--stop',
+                           '100', '--points', '5', '--mode', 'linear', '--format', 'csv'])
     assert rc == 0, err
     lines = out.splitlines()
     assert len(lines) == 5
@@ -47,7 +54,8 @@ def test_thd_json_basic():
         with open(path, 'w', encoding='utf-8') as fh:
             for ti, vi in zip(t, v):
                 fh.write(f"{ti},{vi}\n")
-        rc, out, err = run_cli(['thd-json', path, '--f0', str(f0), '--nharm', '5'])
+        rc, out, err = run_cli(
+            ['thd-json', path, '--f0', str(f0), '--nharm', '5'])
         assert rc == 0, err
         data = json.loads(out)
         # THD ~0.05 (window/fft bin rounding tolerance)
