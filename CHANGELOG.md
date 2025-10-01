@@ -11,15 +11,20 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 - Multi-OS distribution build & smoke test job.
 - All-extras install job ensuring dependency compatibility.
 - Optional Codecov upload + enforced 70% minimum coverage threshold.
+- Extracted advanced waveform FFT + harmonic analysis into `amp_benchkit.dsp_ext` (optional import) to reduce monolith size.
+- `freq-gen` CLI subcommand producing JSON or CSV frequency lists (structured alternative to `sweep`).
+- `thd-json` CLI subcommand computing THD + harmonic table from time,volts CSV input.
 
 ### Changed
 - (placeholder)
+- `unified_gui_layout.thd_fft` now delegates to `dsp_ext.thd_fft_waveform` when available (behavior preserved; stub fallback unaffected).
 
 ### Fixed
 - (placeholder)
 
 ### Notes / Follow-ups
 - Optionally integrate coverage upload to Codecov or similar.
+- Consider promoting `dsp_ext` APIs into documented public surface in next minor release.
 
 ## [0.3.2] - 2025-10-01
 ### Added
