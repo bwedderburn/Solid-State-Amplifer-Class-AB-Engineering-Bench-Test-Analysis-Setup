@@ -575,7 +575,8 @@ def thd_fft(t_or_samples, v_or_fs, *rest):  # type: ignore[override]
         and hasattr(v_or_fs, '__len__')
     ):
         try:
-            return _dsp_ext.thd_fft_waveform(t_or_samples, v_or_fs, *rest)  # type: ignore[attr-defined]
+            # type: ignore[attr-defined]
+            return _dsp_ext.thd_fft_waveform(t_or_samples, v_or_fs, *rest)
         except Exception:  # pragma: no cover
             pass
     # Fallback to stub (samples, fs_hz)
@@ -3184,18 +3185,21 @@ def build_parser() -> argparse.ArgumentParser:
             print(f"Error: {e}", file=sys.stderr)
             return 2
         if a.format == 'json':
-            print(json.dumps({"start": a.start, "stop": a.stop, "points": a.points, "mode": a.mode, "frequencies": freqs}, separators=(",", ":")))
+            print(json.dumps({"start": a.start, "stop": a.stop, "points": a.points,
+                  "mode": a.mode, "frequencies": freqs}, separators=(",", ":")))
         else:  # csv
             for f in freqs:
                 print(f)
         return 0
 
-    sp = sub.add_parser("freq-gen", help="Generate frequency list (JSON or CSV)")
+    sp = sub.add_parser(
+        "freq-gen", help="Generate frequency list (JSON or CSV)")
     sp.add_argument("--start", type=float, required=True)
     sp.add_argument("--stop", type=float, required=True)
     sp.add_argument("--points", type=int, required=True)
     sp.add_argument("--mode", choices=["linear", "log"], default="linear")
-    sp.add_argument("--format", choices=["json", "csv"], default="json", help="Output format (default json)")
+    sp.add_argument("--format", choices=["json", "csv"],
+                    default="json", help="Output format (default json)")
     sp.set_defaults(func=_cmd_freq_gen)
 
     sp = sub.add_parser("diag", help="Show dependency/hardware status")
@@ -3269,8 +3273,10 @@ def build_parser() -> argparse.ArgumentParser:
         harmonics = []
         if _dsp_ext is not None and np is not None:
             try:
-                thd_ratio, f0_est, fund_amp = _dsp_ext.thd_fft_waveform(rows_t, rows_v, f0=a.f0 if a.f0 else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
-                harmonics = _dsp_ext.harmonic_table(rows_t, rows_v, f0=f0_est if f0_est==f0_est else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
+                thd_ratio, f0_est, fund_amp = _dsp_ext.thd_fft_waveform(
+                    rows_t, rows_v, f0=a.f0 if a.f0 else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
+                harmonics = _dsp_ext.harmonic_table(
+                    rows_t, rows_v, f0=f0_est if f0_est == f0_est else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
             except Exception:
                 pass
         # Fallback stub path: cannot compute from time-domain file without DSP → leave NaNs
@@ -3285,11 +3291,16 @@ def build_parser() -> argparse.ArgumentParser:
         print(json.dumps(out, separators=(",", ":")))
         return 0
 
-    sp = sub.add_parser("thd-json", help="Compute THD from time,volts CSV -> JSON")
-    sp.add_argument("file", help="Input CSV file with columns time,volts (header optional)")
-    sp.add_argument("--f0", type=float, default=None, help="Fundamental frequency hint (Hz)")
-    sp.add_argument("--nharm", type=int, default=10, help="Number of harmonics to include")
-    sp.add_argument("--window", choices=["hann", "hamming", "rect"], default="hann")
+    sp = sub.add_parser(
+        "thd-json", help="Compute THD from time,volts CSV -> JSON")
+    sp.add_argument(
+        "file", help="Input CSV file with columns time,volts (header optional)")
+    sp.add_argument("--f0", type=float, default=None,
+                    help="Fundamental frequency hint (Hz)")
+    sp.add_argument("--nharm", type=int, default=10,
+                    help="Number of harmonics to include")
+    sp.add_argument(
+        "--window", choices=["hann", "hamming", "rect"], default="hann")
     sp.set_defaults(func=_cmd_thd_json)
 
     return p

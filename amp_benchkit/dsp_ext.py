@@ -15,6 +15,7 @@ except Exception:  # pragma: no cover
 
 __all__ = ["thd_fft_waveform", "harmonic_table"]
 
+
 def _np_array(x):
     if np is None:
         raise RuntimeError("NumPy not available for advanced DSP")

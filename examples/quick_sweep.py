@@ -28,10 +28,12 @@ def main():
         t = np.arange(n)/fs
         v = np.sin(2*math.pi*f0*t)
         thd, f_est, fund = thd_fft(t, v, f0=f0)
-        print(f"Example THD single-tone ~ {thd:.6f} (f0_est={f_est:.1f}Hz, fund_amp={fund:.3f})")
+        print(
+            f"Example THD single-tone ~ {thd:.6f} (f0_est={f_est:.1f}Hz, fund_amp={fund:.3f})")
     else:
         thd, f_est, fund = thd_fft([0.0, 1.0, -0.5], 48000.0)
-        print(f"Stub THD path active (ratio={thd}, f0_est={f_est}, fund_amp={fund})")
+        print(
+            f"Stub THD path active (ratio={thd}, f0_est={f_est}, fund_amp={fund})")
 
 
 if __name__ == '__main__':  # pragma: no cover
