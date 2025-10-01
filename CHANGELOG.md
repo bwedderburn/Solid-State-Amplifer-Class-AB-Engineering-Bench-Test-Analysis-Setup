@@ -6,7 +6,8 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
-- (placeholder)
+- CI coverage reporting artifacts (coverage XML per Python version).
+- Automated publish workflow (`publish.yml`) for tag-based PyPI release (token required).
 
 ### Changed
 - (placeholder)
@@ -15,7 +16,7 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 - (placeholder)
 
 ### Notes / Follow-ups
-- (placeholder)
+- Optionally integrate coverage upload to Codecov or similar.
 
 ## [0.3.2] - 2025-10-01
 ### Added
