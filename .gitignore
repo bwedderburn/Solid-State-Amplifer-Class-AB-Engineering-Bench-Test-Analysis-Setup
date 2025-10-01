@@ -27,6 +27,9 @@ Thumbs.db
 # Local keys / exported public keys (user manage separately)
 pubkey.asc
 
+# Environment files (secrets not committed)
+.env
+
 # Generated test artifacts
 coverage.xml
 htmlcov/

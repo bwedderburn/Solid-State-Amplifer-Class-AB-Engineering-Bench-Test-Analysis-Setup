@@ -1,4 +1,56 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amp-benchkit"
+dynamic = ["version"]
+description = "Unified bench automation + optional GUI tabs for LabJack / Tek / FY"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+	{ name = "Maintainers", email = "you@example.com" }
+]
+keywords = ["labjack", "instrumentation", "automation", "gui", "dsp"]
+classifiers = [
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3 :: Only",
+	"Operating System :: POSIX :: Linux",
+]
+dependencies = [
+	"numpy>=1.24",
+]
+
+[project.optional-dependencies]
+gui = ["PySide6>=6.6", "PyQt5>=5.15"]
+serial = ["pyserial>=3.5"]
+visa = ["pyvisa>=1.14"]
+labjack = ["LabJackPython>=2.1.0"]
+dev = ["black", "ruff", "mypy", "pre-commit"]
+test = ["pytest", "pytest-cov"]
+publish = ["build", "twine", "wheel", "setuptools"]
+
+[project.urls]
+Homepage = "https://github.com/bwedderburn/amp-benchkit"
+Repository = "https://github.com/bwedderburn/amp-benchkit.git"
+Issues = "https://github.com/bwedderburn/amp-benchkit/issues"
+Changelog = "https://github.com/bwedderburn/amp-benchkit/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "amp_benchkit.__version__"}
+
 [tool.black]
 line-length = 100
 target-version = ["py310", "py311"]
 skip-string-normalization = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
