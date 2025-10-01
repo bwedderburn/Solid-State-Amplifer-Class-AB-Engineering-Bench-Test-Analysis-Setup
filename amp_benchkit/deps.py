@@ -31,7 +31,20 @@ except Exception as e:  # pragma: no cover
 
 # ------------------ LabJack u3 ------------------
 try:  # pragma: no cover
-    import u3 as _u3  # type: ignore
+    # Suppress stdout during u3 import to avoid contaminating CLI output
+    # (LabJackPython prints driver warnings directly to stdout on import)
+    import sys
+    import os
+    _old_stdout = sys.stdout
+    _devnull = None
+    try:
+        _devnull = open(os.devnull, 'w')
+        sys.stdout = _devnull
+        import u3 as _u3  # type: ignore
+    finally:
+        sys.stdout = _old_stdout
+        if _devnull is not None:
+            _devnull.close()
     HAVE_U3 = True
 except Exception as e:  # pragma: no cover
     _u3 = None
