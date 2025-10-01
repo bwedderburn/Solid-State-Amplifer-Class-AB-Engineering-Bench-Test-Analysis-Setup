@@ -1,10 +1,14 @@
-import subprocess, sys, json, os
+import subprocess
+import sys
+import json
+import os
 
 PY = sys.executable
 
 
 def run_cli(*args: str) -> str:
-    out = subprocess.check_output([PY, 'unified_gui_layout.py', *args], text=True)
+    out = subprocess.check_output(
+        [PY, 'unified_gui_layout.py', *args], text=True)
     return out.strip()
 
 

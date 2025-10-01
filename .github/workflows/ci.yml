@@ -24,3 +24,23 @@ jobs:
           python -m pip install .[test]
       - name: Run tests
         run: pytest -q
+
+  minimal-no-dsp:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install (core only, no extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Verify THD mode is stub
+        run: |
+          MODE=$(python unified_gui_layout.py thd-mode)
+          echo "Mode=$MODE"
+          if [ "$MODE" != "stub" ]; then echo "Expected stub mode without dsp extra" && exit 1; fi
+      - name: Run tests (should auto-skip advanced path parts)
+        run: pytest -q
