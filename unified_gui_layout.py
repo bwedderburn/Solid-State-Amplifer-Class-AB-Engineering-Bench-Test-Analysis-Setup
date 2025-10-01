@@ -3327,14 +3327,17 @@ def build_parser() -> argparse.ArgumentParser:
                             continue
                         if line.lower().startswith('time') and any(c.isalpha() for c in line):
                             continue
-                        parts = [p for p in line.replace(',', ' ').split() if p]
+                        parts = [p for p in line.replace(
+                            ',', ' ').split() if p]
                         if len(parts) < 2:
                             continue
                         try:
-                            tval = float(parts[0]); vval = float(parts[1])
+                            tval = float(parts[0])
+                            vval = float(parts[1])
                         except Exception:
                             continue
-                        rows_t.append(tval); rows_v.append(vval)
+                        rows_t.append(tval)
+                        rows_v.append(vval)
             except Exception as e:
                 print(f"Read error: {e}", file=sys.stderr)
                 return 3
@@ -3348,7 +3351,8 @@ def build_parser() -> argparse.ArgumentParser:
             fs = a.fs
             t = _n.arange(n)/fs
             v = _n.sin(2*_n.pi*f0*t)
-            rows_t = t.tolist(); rows_v = v.tolist()
+            rows_t = t.tolist()
+            rows_v = v.tolist()
         if len(rows_t) < 8 or len(rows_t) != len(rows_v):
             print("Insufficient data", file=sys.stderr)
             return 5
@@ -3372,7 +3376,8 @@ def build_parser() -> argparse.ArgumentParser:
                 return 7
             plt.figure()
             plt.semilogx(freqs + 1e-12, 20*_n.log10(_n.maximum(mags, 1e-18)))
-            plt.xlabel('Frequency (Hz)'); plt.ylabel('Magnitude (dB)')
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Magnitude (dB)')
             plt.title('Spectrum')
             plt.grid(True, which='both', ls=':')
             out_path = os.path.join(out_dir, a.output)
@@ -3384,13 +3389,20 @@ def build_parser() -> argparse.ArgumentParser:
             print(f"Spectrum error: {e}", file=sys.stderr)
             return 8
 
-    sp = sub.add_parser("spectrum", help="Export magnitude spectrum PNG from CSV or synthetic")
-    sp.add_argument("--file", help="Input CSV time,volts (if omitted, generate synthetic)")
-    sp.add_argument("--outdir", help="Output directory (defaults results_dir config or ./results)")
-    sp.add_argument("--output", default="spectrum.png", help="Output PNG filename (default spectrum.png)")
-    sp.add_argument("--f0", type=float, default=1000.0, help="Synthetic fundamental (Hz) if no file")
-    sp.add_argument("--fs", type=float, default=50000.0, help="Synthetic sample rate (Hz)")
-    sp.add_argument("--points", type=int, default=4096, help="Synthetic sample count")
+    sp = sub.add_parser(
+        "spectrum", help="Export magnitude spectrum PNG from CSV or synthetic")
+    sp.add_argument(
+        "--file", help="Input CSV time,volts (if omitted, generate synthetic)")
+    sp.add_argument(
+        "--outdir", help="Output directory (defaults results_dir config or ./results)")
+    sp.add_argument("--output", default="spectrum.png",
+                    help="Output PNG filename (default spectrum.png)")
+    sp.add_argument("--f0", type=float, default=1000.0,
+                    help="Synthetic fundamental (Hz) if no file")
+    sp.add_argument("--fs", type=float, default=50000.0,
+                    help="Synthetic sample rate (Hz)")
+    sp.add_argument("--points", type=int, default=4096,
+                    help="Synthetic sample count")
     sp.set_defaults(func=_cmd_spectrum)
 
     return p

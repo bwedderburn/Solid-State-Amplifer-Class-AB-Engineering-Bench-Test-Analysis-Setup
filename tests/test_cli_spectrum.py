@@ -5,6 +5,7 @@ import math
 
 BIN = [sys.executable, 'unified_gui_layout.py']
 
+
 def run_cli(args):
     cp = subprocess.run(BIN + args, capture_output=True, text=True)
     return cp.returncode, cp.stdout.strip(), cp.stderr.strip()
@@ -17,7 +18,8 @@ def test_spectrum_synthetic(tmp_path):
     except Exception:
         return
     d = tmp_path / 'out'
-    rc, out, err = run_cli(['spectrum', '--outdir', str(d), '--output', 'spec.png', '--f0', '1234', '--fs', '48000', '--points', '2048'])
+    rc, out, err = run_cli(['spectrum', '--outdir', str(d), '--output',
+                           'spec.png', '--f0', '1234', '--fs', '48000', '--points', '2048'])
     assert rc == 0, err
     png_path = out.strip()
     assert os.path.exists(png_path)
