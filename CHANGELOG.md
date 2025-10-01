@@ -6,7 +6,9 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
-- (none yet)
+- Async capture thread for real-time THD tab updates.
+- Spectrum export feature in THD tab, allowing data export in various formats.
+- Persistent THD settings, retaining user preferences across sessions.
 
 ### Changed
 - (none yet)

@@ -15,3 +15,16 @@ def test_thd_tab_presence():
     # If THD present, label must be exactly 'THD'
     if any(label == 'THD' for label in names):
         assert 'THD' in names
+
+
+def test_thd_tab_buttons():
+    tabs = build_all_tabs(object())
+    for widget, label in tabs:
+        if label == 'THD':
+            # Expect new buttons/fields attributes attached to controller later; we only verify widget has children names indirectly.
+            # Since builder attaches attributes to the gui controller (not the returned widget), we can't access them here directly.
+            # Minimal check: spectrum feature did not break tab construction.
+            assert widget is not None
+            return
+    # If THD tab absent (no Qt / dsp), that's acceptable.
+    pytest.skip('THD tab not present (optional)')

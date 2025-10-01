@@ -10,12 +10,21 @@ Design Principles (per contributor guide):
 - Avoid hard failures if pyvisa / numpy missing; display status text instead.
 """
 from __future__ import annotations
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 import math
 import time
+import threading
+import queue
 
 from ..deps import HAVE_PYVISA, HAVE_QT
 from ..logging import get_logger
+try:  # config persistence
+    from ..config import load_config, update_config  # type: ignore
+except Exception:  # pragma: no cover
+    def load_config():  # type: ignore
+        return {}
+    def update_config(**kv):  # type: ignore
+        return None
 
 try:  # optional advanced DSP
     from .. import dsp_ext  # type: ignore
@@ -93,28 +102,64 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
     gui.thd_start = QPushButton("Start")
     gui.thd_stop = QPushButton("Stop")
     gui.thd_export = QPushButton("Export Harmonics")
+    gui.thd_spectrum = QPushButton("Show Spectrum")
     btn_row.addWidget(gui.thd_start)
     btn_row.addWidget(gui.thd_stop)
     btn_row.addWidget(gui.thd_export)
+    btn_row.addWidget(gui.thd_spectrum)
     L.addLayout(btn_row)
 
     gui.thd_last_update = 0.0
     gui.thd_timer = QTimer()
     gui.thd_timer.setInterval(1000)  # 1 Hz refresh
+    gui.thd_last_wave: Optional[Tuple[Any, Any]] = None
+    gui.thd_capture_queue: "queue.Queue[Tuple[Any, Any]]" = queue.Queue(maxsize=1)
+    gui.thd_capture_thread: Optional[threading.Thread] = None
+    gui.thd_capture_stop = threading.Event()
 
-    def _capture_waveform():  # best-effort scope capture
+    # Load persisted settings if present
+    try:
+        _cfg = load_config() or {}
+        if 'thd_resource' in _cfg:
+            gui.thd_scope_res.setText(str(_cfg['thd_resource']))
+        if 'thd_f0' in _cfg:
+            gui.thd_f0.setText(str(_cfg['thd_f0']))
+        if 'thd_nharm' in _cfg:
+            gui.thd_nharm.setText(str(_cfg['thd_nharm']))
+        if 'thd_refresh' in _cfg:
+            gui.thd_refresh.setText(str(_cfg['thd_refresh']))
+    except Exception:  # pragma: no cover
+        pass
+
+    def _direct_capture():  # best-effort scope capture (blocking)
         if not HAVE_PYVISA or np is None:
             return _synthetic_wave()
-        try:  # lazy import local minimal routine from monolith
+        try:
             from unified_gui_layout import scope_capture_calibrated  # type: ignore
             t, v = scope_capture_calibrated(
                 resource=gui.thd_scope_res.text().strip() or "USB::INSTR", ch=1)
             if len(t) < 16:
                 return _synthetic_wave()
             return t, v
-        except Exception as e:  # pragma: no cover (instrument dependent)
+        except Exception as e:  # pragma: no cover
             log.debug("Scope capture fallback: %s", e)
             return _synthetic_wave()
+
+    def _capture_worker():  # thread loop
+        while not gui.thd_capture_stop.is_set():
+            wave = _direct_capture()
+            try:
+                # replace old sample if queue full
+                if gui.thd_capture_queue.full():
+                    try:
+                        gui.thd_capture_queue.get_nowait()
+                    except Exception:
+                        pass
+                gui.thd_capture_queue.put_nowait(wave)
+            except Exception:
+                pass
+            # Sleep a fraction of GUI refresh interval to avoid over-sampling
+            time.sleep(max(0.1, gui.thd_timer.interval()/1000.0 * 0.5))
 
     def _compute_thd():
         f0_hint = None
@@ -131,7 +176,12 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
         if dsp_ext is None or np is None:
             gui.thd_value.setText("THD: stub (install dsp extra)")
             return
-        t, v = _capture_waveform()
+        # Pull latest waveform from queue or perform direct capture if none yet
+        try:
+            t, v = gui.thd_capture_queue.get_nowait()
+        except Exception:
+            t, v = _direct_capture()
+        gui.thd_last_wave = (t, v)
         try:
             thd, f0_est, fund = dsp_ext.thd_fft_waveform(
                 t, v, f0=f0_hint, nharm=nharm)
@@ -160,12 +210,31 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
                 gui.thd_timer.setInterval(iv)
             except Exception:
                 pass
+            # Persist settings
+            try:
+                update_config(
+                    thd_resource=gui.thd_scope_res.text().strip(),
+                    thd_f0=gui.thd_f0.text().strip(),
+                    thd_nharm=gui.thd_nharm.text().strip(),
+                    thd_refresh=gui.thd_refresh.text().strip(),
+                )
+            except Exception:  # pragma: no cover
+                pass
+            # Start capture thread if not running
+            if gui.thd_capture_thread is None or not gui.thd_capture_thread.is_alive():
+                gui.thd_capture_stop.clear()
+                gui.thd_capture_thread = threading.Thread(target=_capture_worker, daemon=True)
+                gui.thd_capture_thread.start()
             gui.thd_timer.start()
             _tick()
 
     def _stop():
         try:
             gui.thd_timer.stop()
+        except Exception:
+            pass
+        try:
+            gui.thd_capture_stop.set()
         except Exception:
             pass
 
@@ -187,7 +256,8 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
                     f0_est = float(thd_txt.split('f0=')[1].split('Hz')[0])
                 except Exception:
                     pass
-            table = dsp_ext.harmonic_table(t, v, f0=f0_est or f0_hint, nharm=nharm)
+            table = dsp_ext.harmonic_table(
+                t, v, f0=f0_est or f0_hint, nharm=nharm)
             # Write simple CSV
             import os
             os.makedirs('results', exist_ok=True)
@@ -201,6 +271,44 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
             gui.thd_status.setText(f"Export error: {e}")
 
     gui.thd_export.clicked.connect(_export)
+
+    def _show_spectrum():
+        if np is None or dsp_ext is None:
+            gui.thd_status.setText("Spectrum requires dsp + numpy")
+            return
+        if gui.thd_last_wave is None:
+            gui.thd_status.setText("No waveform yet")
+            return
+        t, v = gui.thd_last_wave
+        try:
+            import numpy as _n  # type: ignore
+            try:
+                import matplotlib.pyplot as plt  # type: ignore
+            except Exception as e:  # pragma: no cover
+                gui.thd_status.setText(f"matplotlib missing: {e}")
+                return
+            # Compute magnitude spectrum
+            arr_t = _n.asarray(t, dtype=float)
+            arr_v = _n.asarray(v, dtype=float)
+            dt = _n.median(_n.diff(arr_t)) if arr_t.size > 1 else 1.0
+            freqs = _n.fft.rfftfreq(arr_v.size, d=dt)
+            mags = _n.abs(_n.fft.rfft(arr_v))
+            plt.figure()
+            plt.semilogx(freqs + 1e-12, 20*_n.log10(_n.maximum(mags, 1e-18)))
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Magnitude (dB)')
+            plt.title('Waveform Spectrum')
+            plt.grid(True, which='both', ls=':')
+            import os
+            os.makedirs('results', exist_ok=True)
+            out = 'results/spectrum.png'
+            plt.savefig(out, bbox_inches='tight')
+            plt.close()
+            gui.thd_status.setText(f"Spectrum saved -> {out}")
+        except Exception as e:  # pragma: no cover
+            gui.thd_status.setText(f"Spectrum error: {e}")
+
+    gui.thd_spectrum.clicked.connect(_show_spectrum)
 
     return w
 
