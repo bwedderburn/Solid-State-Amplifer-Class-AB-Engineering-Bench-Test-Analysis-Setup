@@ -19,17 +19,16 @@ classifiers = [
 	"Programming Language :: Python :: 3 :: Only",
 	"Operating System :: POSIX :: Linux",
 ]
-dependencies = [
-	"numpy>=1.24",
-]
+dependencies = []
 
 [project.optional-dependencies]
 gui = ["PySide6>=6.6", "PyQt5>=5.15"]
+dsp = ["numpy>=1.24"]
 serial = ["pyserial>=3.5"]
 visa = ["pyvisa>=1.14"]
 labjack = ["LabJackPython>=2.1.0"]
 dev = ["black", "ruff", "mypy", "pre-commit"]
-test = ["pytest", "pytest-cov"]
+test = ["pytest", "pytest-cov", "numpy>=1.24"]
 publish = ["build", "twine", "wheel", "setuptools"]
 
 [project.urls]

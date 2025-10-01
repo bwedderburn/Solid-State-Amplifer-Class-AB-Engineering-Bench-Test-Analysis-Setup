@@ -1,4 +1,6 @@
-import subprocess, sys, pathlib
+import subprocess
+import sys
+import pathlib
 
 PY = sys.executable
 ROOT = pathlib.Path(__file__).resolve().parent.parent
