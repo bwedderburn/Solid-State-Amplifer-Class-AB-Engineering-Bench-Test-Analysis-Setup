@@ -28,6 +28,8 @@ The unified `thd_fft` exposed at the top level (imported via `unified_gui_layout
 
 Detection heuristic: if both first two arguments have `__len__` and NumPy is available, the advanced path is attempted; otherwise the stub path executes. This keeps CLI / lightweight environments working while enabling richer GUI / analysis when NumPy is installed.
 
+The advanced waveform FFT + harmonic extraction lives in `amp_benchkit.dsp_ext` (imported only if present). This keeps the monolithic bridge lean and preserves stub behavior for minimal installs.
+
 ### Example
 ```python
 import math
@@ -78,3 +80,25 @@ To see whether the advanced FFT THD implementation is active (NumPy installed) o
 python unified_gui_layout.py thd-mode
 ```
 Outputs either `advanced` or `stub`.
+
+### New Structured CLI Utilities
+
+Frequency list generation with machine-readable output:
+
+```bash
+python unified_gui_layout.py freq-gen --start 20 --stop 20000 --points 31 --mode log --format json
+```
+Outputs compact JSON: `{ "start": 20.0, "stop": 20000.0, "points": 31, "mode": "log", "frequencies": [...] }`
+
+Or CSV (one float per line) for shell pipelines:
+
+```bash
+python unified_gui_layout.py freq-gen --start 20 --stop 20000 --points 31 --mode log --format csv
+```
+
+Waveform THD from a time,volts CSV file (header optional):
+
+```bash
+python unified_gui_layout.py thd-json capture.csv --f0 1000 --nharm 8 --window hann
+```
+Returns JSON containing `thd`, `f0_est`, `fund_amp`, and a harmonic table (when the `dsp` extra is installed). Short or invalid inputs produce NaN fields while still succeeding with exit code 0 for script robustness.

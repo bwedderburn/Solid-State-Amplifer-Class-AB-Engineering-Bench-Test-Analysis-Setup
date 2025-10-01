@@ -30,6 +30,10 @@ from amp_benchkit.deps import (
 )
 from amp_benchkit.logging import setup_logging, get_logger
 from amp_benchkit.dsp import thd_fft as thd_fft_stub
+try:  # optional advanced DSP extraction
+    from amp_benchkit import dsp_ext as _dsp_ext  # type: ignore
+except Exception:  # pragma: no cover
+    _dsp_ext = None  # type: ignore
 
 import argparse
 import sys
@@ -558,72 +562,20 @@ def vpp(v):
     return float((np.max(v) - np.min(v))) if v.size else float('nan')
 
 
-def thd_fft_scope(t, v, f0=None, nharm=10, window='hann'):
-    """
-    Compute THD using an FFT of the calibrated scope waveform.
-    - t: time array (s)
-    - v: voltage array (V)
-    - f0: fundamental frequency hint (Hz). If None, auto-detect peak > DC.
-    - nharm: number of harmonics to include (≥2)
-    Returns (thd_ratio, f0_est, fund_amp)
-    """
-    t = _np_array(t).astype(float)
-    v = _np_array(v).astype(float)
-    n = v.size
-    if n < 16:
-        return float('nan'), float('nan'), float('nan')
-    # Sample interval and rate
-    dt = float(np.median(np.diff(t)))
-    if dt <= 0:
-        # Fallback: infer from span if needed
-        span = t[-1] - t[0]
-        dt = span/(n-1) if span > 0 else 1e-6
-    fs = 1.0/dt  # retained local variable (may be useful for future debug)
-    # Windowing
-    if window == 'hann':
-        w = np.hanning(n)
-    elif window == 'hamming':
-        w = np.hamming(n)
-    else:
-        w = np.ones(n)
-    v_win = v * w
-    # FFT (one-sided)
-    Y = np.fft.rfft(v_win)
-    f = np.fft.rfftfreq(n, d=dt)
-    mag = np.abs(Y)
-    # Ignore DC when selecting fundamental
-    if f0 is None or f0 <= 0:
-        idx = int(np.argmax(mag[1:])) + 1  # skip DC
-    else:
-        idx = int(np.argmin(np.abs(f - float(f0))))
-        if idx <= 0:
-            idx = int(np.argmax(mag[1:])) + 1
-    fund_amp = float(mag[idx])
-    if fund_amp <= 0:
-        return float('nan'), float(f[idx]), float(0.0)
-    # Sum of harmonic bins (nearest bin to integer multiples)
-    s2 = 0.0
-    for k in range(2, max(2, int(nharm))+1):
-        target = k * f[idx]
-        if target > f[-1]:
-            break
-        hk = int(np.argmin(np.abs(f - target)))
-        if hk <= 0 or hk >= mag.size:
-            continue
-        s2 += float(mag[hk])**2
-    thd = float(np.sqrt(s2) / fund_amp)
-    return thd, float(f[idx]), fund_amp
-
-
 def thd_fft(t_or_samples, v_or_fs, *rest):  # type: ignore[override]
     """Dispatch to scope-based THD when arrays provided, otherwise use stub.
 
     This keeps backward compatibility with imported placeholder thd_fft(samples, fs_hz)
     while letting the GUI and selftest paths call the richer waveform version.
     """
-    if np is not None and hasattr(t_or_samples, '__len__') and hasattr(v_or_fs, '__len__'):
+    if (
+        _dsp_ext is not None
+        and np is not None
+        and hasattr(t_or_samples, '__len__')
+        and hasattr(v_or_fs, '__len__')
+    ):
         try:
-            return thd_fft_scope(t_or_samples, v_or_fs, *rest)
+            return _dsp_ext.thd_fft_waveform(t_or_samples, v_or_fs, *rest)  # type: ignore[attr-defined]
         except Exception:  # pragma: no cover
             pass
     # Fallback to stub (samples, fs_hz)
@@ -3219,6 +3171,33 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--mode", choices=["linear", "log"], default="linear")
     sp.set_defaults(func=_cmd_sweep)
 
+    # freq-gen: structured output (JSON or CSV) building on same backend as sweep
+    def _cmd_freq_gen(a):
+        try:
+            freqs = build_freq_points(
+                start=a.start,
+                stop=a.stop,
+                points=a.points,
+                mode=a.mode,
+            )
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            return 2
+        if a.format == 'json':
+            print(json.dumps({"start": a.start, "stop": a.stop, "points": a.points, "mode": a.mode, "frequencies": freqs}, separators=(",", ":")))
+        else:  # csv
+            for f in freqs:
+                print(f)
+        return 0
+
+    sp = sub.add_parser("freq-gen", help="Generate frequency list (JSON or CSV)")
+    sp.add_argument("--start", type=float, required=True)
+    sp.add_argument("--stop", type=float, required=True)
+    sp.add_argument("--points", type=int, required=True)
+    sp.add_argument("--mode", choices=["linear", "log"], default="linear")
+    sp.add_argument("--format", choices=["json", "csv"], default="json", help="Output format (default json)")
+    sp.set_defaults(func=_cmd_freq_gen)
+
     sp = sub.add_parser("diag", help="Show dependency/hardware status")
     sp.set_defaults(func=_cmd_diag)
 
@@ -3250,6 +3229,68 @@ def build_parser() -> argparse.ArgumentParser:
         print("advanced" if advanced else "stub")
         return 0
     sp.set_defaults(func=_cmd_thd_mode)
+
+    # thd-json: compute THD from CSV file with columns time,volts (header optional)
+    def _cmd_thd_json(a):
+        path = a.file
+        if not os.path.exists(path):
+            print(f"File not found: {path}", file=sys.stderr)
+            return 2
+        # Best effort parse; expect two columns
+        rows_t = []
+        rows_v = []
+        try:
+            with open(path, 'r', encoding='utf-8') as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.lower().startswith('time') and any(c.isalpha() for c in line):
+                        # header
+                        continue
+                    parts = [p for p in line.replace(',', ' ').split() if p]
+                    if len(parts) < 2:
+                        continue
+                    try:
+                        tval = float(parts[0])
+                        vval = float(parts[1])
+                    except Exception:
+                        continue
+                    rows_t.append(tval)
+                    rows_v.append(vval)
+        except Exception as e:
+            print(f"Read error: {e}", file=sys.stderr)
+            return 3
+        if not rows_t or not rows_v or len(rows_t) != len(rows_v):
+            print("No valid data parsed", file=sys.stderr)
+            return 4
+        # Attempt advanced path
+        thd_ratio = f0_est = fund_amp = float('nan')
+        harmonics = []
+        if _dsp_ext is not None and np is not None:
+            try:
+                thd_ratio, f0_est, fund_amp = _dsp_ext.thd_fft_waveform(rows_t, rows_v, f0=a.f0 if a.f0 else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
+                harmonics = _dsp_ext.harmonic_table(rows_t, rows_v, f0=f0_est if f0_est==f0_est else None, nharm=a.nharm, window=a.window)  # type: ignore[attr-defined]
+            except Exception:
+                pass
+        # Fallback stub path: cannot compute from time-domain file without DSP → leave NaNs
+        out = {
+            "file": path,
+            "points": len(rows_t),
+            "thd": thd_ratio,
+            "f0_est": f0_est,
+            "fund_amp": fund_amp,
+            "harmonics": harmonics,
+        }
+        print(json.dumps(out, separators=(",", ":")))
+        return 0
+
+    sp = sub.add_parser("thd-json", help="Compute THD from time,volts CSV -> JSON")
+    sp.add_argument("file", help="Input CSV file with columns time,volts (header optional)")
+    sp.add_argument("--f0", type=float, default=None, help="Fundamental frequency hint (Hz)")
+    sp.add_argument("--nharm", type=int, default=10, help="Number of harmonics to include")
+    sp.add_argument("--window", choices=["hann", "hamming", "rect"], default="hann")
+    sp.set_defaults(func=_cmd_thd_json)
 
     return p
 
