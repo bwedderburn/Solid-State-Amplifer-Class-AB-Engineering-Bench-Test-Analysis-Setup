@@ -14,9 +14,11 @@ def load_config():
     global _cache
     if _cache is not None:
         return _cache
-    if CONFIG_PATH.exists():
+    # Support tests monkeypatching CONFIG_PATH to a string
+    path = CONFIG_PATH if isinstance(CONFIG_PATH, Path) else Path(str(CONFIG_PATH))
+    if path.exists():
         try:
-            _cache = json.loads(CONFIG_PATH.read_text())
+            _cache = json.loads(path.read_text())
         except Exception:
             _cache = {}
     else:
@@ -25,7 +27,13 @@ def load_config():
 
 
 def save_config(data):
-    CONFIG_PATH.write_text(json.dumps(data, indent=2))
+    path = CONFIG_PATH if isinstance(CONFIG_PATH, Path) else Path(str(CONFIG_PATH))
+    if not path.parent.exists():
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
+    path.write_text(json.dumps(data, indent=2))
 
 
 def update_config(**kv):

@@ -3303,6 +3303,96 @@ def build_parser() -> argparse.ArgumentParser:
         "--window", choices=["hann", "hamming", "rect"], default="hann")
     sp.set_defaults(func=_cmd_thd_json)
 
+    # spectrum: generate magnitude spectrum PNG from CSV or synthetic sine
+    def _cmd_spectrum(a):
+        # Determine output directory (config or arg)
+        try:
+            cfg = load_config()
+        except Exception:
+            cfg = {}
+        out_dir = a.outdir or cfg.get('results_dir') or 'results'
+        os.makedirs(out_dir, exist_ok=True)
+        # Acquire waveform
+        rows_t = []
+        rows_v = []
+        if a.file:
+            if not os.path.exists(a.file):
+                print(f"File not found: {a.file}", file=sys.stderr)
+                return 2
+            try:
+                with open(a.file, 'r', encoding='utf-8') as fh:
+                    for line in fh:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        if line.lower().startswith('time') and any(c.isalpha() for c in line):
+                            continue
+                        parts = [p for p in line.replace(',', ' ').split() if p]
+                        if len(parts) < 2:
+                            continue
+                        try:
+                            tval = float(parts[0]); vval = float(parts[1])
+                        except Exception:
+                            continue
+                        rows_t.append(tval); rows_v.append(vval)
+            except Exception as e:
+                print(f"Read error: {e}", file=sys.stderr)
+                return 3
+        else:  # synthetic
+            if np is None:
+                print("numpy required for synthetic spectrum", file=sys.stderr)
+                return 4
+            import numpy as _n  # type: ignore
+            f0 = a.f0 or 1000.0
+            n = a.points
+            fs = a.fs
+            t = _n.arange(n)/fs
+            v = _n.sin(2*_n.pi*f0*t)
+            rows_t = t.tolist(); rows_v = v.tolist()
+        if len(rows_t) < 8 or len(rows_t) != len(rows_v):
+            print("Insufficient data", file=sys.stderr)
+            return 5
+        if np is None:
+            print("numpy not available for FFT", file=sys.stderr)
+            return 6
+        import numpy as _n  # type: ignore
+        try:
+            arr_t = _n.asarray(rows_t, dtype=float)
+            arr_v = _n.asarray(rows_v, dtype=float)
+            dt = _n.median(_n.diff(arr_t)) if arr_t.size > 1 else 1.0
+            freqs = _n.fft.rfftfreq(arr_v.size, d=dt)
+            mags = _n.abs(_n.fft.rfft(arr_v))
+            # Try matplotlib
+            try:
+                import matplotlib
+                matplotlib.use('Agg')  # headless safe
+                import matplotlib.pyplot as plt  # type: ignore
+            except Exception as e:
+                print(f"matplotlib unavailable: {e}", file=sys.stderr)
+                return 7
+            plt.figure()
+            plt.semilogx(freqs + 1e-12, 20*_n.log10(_n.maximum(mags, 1e-18)))
+            plt.xlabel('Frequency (Hz)'); plt.ylabel('Magnitude (dB)')
+            plt.title('Spectrum')
+            plt.grid(True, which='both', ls=':')
+            out_path = os.path.join(out_dir, a.output)
+            plt.savefig(out_path, bbox_inches='tight')
+            plt.close()
+            print(out_path)
+            return 0
+        except Exception as e:
+            print(f"Spectrum error: {e}", file=sys.stderr)
+            return 8
+
+    sp = sub.add_parser("spectrum", help="Export magnitude spectrum PNG from CSV or synthetic")
+    sp.add_argument("--file", help="Input CSV time,volts (if omitted, generate synthetic)")
+    sp.add_argument("--outdir", help="Output directory (defaults results_dir config or ./results)")
+    sp.add_argument("--output", default="spectrum.png", help="Output PNG filename (default spectrum.png)")
+    sp.add_argument("--f0", type=float, default=1000.0, help="Synthetic fundamental (Hz) if no file")
+    sp.add_argument("--fs", type=float, default=50000.0, help="Synthetic sample rate (Hz)")
+    sp.add_argument("--points", type=int, default=4096, help="Synthetic sample count")
+    sp.set_defaults(func=_cmd_spectrum)
+
     return p
 
 
