@@ -102,3 +102,15 @@ Waveform THD from a time,volts CSV file (header optional):
 python unified_gui_layout.py thd-json capture.csv --f0 1000 --nharm 8 --window hann
 ```
 Returns JSON containing `thd`, `f0_est`, `fund_amp`, and a harmonic table (when the `dsp` extra is installed). Short or invalid inputs produce NaN fields while still succeeding with exit code 0 for script robustness.
+
+### Real-Time THD GUI Tab
+
+The GUI now includes an optional "THD" tab (shown when Qt & `dsp` extra are installed) providing:
+
+- Live THD % readout (default 1 Hz refresh) from either:
+    - Tektronix scope capture (best-effort via VISA), or
+    - Synthetic dual-tone (1 kHz + small 2nd harmonic) fallback when hardware not present.
+- Adjustable harmonic count and refresh interval (ms).
+- Export button writing a `results/harmonics.csv` table: `k,freq_hz,mag`.
+
+If advanced DSP is unavailable, the tab displays a stub notice instead of failing.

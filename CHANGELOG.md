@@ -6,6 +6,19 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
+- (none yet)
+
+### Changed
+- (none yet)
+
+### Fixed
+- (none yet)
+
+### Notes / Follow-ups
+- (none yet)
+
+## [0.3.3] - 2025-10-01
+### Added
 - CI coverage reporting artifacts (coverage XML per Python version).
 - Automated publish workflow (`publish.yml`) for tag-based PyPI release (token required).
 - Multi-OS distribution build & smoke test job.
@@ -14,17 +27,18 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 - Extracted advanced waveform FFT + harmonic analysis into `amp_benchkit.dsp_ext` (optional import) to reduce monolith size.
 - `freq-gen` CLI subcommand producing JSON or CSV frequency lists (structured alternative to `sweep`).
 - `thd-json` CLI subcommand computing THD + harmonic table from time,volts CSV input.
+- Real-time GUI THD tab with synthetic fallback waveform and optional scope capture.
+- THD tab controls: adjustable refresh interval & harmonic count, export harmonics CSV button.
 
 ### Changed
-- (placeholder)
 - `unified_gui_layout.thd_fft` now delegates to `dsp_ext.thd_fft_waveform` when available (behavior preserved; stub fallback unaffected).
 
 ### Fixed
-- (placeholder)
+- Graceful handling for short or invalid THD waveform inputs in CLI JSON path.
 
 ### Notes / Follow-ups
-- Optionally integrate coverage upload to Codecov or similar.
 - Consider promoting `dsp_ext` APIs into documented public surface in next minor release.
+- Potential future: integrate mini spectrum plot in THD tab.
 
 ## [0.3.2] - 2025-10-01
 ### Added
@@ -64,7 +78,8 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 ### Added
 - (Backfill placeholder) Initial modular extraction groundwork; previous history reconstructed from repository.
 
-[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.2...HEAD
+[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.3...HEAD
+[0.3.3]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.2...0.3.3
 [0.3.2]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/bwedderburn/amp-benchkit/releases/tag/0.3.0
