@@ -31,8 +31,17 @@ except Exception as e:  # pragma: no cover
 
 # ------------------ LabJack u3 ------------------
 try:  # pragma: no cover
-    import u3 as _u3  # type: ignore
-    HAVE_U3 = True
+    # LabJackPython prints to stdout on import failure; suppress to keep CLI clean
+    import os
+    import sys
+    _old_stdout = sys.stdout
+    try:
+        with open(os.devnull, 'w') as devnull:
+            sys.stdout = devnull
+            import u3 as _u3  # type: ignore
+            HAVE_U3 = True
+    finally:
+        sys.stdout = _old_stdout
 except Exception as e:  # pragma: no cover
     _u3 = None
     U3_ERR = e
