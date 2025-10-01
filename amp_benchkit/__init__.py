@@ -8,4 +8,4 @@ __all__ = [
     "__version__",
 ]
 
-__version__ = "0.3.1"  # Single-source version
+__version__ = "0.3.2"  # Single-source version

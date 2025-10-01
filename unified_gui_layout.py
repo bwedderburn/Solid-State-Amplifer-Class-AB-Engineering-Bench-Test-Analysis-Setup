@@ -3232,7 +3232,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("gui", help="Launch Qt GUI (if available)")
     sp.set_defaults(func=_cmd_gui)
 
-    sp = sub.add_parser("thd-mode", help="Report THD implementation mode (advanced or stub)")
+    sp = sub.add_parser(
+        "thd-mode", help="Report THD implementation mode (advanced or stub)")
+
     def _cmd_thd_mode(_a):  # local lightweight handler
         advanced = (np is not None)
         # Heuristic: verify advanced path actually executable with small synthetic waveform

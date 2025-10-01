@@ -6,6 +6,19 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 
 ## [Unreleased]
 ### Added
+- (placeholder)
+
+### Changed
+- (placeholder)
+
+### Fixed
+- (placeholder)
+
+### Notes / Follow-ups
+- (placeholder)
+
+## [0.3.2] - 2025-10-01
+### Added
 - THD dual-dispatch (`thd_fft`) with advanced FFT path (requires `dsp` extra / NumPy) and lightweight stub fallback.
 - Optional `dsp` extra to avoid forcing NumPy for minimal installs.
 - `thd-mode` CLI subcommand to report whether advanced or stub THD path is active.
@@ -14,7 +27,7 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 - Moved NumPy from core dependency list into optional extras (`dsp`, `test`).
 
 ### Fixed
-- (placeholder)
+- Added CI job to ensure stub THD mode works without NumPy.
 
 ### Notes / Follow-ups
 - Consider extracting waveform DSP helpers from `unified_gui_layout.py` into `amp_benchkit.dsp` proper (keeping backward compatibility).
@@ -42,6 +55,7 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 ### Added
 - (Backfill placeholder) Initial modular extraction groundwork; previous history reconstructed from repository.
 
-[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.1...HEAD
+[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.2...HEAD
+[0.3.2]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.1...0.3.2
 [0.3.1]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.0...0.3.1
 [0.3.0]: https://github.com/bwedderburn/amp-benchkit/releases/tag/0.3.0
