@@ -9,9 +9,10 @@ Format: Based on *Keep a Changelog* and follows semantic versioning where practi
 - Async capture thread for real-time THD tab updates.
 - Spectrum export feature in THD tab, allowing data export in various formats.
 - Persistent THD settings, retaining user preferences across sessions.
+- CLI `spectrum` command to export magnitude spectrum PNG from CSV or synthetic sine.
 
 ### Changed
-- (none yet)
+- THD tab now respects `results_dir` config for spectrum export and joins capture thread on stop.
 
 ### Fixed
 - (none yet)

@@ -16,4 +16,4 @@ except Exception:  # pragma: no cover
     pass
 
 # Version bump (must remain simple semver: enforced by tests)
-__version__ = "0.3.4"
+__version__ = "0.3.5"

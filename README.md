@@ -122,3 +122,19 @@ The THD tab now:
 - Persists resource / f0 / harmonic count / refresh interval between runs.
 
 If `matplotlib` is not installed the Spectrum button reports the missing dependency gracefully.
+
+### Spectrum CLI Command (Unreleased)
+A new `spectrum` subcommand exports a magnitude spectrum plot (PNG) from either:
+- A CSV file with `time,volts`
+- A synthetic sine (when `--file` omitted) with parameters `--f0`, `--fs`, `--points`
+
+It respects a configurable output directory via either `--outdir` or the persisted `results_dir` in the config (defaults to `results/`). Example:
+
+```
+python unified_gui_layout.py spectrum --f0 1000 --points 4096 --fs 48000 --outdir results --output spectrum.png
+```
+
+If `matplotlib` is missing the command exits with a clear diagnostic.
+
+### Persistent Results Directory
+Using the THD tab or config utilities you can set `results_dir` which both the GUI spectrum export and CLI `spectrum` command will use when `--outdir` is not specified.

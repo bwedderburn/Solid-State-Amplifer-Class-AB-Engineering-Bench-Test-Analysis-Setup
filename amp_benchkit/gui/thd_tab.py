@@ -240,6 +240,12 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
             gui.thd_capture_stop.set()
         except Exception:
             pass
+        # join thread briefly
+        try:
+            if gui.thd_capture_thread and gui.thd_capture_thread.is_alive():
+                gui.thd_capture_thread.join(timeout=0.5)
+        except Exception:  # pragma: no cover
+            pass
 
     gui.thd_start.clicked.connect(_start)
     gui.thd_stop.clicked.connect(_stop)
@@ -303,8 +309,13 @@ def build_thd_tab(gui: Any) -> Optional[Any]:
             plt.title('Waveform Spectrum')
             plt.grid(True, which='both', ls=':')
             import os
-            os.makedirs('results', exist_ok=True)
-            out = 'results/spectrum.png'
+            try:
+                cfg = load_config()
+            except Exception:
+                cfg = {}
+            out_dir = cfg.get('results_dir', 'results')
+            os.makedirs(out_dir, exist_ok=True)
+            out = os.path.join(out_dir, 'spectrum.png')
             plt.savefig(out, bbox_inches='tight')
             plt.close()
             gui.thd_status.setText(f"Spectrum saved -> {out}")
