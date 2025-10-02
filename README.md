@@ -8,6 +8,8 @@ Unified GUI + LabJack instrumentation helper environment.
 ![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
 ![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
 
+> Documentation reflects the released 0.3.0 baseline. A future headless frequency sweep CLI (`sweep` subcommand) referenced in earlier development drafts is **deferred** and intentionally omitted here until implemented on a feature branch.
+
 
 ## Contents
 
@@ -18,7 +20,6 @@ Unified GUI + LabJack instrumentation helper environment.
 - `amp_benchkit/dsp.py` – DSP helpers (RMS, Vpp, THD FFT, bandwidth knees).
 - `amp_benchkit/gui/` – Incremental extraction of GUI tabs (generator, scope, DAQ extracted).
 - `amp_benchkit/u3util.py` – LabJack U3 safe‑open and feature detection utilities.
-  
 - `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
 - `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
 
@@ -50,63 +51,6 @@ amp-benchkit diag              # dependency diagnostics summary
 amp-benchkit gui --gui         # launch GUI (or use: amp-benchkit-gui --gui)
 amp-benchkit config-dump       # show persisted JSON config
 amp-benchkit config-reset      # reset config to defaults
-
-# Generate frequency sweep (headless list output)
-amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
-
-```
-
-### Sweep CLI (Headless Frequency Lists)
-
-The `sweep` subcommand prints a list of frequency points to stdout (one per line) for use in shell pipelines or other tooling.
-
-Arguments:
-
-* `--start` (Hz, float, required)
-* `--stop` (Hz, float, required)
-* `--points` (int >= 2, required)
-* `--mode` (`log` | `linear`, default: `log`)
-
-Spacing rules:
-* `linear`: even arithmetic spacing including both endpoints.
-* `log`: geometric progression including endpoints (requires start > 0, stop > 0).
-
-Example (log spaced 6 points 10 Hz → 10 kHz):
-
-```bash
-amp-benchkit sweep --start 10 --stop 10000 --points 6 --mode log
-```
-Outputs (rounded to 6 decimals, trailing zeros trimmed):
-```
-10
-46.415889
-215.443469
-1000
-4641.588834
-10000
-```
-
-Linear example:
-
-```bash
-amp-benchkit sweep --start 100 --stop 1000 --points 10 --mode linear
-```
-
-Exit codes:
-* 0 on success
-* 1 on invalid arguments (e.g. points < 2, stop < start)
-
-Typical usage piping into another tool:
-
-```bash
-for f in $(amp-benchkit sweep --start 20 --stop 20000 --points 25 --mode log); do \
-	echo "Would run measurement at $f Hz"; \
-done
-```
-
-Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) and direct KPI sweep command.
-
-> Note: Direct invocation via `python unified_gui_layout.py ...` still works but is considered a legacy path. Prefer the installed console scripts (`amp-benchkit`, `amp-benchkit-gui`) for forward compatibility; future releases may relocate the legacy file.
 ```
 
 Add `--verbose` to any of the above to elevate logging to DEBUG.
@@ -197,19 +141,7 @@ Planned:
 - `make install-exodriver` – run wrapper.
 - `make check-usb` – run health script.
 - `make gui` – launch GUI.
-- `make selftest` – run headless integrations.
-
-## Development Hygiene
-
-Install and enable pre-commit hooks to catch style and oversized file issues early:
-```bash
-pip install pre-commit
-pre-commit install
-pre-commit run --all-files   # optional first full pass
-```
-Hooks block committing virtualenvs / `site-packages` and large (>5MB) binaries, and run ruff, formatting, and mypy.
 - `make selftest` – headless tests.
- - See `ROADMAP.md` for planned milestones and how to propose new items (edit a single table row per PR).
 
 ## Development (Lint / Format / Type)
 
