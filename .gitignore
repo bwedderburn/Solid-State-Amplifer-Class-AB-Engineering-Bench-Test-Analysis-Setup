@@ -67,3 +67,6 @@ exodriver/*
 !exodriver/liblabjackusb
 !exodriver/examples/
 !exodriver/install/
+
+# GPG private key backup (should not be committed going forward)
+private-key-backup.asc
