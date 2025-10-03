@@ -1,4 +1,11 @@
 # Unified GUI Layout (Lite + U3)
+
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
+
+Cross-platform control panel for:
+
+```markdown
+# Unified GUI Layout (Lite + U3)
 ![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
 
 Cross-platform control panel for:
@@ -14,58 +21,59 @@ Cross-platform control panel for:
 - Built-in `selftest` for protocol formatting and sanity checks.
 
 ## THD Calculation Dispatcher
-The unified `thd_fft` exposed at the top level (imported via `unified_gui_layout`) performs dual-dispatch:
+`thd_fft` (via `unified_gui_layout`) provides:
+1. Waveform mode: `thd_fft(t_array, v_array, f0=..., nharm=..., window='hann')`
+2. Stub mode: `thd_fft(samples, fs_hz)` returning a placeholder when advanced DSP unavailable.
 
-1. Advanced waveform mode: `thd_fft(t_array, v_array, f0=..., nharm=..., window='hann')`
-   - `t_array`: time samples (seconds)
-   - `v_array`: voltage samples (volts)
-   - Returns `(thd_ratio, f0_est_hz, fundamental_bin_amplitude)`
-   - Uses an FFT with windowing and harmonic bin summation. Requires at least 16 samples; shorter inputs yield NaNs.
-2. Stub/sample mode: `thd_fft(samples, fs_hz)`
-   - `samples`: arbitrary iterable of amplitudes
-   - `fs_hz`: sample rate (ignored in stub)
-   - Returns `(0.0, 1000.0, max_abs_sample)` — minimal placeholder for environments without NumPy.
-
-Detection heuristic: if both first two arguments have `__len__` and NumPy is available, the advanced path is attempted; otherwise the stub path executes. This keeps CLI / lightweight environments working while enabling richer GUI / analysis when NumPy is installed.
-
-The advanced waveform FFT + harmonic extraction lives in `amp_benchkit.dsp_ext` (imported only if present). This keeps the monolithic bridge lean and preserves stub behavior for minimal installs.
+Heuristic: if both first args are sequence-like and NumPy exists → advanced mode; else stub.
 
 ### Example
 ```python
-import math
-import unified_gui_layout as ugl
+import math, unified_gui_layout as ugl
+```jsonc
+# Unified GUI Layout (Lite + U3)
 
-# Stub path (no NumPy arrays provided or NumPy not installed)
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
+
+Cross-platform control panel for:
+- FeelTech FY3200S function generator (dual-channel)
+- Tektronix TDS2024B oscilloscope (VISA)
+- LabJack U3/U3-HV DAQ (AIN/DIO, timers, watchdog)
+
+## Features
+
+- FY: per-channel setup, frequency sweeps; auto-baud fallback
+- Scope: capture raw bytes, calibrated CSV, quick PNG plots
+- U3: Read/Stream and **Config Defaults** tabs modeled after LJControlPanel
+- Automation: frequency sweep with single shared FY port/protocol override
+- Built-in `selftest` for protocol formatting and sanity checks
+
+## THD Calculation Dispatcher
+
+`thd_fft` (via `unified_gui_layout`) provides two modes:
+1. Waveform mode: `thd_fft(t_array, v_array, f0=..., nharm=..., window='hann')`
+2. Stub mode: `thd_fft(samples, fs_hz)` placeholder when advanced DSP unavailable.
+
+Heuristic: if both first args are sequence-like and NumPy exists → advanced mode; else stub.
+
+### Example
+
+```python
+import math, unified_gui_layout as ugl
 thd, f_est, a0 = ugl.thd_fft([0.0, 1.0, -0.5], 48000.0)
-print(thd, f_est, a0)  # 0.0 1000.0 1.0
-
-# Advanced path (requires NumPy)
-try:
-    import numpy as np
-    fs = 50_000.0
-    f0 = 1000.0
-    n = 4096
-    t = np.arange(n)/fs
-    v = np.sin(2*math.pi*f0*t) + 0.1*np.sin(2*math.pi*2*f0*t)
-    thd, f_est, a0 = ugl.thd_fft(t, v, f0=f0)
-    print(thd, f_est, a0)
-except ImportError:
-    pass
+print(thd, f_est, a0)
 ```
 
 ## Installation Extras
 
-Base installation keeps dependencies minimal. Enable optional capabilities:
+Install extras as needed:
 
-- GUI tabs (Qt): `pip install "amp-benchkit[gui]"`
-- Advanced FFT THD / numeric helpers: `pip install "amp-benchkit[dsp]"`
-- Serial / VISA / LabJack hardware stacks: `pip install "amp-benchkit[serial,visa,labjack]"`
-- Everything developers typically need: `pip install "amp-benchkit[gui,dsp,serial,visa,labjack,test]"`
-
-If NumPy is absent, `thd_fft` falls back to a stub (always 0 THD) while remaining features continue to work.
+- GUI: `pip install "amp-benchkit[gui]"`
+- DSP: `pip install "amp-benchkit[dsp]"`
+- Hardware stacks: `pip install "amp-benchkit[serial,visa,labjack]"`
+- Full dev: `pip install "amp-benchkit[gui,dsp,serial,visa,labjack,test]"`
 
 ### Release Helper
-Use the helper script to bump versions:
 
 ```bash
 chmod +x scripts/release.sh
@@ -73,68 +81,105 @@ chmod +x scripts/release.sh
 git push && git push --tags
 ```
 
-### CLI Helper: THD Mode
-To see whether the advanced FFT THD implementation is active (NumPy installed) or the stub fallback is in use:
+### CLI Snippets
 
 ```bash
 python unified_gui_layout.py thd-mode
-```
-Outputs either `advanced` or `stub`.
-
-### New Structured CLI Utilities
-
-Frequency list generation with machine-readable output:
-
-```bash
 python unified_gui_layout.py freq-gen --start 20 --stop 20000 --points 31 --mode log --format json
-```
-Outputs compact JSON: `{ "start": 20.0, "stop": 20000.0, "points": 31, "mode": "log", "frequencies": [...] }`
-
-Or CSV (one float per line) for shell pipelines:
-
-```bash
-python unified_gui_layout.py freq-gen --start 20 --stop 20000 --points 31 --mode log --format csv
-```
-
-Waveform THD from a time,volts CSV file (header optional):
-
-```bash
 python unified_gui_layout.py thd-json capture.csv --f0 1000 --nharm 8 --window hann
 ```
-Returns JSON containing `thd`, `f0_est`, `fund_amp`, and a harmonic table (when the `dsp` extra is installed). Short or invalid inputs produce NaN fields while still succeeding with exit code 0 for script robustness.
 
-### Real-Time THD GUI Tab
+### Real-Time THD Tab (Optional)
 
-The GUI now includes an optional "THD" tab (shown when Qt & `dsp` extra are installed) providing:
+Provides live THD %, spectrum export (if matplotlib present), harmonic table, persistence.
 
-- Live THD % readout (default 1 Hz refresh) from either:
-    - Tektronix scope capture (best-effort via VISA), or
-    - Synthetic dual-tone (1 kHz + small 2nd harmonic) fallback when hardware not present.
-- Adjustable harmonic count and refresh interval (ms).
-- Export button writing a `results/harmonics.csv` table: `k,freq_hz,mag`.
+### Spectrum CLI (Unreleased)
 
-If advanced DSP is unavailable, the tab displays a stub notice instead of failing.
-
-### Real-Time THD Tab Enhancements (Unreleased)
-The THD tab now:
-- Uses a background capture thread (reduces UI jitter).
-- Adds a Show Spectrum button (saves `results/spectrum.png`).
-- Persists resource / f0 / harmonic count / refresh interval between runs.
-
-If `matplotlib` is not installed the Spectrum button reports the missing dependency gracefully.
-
-### Spectrum CLI Command (Unreleased)
-A new `spectrum` subcommand exports a magnitude spectrum plot (PNG) from either:
-- A CSV file with `time,volts`
-- A synthetic sine (when `--file` omitted) with parameters `--f0`, `--fs`, `--points`
-
-It respects a configurable output directory via either `--outdir` or the persisted `results_dir` in the config (defaults to `results/`). Example:
-
-```
+```bash
 python unified_gui_layout.py spectrum --f0 1000 --points 4096 --fs 48000 --outdir results --output spectrum.png
 ```
 
-If `matplotlib` is missing the command exits with a clear diagnostic.
-
 ### Persistent Results Directory
-Using the THD tab or config utilities you can set `results_dir` which both the GUI spectrum export and CLI `spectrum` command will use when `--outdir` is not specified.
+
+Configure once; reused by spectrum and THD exports.
+
+## Developer: CodeGPT MCP Integration
+
+Expose BenchKit utilities to a local MCP server for the CodeGPT extension.
+
+### 1. Client Config
+
+File: `.codegpt/mcp_config.json`
+
+```jsonc
+{
+  "mcpServers": {
+    "ampBenchKitLocal": { "url": "http://localhost:5001", "auth": "CHANGE_ME_SECURE_TOKEN" }
+  }
+}
+```
+
+### 2. Minimal FastAPI Server (`tools/mcp_server.py`)
+
+```python
+from __future__ import annotations
+import os
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
+from amp_benchkit.automation import build_freq_points
+import unified_gui_layout as ugl
+
+TOKEN = os.environ.get("AMP_BENCHKIT_MCP_TOKEN", "")
+app = FastAPI(title="Amp BenchKit MCP")
+
+def _auth(tok):
+    if TOKEN and tok != TOKEN:
+        raise HTTPException(status_code=401, detail="bad token")
+
+class FreqReq(BaseModel):
+    start: float; stop: float; points: int; mode: str = "log"
+@app.post('/freq-points')
+def freq_points(r: FreqReq, authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    return {"frequencies": build_freq_points(r.start, r.stop, r.points, r.mode)}
+
+class THDReq(BaseModel):
+    samples: list[float]; fs: float | None = None
+@app.post('/thd')
+def thd(r: THDReq, authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    thd_ratio, f0_est, fund = ugl.thd_fft(r.samples, r.fs or 48000.0)
+    return {"thd": thd_ratio, "f0_est": f0_est, "fund_amp": fund}
+
+@app.get('/ping')
+def ping(authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    return {"ok": True}
+```
+
+### 3. Run
+
+```bash
+pip install fastapi uvicorn
+export AMP_BENCHKIT_MCP_TOKEN=your-long-random-token
+python -m uvicorn tools.mcp_server:app --port 5001 --reload
+```
+
+### 4. Security
+
+Use a long random token; add TLS & rate limiting before exposing externally.
+
+### 5. Hardware Opt-In
+
+```bash
+export AMP_BENCHKIT_ENABLE_U3=1
+```
+
+Restart processes after enabling to attempt actual u3 import.
+
+### 6. Future Endpoints
+
+`/sweep`, `/spectrum`, `/config` (job-based for long tasks).
+
+Contribution tip: add tests for new endpoints.
+
