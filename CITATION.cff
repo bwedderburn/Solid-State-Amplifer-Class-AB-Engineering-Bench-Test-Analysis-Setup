@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use amp-benchkit in your work, please cite it as below."
+title: "amp-benchkit: Unified GUI + LabJack Instrumentation Toolkit"
+authors:
+  - family-names: "YourSurname"
+    given-names: "YourGivenNames"
+    affiliation: "Your Organization"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
+version: "0.2.0"
+license: MIT
+repository-code: "https://github.com/your-org-or-user/amp-benchkit"
+url: "https://github.com/your-org-or-user/amp-benchkit"
+keywords:
+  - instrumentation
+  - labjack
+  - automation
+  - dsp
+  - gui
+abstract: |
+  amp-benchkit provides modular Python helpers and a multi-tab GUI for function generator control,
+  scope acquisition, LabJack U3 I/O, and DSP analysis in audio / electronics bench workflows.
+  It aims to streamline lab automation scripts and exploratory measurements with a consistent API.

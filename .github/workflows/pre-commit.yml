@@ -1,0 +1,42 @@
+name: Pre-Commit
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies (minimal for hooks)
+        run: |
+          python -m pip install --upgrade pip
+          # Install only what's needed for hooks (ruff, black, mypy, etc.) via extras
+          pip install .[dev,test]
+          pip install pre-commit
+
+      - name: Cache pre-commit env
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            pre-commit-${{ runner.os }}-
+
+      - name: Run pre-commit (all files)
+        run: pre-commit run --all-files --show-diff-on-failure
+
+      - name: Summary
+        if: always()
+        run: |
+          echo 'Pre-commit hook run complete.'
