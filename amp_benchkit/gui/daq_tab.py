@@ -5,6 +5,9 @@ The builder attaches all created widgets as attributes on the passed `gui` objec
 containing the three sub-tabs: Read/Stream, Config Defaults, Test Panel.
 """
 from __future__ import annotations
+import os as _os
+from typing import Any, Optional
+from ._qt import require_qt
 
 # NOTE: We intentionally avoid importing PySide6 at module import time so that
 # headless test environments (no libEGL) can still import this module. The
@@ -12,16 +15,16 @@ from __future__ import annotations
 
 # Reuse existing helpers / symbols from monolith context (import lazily to avoid heavy deps at import time)
 from ..deps import fixed_font  # type: ignore
-# (LabJack utility imports deferred/remove until functional implementation restored)
-# Optional LabJack dependency: avoid hard import failure during tests or headless use
-try:  # pragma: no cover - environment dependent
-    import u3 as _u3  # type: ignore
-except Exception:  # pragma: no cover
-    _u3 = None  # type: ignore
-from ._qt import require_qt
-
-
-from typing import Any, Optional
+# Optional LabJack dependency strategy:
+#   Always present `_u3 = None` unless environment variable explicitly enables it.
+#   Deterministic outcome for tests; opt-in for real hardware via AMP_BENCHKIT_ENABLE_U3=1.
+_u3 = None  # type: ignore
+if _os.environ.get("AMP_BENCHKIT_ENABLE_U3") == "1":  # pragma: no cover (hardware path)
+    try:  # pragma: no cover
+        import u3 as _real_u3  # type: ignore
+        _u3 = _real_u3  # type: ignore
+    except Exception:  # pragma: no cover
+        _u3 = None  # type: ignore
 
 def build_daq_tab(gui: Any) -> Optional[Any]:
     qt = require_qt()
