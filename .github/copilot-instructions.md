@@ -62,6 +62,8 @@ Concise, codebase-specific guidance for productive, safe AI-driven changes. Focu
 - Do **not** attempt to fully rewrite `unified_gui_layout.py` in one PR; extract incrementally.
 - Do **not** add new heavyweight dependencies without discussion.
 - Avoid global state/singletons—prefer dependency injection as in `automation.py`.
+- Do **not** assume hardware is present; always use feature detection and graceful degradation.
+- Do **not** modify core instrument APIs without checking Public API stability guarantees.
 
 ---
 For unclear or missing patterns, propose a diff for this file. Maintainers will clarify and refine.
