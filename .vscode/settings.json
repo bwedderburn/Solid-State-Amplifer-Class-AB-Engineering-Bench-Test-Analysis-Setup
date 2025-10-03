@@ -5,7 +5,7 @@
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
   },
-  "CodeGPT.apiKey": "Anthropic",
+  "CodeGPT.apiKey": "CodeGPT Plus",
   "chat.agent.maxRequests": 1000,
   "python-envs.defaultEnvManager": "ms-python.python:venv",
   "python-envs.pythonProjects": [],
