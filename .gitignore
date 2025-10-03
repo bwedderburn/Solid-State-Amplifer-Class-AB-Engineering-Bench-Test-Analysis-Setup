@@ -1,72 +1,41 @@
-#############################
-# Project Git Ignore Rules  #
-#############################
+# Core Python ignores
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+build/
+dist/
 
 # Virtual environments
 .venv/
 venv/
 env/
 
-# Python cache / bytecode
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-
-# Build / packaging artifacts
-build/
-dist/
-*.egg-info/
-*.egg
-wheelhouse/
-
-# Test / coverage
-.pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-coverage.xml
-
-# Type checking / static analysis
+# Tool caches
 .mypy_cache/
 .ruff_cache/
-pyrightconfig.json
+.pytest_cache/
 
-# IDE / editor
+# IDE / Editor
 .vscode/
 .idea/
-*.code-workspace
 
-# OS / misc
+# OS artifacts
 .DS_Store
 Thumbs.db
-*.log
 
-# Local env / secrets (none expected, preventative)
+# Local keys / exported public keys (user manage separately)
+pubkey.asc
+private-key-backup*.asc
+*private*.asc
+pub-*.asc
+*.pgp
+*.gpg
+revoke-*.asc
+
+# Environment files (secrets not committed)
 .env
-.env.*
 
-# Matplotlib / Qt runtime
-*.matplotlib
-
-# Jupyter
-.ipynb_checkpoints/
-
-# Generated patches / temp
-patches/*.rej
-
-# Node (if any scripts introduce)
-node_modules/
-
-# Ignore embedded LabJack driver directory contents except marker
-exodriver/*
-!exodriver/README
-!exodriver/INSTALL.*
-!exodriver/90-labjack.rules
-!exodriver/install.sh
-!exodriver/liblabjackusb
-!exodriver/examples/
-!exodriver/install/
-
-# GPG private key backup (should not be committed going forward)
-private-key-backup.asc
+# Generated test artifacts
+coverage.xml
+htmlcov/

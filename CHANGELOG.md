@@ -1,73 +1,88 @@
-Changelog
-=========
+# Changelog
 
 All notable changes to this project will be documented in this file.
-The format is Keep a Changelog, and this project adheres to Semantic Versioning (SemVer)
-starting with 0.x pre‑release phases.
+
+Format: Based on *Keep a Changelog* and follows semantic versioning where practical.
 
 ## [Unreleased]
 ### Added
-- `sweep` CLI subcommand producing linear or log-spaced frequency point lists (headless usage).
-- `amp_benchkit.cli` wrapper module and console script entry points: `amp-benchkit`, `amp-benchkit-gui`.
-- README documentation for sweep usage and examples.
+- Async capture thread for real-time THD tab updates.
+- Spectrum export feature in THD tab, allowing data export in various formats.
+- Persistent THD settings, retaining user preferences across sessions.
+- CLI `spectrum` command to export magnitude spectrum PNG from CSV or synthetic sine.
 
 ### Changed
-- Recommended invocation now via console scripts instead of `python unified_gui_layout.py`.
-
-### Internal / Tooling
-- Added tests for entrypoint wrapper (SystemExit handling, linear sweep output).
-
-## [0.3.0] - 2025-09-28
-### Added
-- New `amp_benchkit.automation` module exposing headless sweep helpers (`build_freq_list`, `sweep_scope_fixed`, `sweep_audio_kpis`).
-- Unit tests for automation orchestration (freq list, sweep KPI path, THD/knees logic injection).
-- Community documents: `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`.
-- TestPyPI release candidate workflow (`.github/workflows/testpypi.yml`) for tags like `v0.3.0-rc1`.
-- README badges (CI, License, Python versions, PyPI) and Development section (lint/format/type instructions).
-
-### Changed
-- `unified_gui_layout.py` now delegates sweep/KPI methods to the automation module; original behavior preserved.
-- Improved internal separation between GUI widgets and orchestration logic for easier scripting reuse.
+- THD tab now respects `results_dir` config for spectrum export and joins capture thread on stop.
 
 ### Fixed
-- Resolved ambiguous truthiness check on NumPy arrays when computing KPI metrics (explicit length check in automation module).
+- (none yet)
 
-### Internal / Tooling
-- Expanded test count (now covers automation flows without hardware by dependency injection).
-- Added release candidate publishing path distinct from stable PyPI tags.
+### Notes / Follow-ups
+- (none yet)
 
-## [0.2.0] - 2025-09-28
+## [0.3.3] - 2025-10-01
 ### Added
-- Completed extraction of all GUI tabs into `amp_benchkit.gui` (`generator`, `scope`, `daq`, `automation`, `diagnostics`).
-- Added LabJack U3 helper parity functions (`u3_read_multi`, etc.) to `u3util` for modular tabs.
-- Introduced lazy (in-function) Qt imports across tab builders for headless test resilience.
+- CI coverage reporting artifacts (coverage XML per Python version).
+- Automated publish workflow (`publish.yml`) for tag-based PyPI release (token required).
+- Multi-OS distribution build & smoke test job.
+- All-extras install job ensuring dependency compatibility.
+- Optional Codecov upload + enforced 70% minimum coverage threshold.
+- Extracted advanced waveform FFT + harmonic analysis into `amp_benchkit.dsp_ext` (optional import) to reduce monolith size.
+- `freq-gen` CLI subcommand producing JSON or CSV frequency lists (structured alternative to `sweep`).
+- `thd-json` CLI subcommand computing THD + harmonic table from time,volts CSV input.
+- Real-time GUI THD tab with synthetic fallback waveform and optional scope capture.
+- THD tab controls: adjustable refresh interval & harmonic count, export harmonics CSV button.
 
 ### Changed
-- Centralized `FY_PROTOCOLS` in `amp_benchkit.fy` and updated generator and automation tabs to reference it.
-- Refactored `unified_gui_layout.py` to delegate all tab construction to builder functions.
-
-### Removed
-- Deprecated DSP wrapper functions (`vrms`, `vpp`, `thd_fft`, `find_knees`) from `unified_gui_layout.py`; users should import from `amp_benchkit.dsp` directly.
+- `unified_gui_layout.thd_fft` now delegates to `dsp_ext.thd_fft_waveform` when available (behavior preserved; stub fallback unaffected).
 
 ### Fixed
-- Eliminated headless Qt import errors (`libEGL.so.1` issues) by moving PySide6 imports inside builder functions.
+- Graceful handling for short or invalid THD waveform inputs in CLI JSON path.
 
-### Internal / Tooling
-- Updated tests to import DSP functions from `amp_benchkit.dsp` directly (no deprecation warnings remain).
-- Roadmap docs (`DEV_GUI_MODULARIZATION.md`) updated to reflect completed modularization milestone.
+### Notes / Follow-ups
+- Consider promoting `dsp_ext` APIs into documented public surface in next minor release.
+- Potential future: integrate mini spectrum plot in THD tab.
 
-## [0.1.2] - 2025-09-??
+## [0.3.2] - 2025-10-01
 ### Added
-- Initial extraction of generator, scope, and DAQ tabs; logging subsystem; config persistence; CI workflows; DSP module.
+- THD dual-dispatch (`thd_fft`) with advanced FFT path (requires `dsp` extra / NumPy) and lightweight stub fallback.
+- Optional `dsp` extra to avoid forcing NumPy for minimal installs.
+- `thd-mode` CLI subcommand to report whether advanced or stub THD path is active.
 
-## [0.1.1] - 2025-09-??
+### Changed
+- Moved NumPy from core dependency list into optional extras (`dsp`, `test`).
+
+### Fixed
+- Added CI job to ensure stub THD mode works without NumPy.
+
+### Notes / Follow-ups
+- Consider extracting waveform DSP helpers from `unified_gui_layout.py` into `amp_benchkit.dsp` proper (keeping backward compatibility).
+
+## [0.3.1] - 2025-10-01
 ### Added
-- Early modularization (deps, instruments) and test scaffolding.
+- Concise AI contributor guide (`.github/copilot-instructions.md`) summarizing architecture, dependency gating, testing patterns.
+- Graceful no-argument CLI behavior: running `python unified_gui_layout.py` now prints help instead of an argparse error.
+- Gated (optional) LabJack U3 import in `amp_benchkit/gui/daq_tab.py` to avoid import failures when `LabJackPython` is absent.
+- Repository-level `.gitignore` to filter virtualenv, build, cache, and coverage artifacts.
+- Vendor `exodriver/install` script (plus its own .gitignore) for reproducible local driver setup.
 
-## [0.1.0] - 2025-09-??
+### Changed
+- Resolved legacy merge remnants in `unified_gui_layout.py`; rely on modular `amp_benchkit` package functions for sweeps and DSP.
+
+### Fixed
+- Prevents hard import errors in GUI tests/environments without LabJack hardware or driver.
+
+### Notes / Follow-ups
+- Add tests for new no-arg help path and optional U3 import guard.
+- Consider extracting remaining legacy logic in `unified_gui_layout.py` into smaller modules.
+- Integrate lint/type checks (ruff/mypy) in CI once environment standardization is done.
+
+## [0.3.0] - 2025-09-??
 ### Added
-- Initial monolithic `unified_gui_layout.py` with multi‑tab GUI and instrumentation helpers.
+- (Backfill placeholder) Initial modular extraction groundwork; previous history reconstructed from repository.
 
----
-
-Unreleased changes will accumulate here until the next tagged version.
+[Unreleased]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.3...HEAD
+[0.3.3]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.2...0.3.3
+[0.3.2]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.1...0.3.2
+[0.3.1]: https://github.com/bwedderburn/amp-benchkit/compare/0.3.0...0.3.1
+[0.3.0]: https://github.com/bwedderburn/amp-benchkit/releases/tag/0.3.0

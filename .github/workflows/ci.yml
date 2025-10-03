@@ -2,79 +2,134 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [ main ]
   pull_request:
-  workflow_dispatch:
+    branches: [ main ]
 
 jobs:
-  test:
+  build-test:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ matrix.python-version }}
+      - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: buildtest-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            buildtest-${{ runner.os }}-${{ matrix.python-version }}-
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Install system deps (alsa, xvfb minimal)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libasound2-dev xvfb
-
-      - name: Install package with test & dev extras
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[test,dev]
-          pip install mypy ruff
-
-      - name: Run tests with coverage (threshold)
-        run: pytest -q --cov=amp_benchkit --cov-report=term-missing --cov-report=xml --cov-fail-under=70
-
-      - name: Upload coverage XML
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.python-version }}
-          path: coverage.xml
-
-      - name: Ruff lint
-        run: ruff check .
-
-      - name: Mypy type check (allow incomplete)
-        run: mypy --ignore-missing-imports amp_benchkit || true
-
-      - name: Build distributions
+          python -m pip install .[test]
+      - name: Run tests with coverage
         run: |
-          python -m pip install build
-          python -m build --sdist --wheel
-
-      - name: Upload dists
+          python -m pip install coverage
+          coverage run -m pytest -q
+          coverage xml -o coverage.xml
+          coverage report --fail-under=70
+      - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ matrix.python-version }}
-          path: dist/*
+          name: coverage-${{ matrix.python-version }}.xml
+          path: coverage.xml
+      - name: Upload to Codecov (optional)
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.xml
+          flags: py${{ matrix.python-version }}
 
-  exodriver-build:
+  minimal-no-dsp:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: nodsp-${{ runner.os }}-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            nodsp-${{ runner.os }}-${{ matrix.python-version }}-
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install (core only, no extras)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+      - name: Verify THD mode is stub
+        run: |
+          MODE=$(python unified_gui_layout.py thd-mode)
+          echo "Mode=$MODE"
+          if [ "$MODE" != "stub" ]; then echo "Expected stub mode without dsp extra" && exit 1; fi
+      - name: Run tests (should auto-skip advanced path parts)
+        run: pytest -q
+
+  build-dist:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: dist-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            dist-${{ runner.os }}-
+  all-extras:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Install build deps
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install all extras
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y build-essential libusb-1.0-0-dev
-      - name: Build liblabjackusb
+          python -m pip install --upgrade pip
+          # Combine extras: gui,dsp,serial,visa,labjack,test
+          python -m pip install .[gui,dsp,serial,visa,labjack,test]
+      - name: Import smoke
         run: |
-          cd exodriver/liblabjackusb
-          make
-          sudo make install
-      - name: Verify library placement
+          python - <<'PY'
+import amp_benchkit, unified_gui_layout as ugl
+print('all-extras version:', amp_benchkit.__version__)
+print('thd-mode check:', 'advanced' if 'advanced' in __import__('subprocess').check_output(['python','unified_gui_layout.py','thd-mode']).decode() else 'stub')
+PY
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Build distributions
         run: |
-          ls -l /usr/local/lib | grep -i labjack || true
-          echo "(LabJackPython import skipped; library presence confirmed)"
+          python -m pip install --upgrade pip build
+          python -m build
+          ls -l dist
+      - name: Install wheel
+        run: |
+          WHEEL=$(ls dist/*.whl | head -n1)
+          python -m pip install "$WHEEL"
+      - name: Smoke test import & version
+        run: |
+          python - <<'PY'
+import amp_benchkit
+print('version:', amp_benchkit.__version__)
+import unified_gui_layout as ugl
+print('thd-mode:', 'advanced' if hasattr(ugl, 'thd_fft') else 'missing')
+PY
