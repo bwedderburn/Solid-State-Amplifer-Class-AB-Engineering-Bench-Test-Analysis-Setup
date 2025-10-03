@@ -5,8 +5,13 @@ A convenience build_all_tabs() returns an iterable of (widget, label) tuples
 for the main window to add.
 """
 from __future__ import annotations
-from ._qt import require_qt
 from typing import List, Tuple, Any
+from ._qt import require_qt
+from .gen_tab import build_generator_tab  # type: ignore
+from .scope_tab import build_scope_tab  # type: ignore
+from .daq_tab import build_daq_tab  # type: ignore
+from .automation_tab import build_automation_tab  # type: ignore
+from .diag_tab import build_diagnostics_tab  # type: ignore
 
 # Import individual tab builders lazily inside build_all_tabs to avoid side-effects on import.
 
@@ -35,4 +40,11 @@ def build_all_tabs(gui: Any) -> List[Tuple[Any, str]]:
     return tabs
 
 
-__all__ = ["build_all_tabs"]
+__all__ = [
+    "build_all_tabs",
+    "build_generator_tab",
+    "build_scope_tab",
+    "build_daq_tab",
+    "build_automation_tab",
+    "build_diagnostics_tab",
+]

@@ -29,7 +29,7 @@ from amp_benchkit.deps import (
     INSTALL_HINTS,
 )
 from amp_benchkit.logging import setup_logging, get_logger
-from amp_benchkit.dsp import thd_fft as thd_fft_stub
+from amp_benchkit.dsp import thd_fft as thd_fft_stub, vrms as _vrms_core, vpp as _vpp_core
 try:  # optional advanced DSP extraction
     from amp_benchkit import dsp_ext as _dsp_ext  # type: ignore
 except Exception:  # pragma: no cover
@@ -552,14 +552,8 @@ def _np_array(x):
     return x if isinstance(x, np.ndarray) else np.asarray(x)
 
 
-def vrms(v):
-    v = _np_array(v)
-    return float(np.sqrt(np.mean(np.square(v.astype(float))))) if v.size else float('nan')
-
-
-def vpp(v):
-    v = _np_array(v)
-    return float((np.max(v) - np.min(v))) if v.size else float('nan')
+## Legacy vrms/vpp wrappers intentionally removed after modularization.
+## (Tests assert they are absent.)
 
 
 def thd_fft(t_or_samples, v_or_fs, *rest):  # type: ignore[override]
@@ -2753,8 +2747,8 @@ class UnifiedGUI(BaseGUI):
                     t = []
                     v = []
                 # Compute KPIs
-                vr = vrms(v) if v else float('nan')
-                pp = vpp(v) if v else float('nan')
+                vr = _vrms_core(v) if v else float('nan')
+                pp = _vpp_core(v) if v else float('nan')
                 thd_ratio = float('nan')
                 thd_percent = float('nan')
                 if getattr(self, 'auto_do_thd', None) and self.auto_do_thd.isChecked() and v:

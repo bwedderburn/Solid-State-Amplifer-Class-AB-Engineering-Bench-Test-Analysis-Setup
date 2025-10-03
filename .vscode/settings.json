@@ -4,5 +4,7 @@
   "editor.formatOnSave": true,
   "[python]": {
     "editor.defaultFormatter": "ms-python.autopep8"
-  }
+  },
+  "CodeGPT.apiKey": "OpenAI",
+  "chat.agent.maxRequests": 1000
 }
