@@ -26,6 +26,12 @@ Thumbs.db
 
 # Local keys / exported public keys (user manage separately)
 pubkey.asc
+private-key-backup*.asc
+*private*.asc
+pub-*.asc
+*.pgp
+*.gpg
+revoke-*.asc
 
 # Environment files (secrets not committed)
 .env
