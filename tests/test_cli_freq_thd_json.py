@@ -81,7 +81,7 @@ def test_thd_json_short_wave():
         rc, out, err = run_cli(['thd-json', path])
         assert rc == 0, err
         data = json.loads(out)
-        # short path returns NaNs (serialized as NaN in JSON not standard; json dumps may output NaN literal allowed by Python)
-        # Accept either NaN or missing harmonics
-        # Python's json allows NaN, check string presence
+        # Short waveforms return NaN values which may serialize as NaN literals in JSON output.
+        # Accept either NaN or missing harmonics.
+        # Python's json allows NaN, check string presence.
         assert ('"thd":NaN' in out) or (not math.isfinite(data['thd']))

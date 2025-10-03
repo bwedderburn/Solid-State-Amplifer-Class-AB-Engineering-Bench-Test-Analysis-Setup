@@ -1,13 +1,18 @@
-"""Stub config persistence."""
+"""Config persistence with simple JSON file and default values.
+
+Tests expect presence of certain default keys (e.g. 'fy_protocol').
+"""
 from __future__ import annotations
 import json
-import os
 from pathlib import Path
 
 CONFIG_PATH = Path.home() / '.config' / 'amp-benchkit' / 'config.json'
 CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
 _cache = None
+DEFAULTS = {
+    "fy_protocol": "FY ASCII 9600",
+}
 
 
 def load_config():
@@ -24,6 +29,9 @@ def load_config():
             _cache = {}
     else:
         _cache = {}
+    # Merge defaults without overwriting existing values
+    for k, v in DEFAULTS.items():
+        _cache.setdefault(k, v)
     return _cache
 
 

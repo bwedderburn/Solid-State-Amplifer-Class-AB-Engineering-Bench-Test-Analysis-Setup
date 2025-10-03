@@ -19,7 +19,7 @@ from ..deps import fixed_font  # type: ignore
 #   Always present `_u3 = None` unless environment variable explicitly enables it.
 #   Deterministic outcome for tests; opt-in for real hardware via AMP_BENCHKIT_ENABLE_U3=1.
 _u3 = None  # type: ignore
-if _os.environ.get("AMP_BENCHKIT_ENABLE_U3") == "1":  # pragma: no cover (hardware path)
+if _os.environ.get("AMP_BENCHKIT_ENABLE_U3", "").lower() in ("1", "true", "yes", "on"):  # pragma: no cover (hardware path)
     try:  # pragma: no cover
         import u3 as _real_u3  # type: ignore
         _u3 = _real_u3  # type: ignore

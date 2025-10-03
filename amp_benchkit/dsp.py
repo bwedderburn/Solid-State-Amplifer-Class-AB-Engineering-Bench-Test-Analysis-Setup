@@ -27,7 +27,7 @@ def vpp(v: Iterable[float]) -> float:
     return float(max(vals) - min(vals))
 
 
-def thd_fft(t, v, f0: float | None = None, nharm: int = 5, window: str = "hann") -> Tuple[float, float, float]:
+def thd_fft(t, v, f0: float | None = None, nharm: int = 5, window: str = "hann", **_ignored) -> Tuple[float, float, float]:
     """Approximate THD using FFT if numpy present, else stub.
 
     Returns (thd_ratio, f0_est, fundamental_amp)

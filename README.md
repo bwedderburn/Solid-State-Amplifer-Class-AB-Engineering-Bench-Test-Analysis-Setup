@@ -182,4 +182,3 @@ Restart processes after enabling to attempt actual u3 import.
 `/sweep`, `/spectrum`, `/config` (job-based for long tasks).
 
 Contribution tip: add tests for new endpoints.
-

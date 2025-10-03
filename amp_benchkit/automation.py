@@ -20,7 +20,7 @@ def build_freq_points(start: float, stop: float, points: int, mode: str = "linea
     Deterministic rounding enforced for test reproducibility.
     """
     if points <= 1:
-        return [round(start, 6)]
+        raise ValueError("points must be >= 2")
     if mode.lower().startswith("log"):
         if start <= 0 or stop <= 0:
             raise ValueError("Log sweep requires positive start/stop")

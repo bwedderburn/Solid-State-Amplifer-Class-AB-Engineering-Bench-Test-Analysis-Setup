@@ -18,3 +18,15 @@ def dep_msg() -> str:
 
 def fixed_font():  # used by daq_tab
     return None
+
+
+# GUI helper stubs expected by earlier refactored code
+def list_ports():  # pragma: no cover - environment/hardware dependent
+    """Return a list of serial port identifiers (stub: empty)."""
+    return []
+
+
+def find_fy_port():  # pragma: no cover - environment/hardware dependent
+    """Attempt to auto-detect FY serial port (stub: None)."""
+    return None
+
