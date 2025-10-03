@@ -1,7 +1,6 @@
+# Ensure project root is on sys.path for test imports
 import sys
-from pathlib import Path
-
-# Ensure project root (parent of tests/) is on sys.path for imports without installation
-ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+import pathlib
+root = pathlib.Path(__file__).resolve().parent.parent
+if str(root) not in sys.path:
+    sys.path.insert(0, str(root))

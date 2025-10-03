@@ -1,74 +1,71 @@
 [build-system]
-requires = ["setuptools>=69", "wheel"]
+requires = ["setuptools>=65", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "amp-benchkit"
-version = "0.3.1.dev2"
-description = "Unified GUI + LabJack tooling and installer helpers"
-authors = [ { name = "Your Name", email = "you@example.com" } ]
+dynamic = ["version"]
+description = "Unified bench automation + optional GUI tabs for LabJack / Tek / FY"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-keywords = ["labjack", "instrumentation", "gui", "automation"]
+authors = [
+	{ name = "Maintainers", email = "you@example.com" }
+]
+keywords = ["labjack", "instrumentation", "automation", "gui", "dsp"]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Intended Audience :: Developers",
-  "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Operating System :: POSIX :: Linux",
-  "Environment :: Console",
-  "Environment :: X11 Applications :: Qt",
-  "Topic :: Scientific/Engineering",
-  "Topic :: Scientific/Engineering :: Information Analysis",
-  "Topic :: Scientific/Engineering :: Interface Engine/Protocol Translator",
-  "Topic :: Scientific/Engineering :: Visualization",
-  "Topic :: System :: Hardware :: Universal Serial Bus (USB)",
-  "Topic :: Utilities",
-  "Framework :: Pytest"
+	"License :: OSI Approved :: MIT License",
+	"Programming Language :: Python :: 3",
+	"Programming Language :: Python :: 3 :: Only",
+	"Operating System :: POSIX :: Linux",
 ]
-
-# Core runtime deps (mirrors requirements.txt)
-dependencies = [
-  "numpy==2.3.3",
-  "matplotlib==3.10.6",
-  "pyvisa==1.15.0",
-  "pyserial==3.5",
-  "LabJackPython==2.1.0",
-  # Leave GUI bindings as optional extras below
-]
+dependencies = []
 
 [project.optional-dependencies]
-# Install with: pip install .[gui]
- gui = ["PySide6==6.9.2", "PyQt5==5.15.11"]
- dev = ["black", "ruff", "mypy", "pre-commit"]
- test = ["pytest", "pytest-cov"]
- publish = ["build", "twine", "wheel", "setuptools"]
-
-[project.scripts]
-amp-benchkit = "amp_benchkit.cli:main"
-amp-benchkit-gui = "amp_benchkit.cli:main_gui"
-
-[tool.setuptools]
-packages = ["amp_benchkit"]
-py-modules = ["unified_gui_layout"]
+gui = ["PySide6>=6.6", "PyQt5>=5.15"]
+dsp = ["numpy>=1.24"]
+serial = ["pyserial>=3.5"]
+visa = ["pyvisa>=1.14"]
+labjack = ["LabJackPython>=2.1.0"]
+dev = ["black", "ruff", "mypy", "pre-commit"]
+test = ["pytest", "pytest-cov", "numpy>=1.24"]
+publish = ["build", "twine", "wheel", "setuptools"]
 
 [project.urls]
-Homepage = "https://github.com/your-org-or-user/amp-benchkit"
-Repository = "https://github.com/your-org-or-user/amp-benchkit.git"
-Issues = "https://github.com/your-org-or-user/amp-benchkit/issues"
-Changelog = "https://github.com/your-org-or-user/amp-benchkit/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/bwedderburn/amp-benchkit"
+Repository = "https://github.com/bwedderburn/amp-benchkit.git"
+Issues = "https://github.com/bwedderburn/amp-benchkit/issues"
+Changelog = "https://github.com/bwedderburn/amp-benchkit/blob/main/CHANGELOG.md"
+
+[tool.setuptools.dynamic]
+version = {attr = "amp_benchkit.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["amp_benchkit*"]
+exclude = ["exodriver*", "tests*", "build*", "dist*", "scripts*", "patches*"]
 
 [tool.black]
 line-length = 100
+target-version = ["py310", "py311"]
+skip-string-normalization = false
 
 [tool.ruff]
 line-length = 100
+target-version = "py310"
 
-[tool.mypy]
-ignore_missing_imports = true
+[tool.pytest.ini_options]
+addopts = "-q"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["amp_benchkit", "unified_gui_layout.py"]
+omit = ["tests/*", "*/__init__.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+	"pragma: no cover",
+	"if __name__ == '__main__':",
+]
+show_missing = true

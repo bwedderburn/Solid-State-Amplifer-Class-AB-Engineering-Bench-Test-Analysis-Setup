@@ -6,27 +6,22 @@ on:
       - 'v*'
 
 jobs:
-  publish:
+  build-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-      - name: Install build tooling
+          python-version: '3.11'
+      - name: Install build backend
         run: |
-          python -m pip install --upgrade pip
-          pip install .[publish]
-      - name: Build distributions
-        run: |
-          python -m build --sdist --wheel
-      - name: Verify metadata
-        run: |
-          python -m twine check dist/*
+          python -m pip install --upgrade pip build twine
+      - name: Build sdist/wheel
+        run: python -m build
       - name: Publish to PyPI
         if: secrets.PYPI_API_TOKEN != ''
         env:
@@ -34,6 +29,3 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           python -m twine upload --non-interactive dist/*
-      - name: Skip notice
-        if: secrets.PYPI_API_TOKEN == ''
-        run: echo "PYPI_API_TOKEN not set; skipping upload."

@@ -1,0 +1,20 @@
+{
+  // Prefer Black; keep legacy provider setting for older Python extension
+  "python.formatting.provider": "none",
+  "editor.formatOnSave": true,
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "CodeGPT.apiKey": "CodeGPT Plus",
+  "chat.agent.maxRequests": 1000,
+  "python-envs.defaultEnvManager": "ms-python.python:venv",
+  "python-envs.pythonProjects": [],
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "github.copilot.enable": {
+    "plaintext": true,
+    "markdown": true,
+    "scminput": true
+  },
+  "chat.mcp.autostart": "newAndOutdated",
+  "python.analysis.typeCheckingMode": "standard"
+}

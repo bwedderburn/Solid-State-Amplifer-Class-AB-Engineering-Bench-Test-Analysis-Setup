@@ -1,280 +1,184 @@
-# amp-benchkit
+# Unified GUI Layout (Lite + U3)
 
-Unified GUI + LabJack instrumentation helper environment.
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
 
-![Release](https://img.shields.io/github/v/release/bwedderburn/amp-benchkit)
-[![CI](https://github.com/bwedderburn/amp-benchkit/actions/workflows/ci.yml/badge.svg)](https://github.com/bwedderburn/amp-benchkit/actions/workflows/ci.yml)
-![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
-![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
-![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
+Cross-platform control panel for:
 
-> Documentation reflects the released 0.3.0 baseline. A future headless frequency sweep CLI (`sweep` subcommand) referenced in earlier development drafts is **deferred** and intentionally omitted here until implemented on a feature branch.
+```markdown
+# Unified GUI Layout (Lite + U3)
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
 
+Cross-platform control panel for:
+- FeelTech FY3200S function generator (dual-channel)
+- Tektronix TDS2024B oscilloscope (VISA)
+- LabJack U3/U3-HV DAQ (AIN/DIO, timers, watchdog)
 
-## Contents
+## Features
+- FY: per-channel setup, frequency sweeps; auto-baud fallback.
+- Scope: capture raw bytes, calibrated CSV, quick PNG plots.
+- U3: Read/Stream and **Config Defaults** tabs modeled after LJControlPanel.
+- Automation: frequency sweep with single shared FY port/protocol override.
+- Built-in `selftest` for protocol formatting and sanity checks.
 
-- `unified_gui_layout.py` – Main multi‑tab GUI / CLI tool (PySide6/PyQt5, VISA, Serial, LabJack U3).
-- `amp_benchkit/deps.py` – Dependency detection (Qt binding, pyvisa, pyserial, LabJack) + shared helpers.
-- `amp_benchkit/fy.py` – FY32xx function generator helpers (command build, apply, sweep).
-- `amp_benchkit/tek.py` – Tektronix scope SCPI helpers (setup, waveform capture, IEEE block parsing).
-- `amp_benchkit/dsp.py` – DSP helpers (RMS, Vpp, THD FFT, bandwidth knees).
-- `amp_benchkit/gui/` – Incremental extraction of GUI tabs (generator, scope, DAQ extracted).
-- `amp_benchkit/u3util.py` – LabJack U3 safe‑open and feature detection utilities.
-- `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
-- `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
+## THD Calculation Dispatcher
+`thd_fft` (via `unified_gui_layout`) provides:
+1. Waveform mode: `thd_fft(t_array, v_array, f0=..., nharm=..., window='hann')`
+2. Stub mode: `thd_fft(samples, fs_hz)` returning a placeholder when advanced DSP unavailable.
 
-## Quick Start
+Heuristic: if both first args are sequence-like and NumPy exists → advanced mode; else stub.
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-
-# Build & install Exodriver (USB support)
-./scripts/install_exodriver_alpine.sh
-
-# Run CLI selftest (headless)
-python unified_gui_layout.py selftest
-
-# Launch GUI (if X / Wayland or VS Code desktop available)
-python unified_gui_layout.py gui --gui
-```
-
-### Installed (Package) Usage
-
-After `pip install .[gui]` you can use console scripts:
-
-```bash
-amp-benchkit selftest          # run selftests (headless)
-amp-benchkit diag              # dependency diagnostics summary
-amp-benchkit gui --gui         # launch GUI (or use: amp-benchkit-gui --gui)
-amp-benchkit config-dump       # show persisted JSON config
-amp-benchkit config-reset      # reset config to defaults
-```
-
-Add `--verbose` to any of the above to elevate logging to DEBUG.
-
-### Logging
-
-A central logger (`amp_benchkit.logging`) is initialized by the CLI. It emits to stderr and a rotating file (`benchkit.log`) under `XDG_STATE_HOME` / `XDG_CACHE_HOME` (fallback `~/.cache/amp-benchkit`). Levels:
-
-* INFO: High‑level actions (applied FY settings, captured scope block, etc.)
-* DEBUG: Detailed SCPI / serial commands (enable with `--verbose`)
-* WARNING/ERROR: Dependency or runtime issues
-
-You can integrate programmatically:
+### Example
 ```python
-from amp_benchkit.logging import setup_logging, get_logger
-setup_logging(verbose=True)
-log = get_logger()
-log.info("Starting scripted acquisition")
-```
+import math, unified_gui_layout as ugl
+```jsonc
+# Unified GUI Layout (Lite + U3)
 
-### Config Persistence
+![selftest](https://github.com/bwedderburn/amp-benchkit/actions/workflows/selftest.yml/badge.svg) ![coverage](https://img.shields.io/badge/coverage-pending-lightgrey)
 
-User preferences (FY port/protocol, last scope resource) persist to:
-`~/.config/amp-benchkit/config.json` (XDG‑style). Functions:
+Cross-platform control panel for:
+- FeelTech FY3200S function generator (dual-channel)
+- Tektronix TDS2024B oscilloscope (VISA)
+- LabJack U3/U3-HV DAQ (AIN/DIO, timers, watchdog)
+
+## Features
+
+- FY: per-channel setup, frequency sweeps; auto-baud fallback
+- Scope: capture raw bytes, calibrated CSV, quick PNG plots
+- U3: Read/Stream and **Config Defaults** tabs modeled after LJControlPanel
+- Automation: frequency sweep with single shared FY port/protocol override
+- Built-in `selftest` for protocol formatting and sanity checks
+
+## THD Calculation Dispatcher
+
+`thd_fft` (via `unified_gui_layout`) provides two modes:
+1. Waveform mode: `thd_fft(t_array, v_array, f0=..., nharm=..., window='hann')`
+2. Stub mode: `thd_fft(samples, fs_hz)` placeholder when advanced DSP unavailable.
+
+Heuristic: if both first args are sequence-like and NumPy exists → advanced mode; else stub.
+
+### Example
 
 ```python
-from amp_benchkit.config import load_config, save_config, update_config
-cfg = load_config()
-update_config(fy_port="/dev/ttyUSB0")
+import math, unified_gui_layout as ugl
+thd, f_est, a0 = ugl.thd_fft([0.0, 1.0, -0.5], 48000.0)
+print(thd, f_est, a0)
 ```
-CLI helpers: `config-dump`, `config-reset`.
 
-Corrupt config files are ignored gracefully and overwritten on next save.
+## Installation Extras
 
-### Programmatic Use (Headless Helpers)
+Install extras as needed:
+
+- GUI: `pip install "amp-benchkit[gui]"`
+- DSP: `pip install "amp-benchkit[dsp]"`
+- Hardware stacks: `pip install "amp-benchkit[serial,visa,labjack]"`
+- Full dev: `pip install "amp-benchkit[gui,dsp,serial,visa,labjack,test]"`
+
+### Release Helper
+
+```bash
+chmod +x scripts/release.sh
+./scripts/release.sh 0.3.3 --tag
+git push && git push --tags
+```
+
+### CLI Snippets
+
+```bash
+python unified_gui_layout.py thd-mode
+python unified_gui_layout.py freq-gen --start 20 --stop 20000 --points 31 --mode log --format json
+python unified_gui_layout.py thd-json capture.csv --f0 1000 --nharm 8 --window hann
+```
+
+### Real-Time THD Tab (Optional)
+
+Provides live THD %, spectrum export (if matplotlib present), harmonic table, persistence.
+
+### Spectrum CLI (Unreleased)
+
+```bash
+python unified_gui_layout.py spectrum --f0 1000 --points 4096 --fs 48000 --outdir results --output spectrum.png
+```
+
+### Persistent Results Directory
+
+Configure once; reused by spectrum and THD exports.
+
+## Developer: CodeGPT MCP Integration
+
+Expose BenchKit utilities to a local MCP server for the CodeGPT extension.
+
+### 1. Client Config
+
+File: `.codegpt/mcp_config.json`
+
+```jsonc
+{
+  "mcpServers": {
+    "ampBenchKitLocal": { "url": "http://localhost:5001", "auth": "CHANGE_ME_SECURE_TOKEN" }
+  }
+}
+```
+
+### 2. Minimal FastAPI Server (`tools/mcp_server.py`)
 
 ```python
-from amp_benchkit.fy import fy_apply
-from amp_benchkit.tek import tek_capture_block, TEK_RSRC_DEFAULT
-from amp_benchkit.u3util import open_u3_safely
+from __future__ import annotations
+import os
+from fastapi import FastAPI, Header, HTTPException
+from pydantic import BaseModel
+from amp_benchkit.automation import build_freq_points
+import unified_gui_layout as ugl
 
-# Apply a 1 kHz 2 Vpp sine on FY CH1 (auto port detection)
-fy_apply(freq_hz=1000, amp_vpp=2.0, wave="Sine", ch=1)
+TOKEN = os.environ.get("AMP_BENCHKIT_MCP_TOKEN", "")
+app = FastAPI(title="Amp BenchKit MCP")
 
-# Capture a waveform from a Tek scope (returns t, volts, raw)
-t, v, raw = tek_capture_block(TEK_RSRC_DEFAULT, ch=1)
+def _auth(tok):
+    if TOKEN and tok != TOKEN:
+        raise HTTPException(status_code=401, detail="bad token")
 
-# Open LabJack U3 safely
-try:
-	d = open_u3_safely()
-	ain0 = d.getAIN(0)
-	print("AIN0=", ain0)
-finally:
-	try: d.close()
-	except Exception: pass
+class FreqReq(BaseModel):
+    start: float; stop: float; points: int; mode: str = "log"
+@app.post('/freq-points')
+def freq_points(r: FreqReq, authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    return {"frequencies": build_freq_points(r.start, r.stop, r.points, r.mode)}
+
+class THDReq(BaseModel):
+    samples: list[float]; fs: float | None = None
+@app.post('/thd')
+def thd(r: THDReq, authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    thd_ratio, f0_est, fund = ugl.thd_fft(r.samples, r.fs or 48000.0)
+    return {"thd": thd_ratio, "f0_est": f0_est, "fund_amp": fund}
+
+@app.get('/ping')
+def ping(authorization: str | None = Header(default=None)):
+    _auth(authorization)
+    return {"ok": True}
 ```
 
-If LabJack USB still not detected on Alpine (musl) add:
-```bash
-export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-```
-
-## Exodriver (LabJack USB Driver)
-
-We vendor a minimal, source‑only snapshot of Exodriver under `exodriver/` (no `.git`, no compiled objects). See `EXODRIVER.md` for rationale, update procedure, and upstream attribution. For a full clone (e.g. to inspect history or contribute upstream), run:
-
-```bash
-git clone https://github.com/labjack/exodriver.git
-```
-
-Then either build directly or point our helper script at it:
-
-```bash
-EXO_DIR=exodriver ./scripts/install_exodriver_alpine.sh
-```
-
-### Health Check (after install)
-```bash
-python -c "import u3; print('u3 import OK')" || echo "LabJack Python import failed"
-```
-To probe a device (will fail gracefully if none):
-```bash
-python scripts/check_labjack_usb.py
-```
-
-## Make Targets (after Makefile added)
-Planned:
-- `make install-exodriver` – run wrapper.
-- `make check-usb` – run health script.
-- `make gui` – launch GUI.
-- `make selftest` – headless tests.
-
-## Development (Lint / Format / Type)
-
-We use `ruff` (lint), `mypy` (types). Formatting is kept Black-compatible (you can optionally run `ruff format` in newer versions).
-
-Manual invocations:
+### 3. Run
 
 ```bash
-ruff check .          # lint
-ruff check . --fix    # autofix simple issues
-mypy .                 # type check
-pytest -q             # tests
+pip install fastapi uvicorn
+export AMP_BENCHKIT_MCP_TOKEN=your-long-random-token
+python -m uvicorn tools.mcp_server:app --port 5001 --reload
 ```
 
-If you add a Makefile target locally, suggested grouping:
+### 4. Security
+
+Use a long random token; add TLS & rate limiting before exposing externally.
+
+### 5. Hardware Opt-In
 
 ```bash
-make lint   # ruff check
-make type   # mypy
-make test   # pytest
-make ci-local  # run all of the above
+export AMP_BENCHKIT_ENABLE_U3=1
 ```
 
-Pre-commit is configured; enable with:
+Restart processes after enabling to attempt actual u3 import.
 
-```bash
-pre-commit install
-```
+### 6. Future Endpoints
 
-Then commits will auto-run ruff / mypy (if configured) on changed files.
+`/sweep`, `/spectrum`, `/config` (job-based for long tasks).
 
-## Troubleshooting
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `Could not load the Exodriver driver` | `liblabjackusb` not on search path | Run installer; set `LD_LIBRARY_PATH` |
-| `No module named numpy` | Dependencies not installed | `pip install -r requirements.txt` (future) |
-| GUI won’t launch | Missing Qt binding / no display | Install PySide6; ensure DISPLAY set or use VS Code desktop |
-| `Permission denied` running script | Not executable | `chmod +x script.sh` |
-
-## Future Improvements
-
-Implemented so far:
-* Phase 1 & 2 modularization: dependencies, instruments (FY / Tek / U3) extracted
-* Core pytest suite (FFT THD, IEEE block decode, config roundtrip)
-* Logging subsystem and JSON config persistence
-* GitHub Actions CI (Python 3.11 / 3.12)
-* DSP module extraction (`amp_benchkit.dsp`)
-* GUI tab modularization (generator + scope + DAQ + automation + diagnostics extracted into `amp_benchkit.gui`)
-* Version 0.2.0 released – full GUI tab extraction, shared Qt helper, removal of deprecated DSP wrappers.
-
-Planned / open:
-* Continue GUI tab extraction: diagnostics
-* Additional error handling (timeouts around VISA / serial)
-* Test extras & packaging polish
-* Optional hardware-in-loop stage (conditional)
-* Type hint expansion & static checks
-* Potential REST / WebSocket automation bridge
-
----
-
-**Support references**: LabJack Exodriver repo <https://github.com/labjack/exodriver>
-
-## Changelog
-
-See `CHANGELOG.md` for a full list of versions and changes. Highlight 0.2.0: all GUI tabs modular, deprecated DSP wrappers removed, shared lazy Qt import helper.
-
-## Release & Publishing
-
-Steps to cut a release (example for 0.2.0 already performed):
-
-1. Update version in `pyproject.toml` & confirm tests pass.
-2. Update `CHANGELOG.md` (add new heading, date, notes).
-3. Commit: `git commit -am "release: vX.Y.Z"`.
-4. Tag locally: `git tag vX.Y.Z` (lightweight or annotated `-a`).
-5. Build artifacts locally (optional pre-check): `python -m build --sdist --wheel`.
-6. Push branch and tag: `git push && git push origin vX.Y.Z`.
-7. GitHub Actions CI will build & test; if a publish workflow exists with `PYPI_API_TOKEN` (an API token from PyPI stored as an Actions secret), it will upload.
-8. Draft GitHub Release, attach release notes (can pull from changelog), verify assets.
-9. Post-release: bump version to next dev (e.g., 0.2.1.dev0) if ongoing changes expected.
-
-Dry-run publish (validate metadata):
-```bash
-python -m build
-twine check dist/*
-```
-
-Install from a specific tag directly:
-```bash
-pip install git+https://github.com/your-org-or-user/amp-benchkit@v0.2.0
-```
-
-## Next Steps / Roadmap
-
-- Add `requirements.txt` or `pyproject.toml` for pinned dependencies.
-- Continuous Integration: GitHub Actions workflow to run `make selftest` and build Docker image.
-- Optional hardware-in-loop stage (tagged, skipped by default) for real LabJack tests.
-- Improve `unified_gui_layout.py` modularity (further split GUI/automation logic – Phase 1 & 2 complete: deps + instruments extracted).
-	(Logging + config persistence now implemented.)
-
-	## Public API (Stability: Beta)
-
-	The following functions / symbols are considered part of the provisional public API and will aim to avoid breaking changes without a minor version bump:
-
-	Instrument helpers:
-	* `amp_benchkit.fy.build_fy_cmds(freq_hz, amp_vpp, off_v, wave, duty=None, ch=1)`
-	* `amp_benchkit.fy.fy_apply(...)`
-	* `amp_benchkit.fy.fy_sweep(port, ch, proto, start=None, end=None, t_s=None, mode=None, run=None)`
-	* `amp_benchkit.tek.tek_capture_block(resource, ch=1)`
-	* `amp_benchkit.tek.scope_capture_calibrated(resource, timeout_ms=15000, ch=1)`
-	* `amp_benchkit.tek.scope_screenshot(filename, resource=..., timeout_ms=15000, ch=1)`
-	* `amp_benchkit.u3util.open_u3_safely()`
-
-	Diagnostics / utilities:
-	* `amp_benchkit.deps.find_fy_port()`
-	* `amp_benchkit.logging.setup_logging(verbose=False, file_logging=True)`
-	* `amp_benchkit.config.load_config()` / `save_config(cfg)` / `update_config(**kv)`
-
-	DSP / analysis (`amp_benchkit.dsp`):
-	* `vrms(v)`
-	* `vpp(v)`
-	* `thd_fft(t, v, f0=None, nharm=10, window='hann')`
-	* `find_knees(freqs, amps, ref_mode='max', ref_hz=1000.0, drop_db=3.0)`
-
-	Exceptions:
-	* `amp_benchkit.fy.FYError`, `FYTimeoutError`
-	* `amp_benchkit.tek.TekError`, `TekTimeoutError`
-
-	Items not listed above should be treated as internal and are subject to change.
-- Add type hints & mypy pass for critical modules.
-- Provide wheel / PyPI packaging for headless CLI mode.
-- Add a simple REST or WebSocket bridge for remote automation control.
-- Extend Makefile with `format` / `lint` targets (black, ruff, mypy).
-- Optional plugin architecture for new instrument tabs.
-
-
+Contribution tip: add tests for new endpoints.
