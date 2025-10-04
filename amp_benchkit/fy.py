@@ -89,12 +89,16 @@ def fy_sweep(port, ch, proto, start=None, end=None, t_s=None, mode=None, run=Non
     commands = []
     try:
         with _serial.Serial(port, baudrate=baud, timeout=1) as s:
+            sent_handshake = False
             if ch == 2:
-                cyc = 1000000 if cycles is None else int(cycles)
-                cmd = f"tn{cyc:07d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
-                commands.append(cmd)
-                cmd = "tt2"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
-                commands.append(cmd)
+                wants_handshake = any(val is not None for val in (start, end, t_s, mode)) or (run is None or bool(run))
+                if wants_handshake:
+                    cyc = 1000000 if cycles is None else int(cycles)
+                    cmd = f"tn{cyc:07d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                    commands.append(cmd)
+                    cmd = "tt2"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                    commands.append(cmd)
+                    sent_handshake = True
             if start is not None:
                 cmd = f"bb{int(start * 100):09d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
