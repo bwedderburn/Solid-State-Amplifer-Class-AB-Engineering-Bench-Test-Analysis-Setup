@@ -320,10 +320,32 @@ class UnifiedGUI(BaseGUI):
 
     def start_sweep_side(self, side):
         try:
+            def _parse_freq(text: str) -> float | None:
+                raw = (text or "").strip()
+                if not raw:
+                    return None
+                t = raw.lower().replace('hz', '').strip()
+                multiplier = 1.0
+                if t.endswith('k'):
+                    multiplier = 1e3; t = t[:-1]
+                elif t.endswith('m'):
+                    multiplier = 1e6; t = t[:-1]
+                elif t.endswith('g'):
+                    multiplier = 1e9; t = t[:-1]
+                t = t.replace(',', '')
+                try:
+                    return float(t) * multiplier
+                except Exception:
+                    return None
+
             if side==1:
                 pr=self.proto1.currentText(); pt=self.port1.text().strip() or find_fy_port()
-                st=float(self.sw_start1.text()) if self.sw_start1.text().strip() else None
-                en=float(self.sw_end1.text()) if self.sw_end1.text().strip() else None
+                st=_parse_freq(self.sw_start1.text())
+                if st is None:
+                    self._log(self.gen_log, "CH1 sweep needs a numeric start frequency (Hz)"); return
+                en=_parse_freq(self.sw_end1.text())
+                if en is None:
+                    self._log(self.gen_log, "CH1 sweep needs a numeric end frequency (Hz)"); return
                 ts=int(self.sw_time1.text()) if self.sw_time1.text().strip() else None
                 md=self.sw_mode1.currentText()
                 if self.sw_amp1.text().strip():
@@ -340,8 +362,12 @@ class UnifiedGUI(BaseGUI):
                     self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
                 pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
-                st=float(self.sw_start2.text()) if self.sw_start2.text().strip() else None
-                en=float(self.sw_end2.text()) if self.sw_end2.text().strip() else None
+                st=_parse_freq(self.sw_start2.text())
+                if st is None:
+                    self._log(self.gen_log, "CH2 sweep needs a numeric start frequency (Hz)"); return
+                en=_parse_freq(self.sw_end2.text())
+                if en is None:
+                    self._log(self.gen_log, "CH2 sweep needs a numeric end frequency (Hz)"); return
                 ts=int(self.sw_time2.text()) if self.sw_time2.text().strip() else None
                 md=self.sw_mode2.currentText()
                 if self.sw_amp2.text().strip():
