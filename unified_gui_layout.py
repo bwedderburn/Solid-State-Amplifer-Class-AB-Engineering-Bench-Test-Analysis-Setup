@@ -302,15 +302,19 @@ class UnifiedGUI(BaseGUI):
                 try: duty=float(self.duty1.text())
                 except Exception: pass
                 pr=self.proto1.currentText(); pt=(self.port1.text().strip() or None)
-                fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=1,port=pt,proto=pr)
+                cmds = fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=1,port=pt,proto=pr)
                 self._log(self.gen_log,f"APPLIED CH1: {wf} {f} Hz, {a} Vpp, Off {o} V, Duty {duty if duty is not None else '—'}% ({pr})")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
                 f=float(self.freq2.text()); a=float(self.amp2.text()); o=float(self.off2.text()); wf=self.wave2.currentText(); duty=None
                 try: duty=float(self.duty2.text())
                 except Exception: pass
                 pr=self.proto2.currentText(); pt=(self.port2.text().strip() or None)
-                fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=2,port=pt,proto=pr)
+                cmds = fy_apply(freq_hz=f,amp_vpp=a,wave=wf,off_v=o,duty=duty,ch=2,port=pt,proto=pr)
                 self._log(self.gen_log,f"APPLIED CH2: {wf} {f} Hz, {a} Vpp, Off {o} V, Duty {duty if duty is not None else '—'}% ({pr})")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
         except Exception as e:
             self._log(self.gen_log,f"Error: {e}")
 
@@ -325,11 +329,15 @@ class UnifiedGUI(BaseGUI):
                 if self.sw_amp1.text().strip():
                     try:
                         a=float(self.sw_amp1.text()); f=float(self.freq1.text() or 1000.0); o=float(self.off1.text() or 0.0); wf=self.wave1.currentText(); d=float(self.duty1.text()) if self.duty1.text().strip() else None
-                        fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=1, port=pt, proto=pr)
+                        cmds_apply = fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=1, port=pt, proto=pr)
+                        if cmds_apply:
+                            self._log(self.gen_log, "FY cmds: "+", ".join(cmds_apply))
                     except Exception as e:
                         self._log(self.gen_log,f"Amp set CH1 failed: {e}")
-                fy_sweep(pt,1,pr,st,en,ts,md,True)
+                cmds = fy_sweep(pt,1,pr,st,en,ts,md,True)
                 self._log(self.gen_log,f"SWEEP START CH1: {st}→{en} Hz, {ts}s, {md}")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
                 pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
                 st=float(self.sw_start2.text()) if self.sw_start2.text().strip() else None
@@ -339,11 +347,15 @@ class UnifiedGUI(BaseGUI):
                 if self.sw_amp2.text().strip():
                     try:
                         a=float(self.sw_amp2.text()); f=float(self.freq2.text() or 1000.0); o=float(self.off2.text() or 0.0); wf=self.wave2.currentText(); d=float(self.duty2.text()) if self.duty2.text().strip() else None
-                        fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=2, port=pt, proto=pr)
+                        cmds_apply = fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=2, port=pt, proto=pr)
+                        if cmds_apply:
+                            self._log(self.gen_log, "FY cmds: "+", ".join(cmds_apply))
                     except Exception as e:
                         self._log(self.gen_log,f"Amp set CH2 failed: {e}")
-                fy_sweep(pt,2,pr,st,en,ts,md,True)
+                cmds = fy_sweep(pt,2,pr,st,en,ts,md,True)
                 self._log(self.gen_log,f"SWEEP START CH2: {st}→{en} Hz, {ts}s, {md}")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
         except Exception as e:
             self._log(self.gen_log,f"Sweep start error: {e}")
 
@@ -351,10 +363,14 @@ class UnifiedGUI(BaseGUI):
         try:
             if side==1:
                 pr=self.proto1.currentText(); pt=self.port1.text().strip() or find_fy_port()
-                fy_sweep(pt,1,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH1")
+                cmds = fy_sweep(pt,1,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH1")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
                 pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
-                fy_sweep(pt,2,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH2")
+                cmds = fy_sweep(pt,2,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH2")
+                if cmds:
+                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
         except Exception as e:
             self._log(self.gen_log,f"Sweep stop error: {e}")
 
