@@ -12,6 +12,21 @@ Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftest
 import sys, os, time, argparse
 import numpy as np
 import warnings
+
+# Ensure matplotlib can build its cache even when the user home dir is read-only.
+if 'MPLCONFIGDIR' not in os.environ:
+    _mpl_cache = os.path.join(os.path.expanduser('~'), '.cache', 'matplotlib')
+    try:
+        os.makedirs(_mpl_cache, exist_ok=True)
+    except Exception:
+        _mpl_cache = os.path.join(os.getcwd(), '.matplotlib-cache')
+        try:
+            os.makedirs(_mpl_cache, exist_ok=True)
+        except Exception:
+            _mpl_cache = None
+    if _mpl_cache:
+        os.environ['MPLCONFIGDIR'] = _mpl_cache
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -1203,46 +1218,12 @@ def main():
                 print('U3 AIN0:', f"{u3_read_ain(0):.4f} V")
             except Exception as e:
                 print('U3 error:', e)
-                print('U3 error:', e)
         else:
             print('u3 missing →', INSTALL_HINTS['u3'])
         return
 
     if args.cmd == 'selftest':
         ok = True
-    if args.cmd == 'sweep':
-        rc = 0
-        try:
-            from amp_benchkit.automation import build_freq_points
-            freqs = build_freq_points(start=args.start, stop=args.stop, points=args.points, mode=args.mode)
-            for f in freqs:
-                if 0.1 <= f < 100000:
-                    s = f"{f:.6f}".rstrip('0').rstrip('.')
-                else:
-                    s = str(f)
-                print(s)
-        except Exception as e:
-            print('Sweep error:', e, file=sys.stderr)
-            rc = 1
-        sys.exit(rc)
-    if args.cmd == 'config-dump':
-        try:
-            from amp_benchkit.config import load_config, CONFIG_PATH
-            cfg = load_config()
-            print('Config file:', CONFIG_PATH)
-            print(cfg)
-        except Exception as e:
-            print('Config dump error:', e)
-        return
-
-    if args.cmd == 'config-reset':
-        try:
-            from amp_benchkit.config import save_config, CONFIG_PATH
-            save_config({})
-            print('Config reset ->', CONFIG_PATH)
-        except Exception as e:
-            print('Config reset error:', e)
-        return
         try:
             # Test1: baud/EOL tuples
             assert FY_BAUD_EOLS == [(9600, "\n"), (115200, "\r\n")]
@@ -1302,13 +1283,46 @@ def main():
             fs = 50000.0; f0 = 1000.0; N = 4096
             t = np.arange(N)/fs
             sig = np.sin(2*np.pi*f0*t) + 0.1*np.sin(2*np.pi*2*f0*t)
-            thd, f_est, _ = thd_fft(t, sig, f0=f0, nharm=5, window='hann')
+            thd, f_est, _ = _dsp.thd_fft(t, sig, f0=f0, nharm=5, window='hann')
             assert abs(thd - 0.1) < 0.03  # within a few % points due to window/leakage
             print('Test10 OK: THD ~10% on 2nd harmonic')
         except Exception as e:
             ok = False
             print('Selftest FAIL:', e)
         sys.exit(0 if ok else 1)
+    if args.cmd == 'sweep':
+        rc = 0
+        try:
+            from amp_benchkit.automation import build_freq_points
+            freqs = build_freq_points(start=args.start, stop=args.stop, points=args.points, mode=args.mode)
+            for f in freqs:
+                if 0.1 <= f < 100000:
+                    s = f"{f:.6f}".rstrip('0').rstrip('.')
+                else:
+                    s = str(f)
+                print(s)
+        except Exception as e:
+            print('Sweep error:', e, file=sys.stderr)
+            rc = 1
+        sys.exit(rc)
+    if args.cmd == 'config-dump':
+        try:
+            from amp_benchkit.config import load_config, CONFIG_PATH
+            cfg = load_config()
+            print('Config file:', CONFIG_PATH)
+            print(cfg)
+        except Exception as e:
+            print('Config dump error:', e)
+        return
+
+    if args.cmd == 'config-reset':
+        try:
+            from amp_benchkit.config import save_config, CONFIG_PATH
+            save_config({})
+            print('Config reset ->', CONFIG_PATH)
+        except Exception as e:
+            print('Config reset error:', e)
+        return
 
     # Launch GUI
     if args.gui or args.cmd == 'gui':
