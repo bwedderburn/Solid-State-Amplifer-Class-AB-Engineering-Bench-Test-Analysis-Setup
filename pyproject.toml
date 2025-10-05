@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "amp-benchkit"
 version = "0.3.1.dev2"
 description = "Unified GUI + LabJack tooling and installer helpers"
-authors = [ { name = "Your Name", email = "you@example.com" } ]
+authors = [ { name = "Brian Wedderburn" } ]
 readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
@@ -59,10 +59,10 @@ packages = ["amp_benchkit"]
 py-modules = ["unified_gui_layout"]
 
 [project.urls]
-Homepage = "https://github.com/your-org-or-user/amp-benchkit"
-Repository = "https://github.com/your-org-or-user/amp-benchkit.git"
-Issues = "https://github.com/your-org-or-user/amp-benchkit/issues"
-Changelog = "https://github.com/your-org-or-user/amp-benchkit/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/bwedderburn/amp-benchkit"
+Repository = "https://github.com/bwedderburn/amp-benchkit"
+Issues = "https://github.com/bwedderburn/amp-benchkit/issues"
+Changelog = "https://github.com/bwedderburn/amp-benchkit/blob/main/CHANGELOG.md"
 
 [tool.black]
 line-length = 100

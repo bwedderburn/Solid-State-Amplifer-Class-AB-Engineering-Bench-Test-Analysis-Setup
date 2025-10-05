@@ -299,7 +299,7 @@ twine check dist/*
 
 Install from a specific tag directly:
 ```bash
-pip install git+https://github.com/your-org-or-user/amp-benchkit@v0.2.0
+pip install git+https://github.com/bwedderburn/amp-benchkit@v0.2.0
 ```
 
 ## Next Steps / Roadmap

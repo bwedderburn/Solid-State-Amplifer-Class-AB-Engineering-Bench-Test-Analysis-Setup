@@ -2,14 +2,12 @@ cff-version: 1.2.0
 message: "If you use amp-benchkit in your work, please cite it as below."
 title: "amp-benchkit: Unified GUI + LabJack Instrumentation Toolkit"
 authors:
-  - family-names: "YourSurname"
-    given-names: "YourGivenNames"
-    affiliation: "Your Organization"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-version: "0.2.0"
+  - family-names: "Wedderburn"
+    given-names: "Brian"
+version: "0.3.1.dev2"
 license: MIT
-repository-code: "https://github.com/your-org-or-user/amp-benchkit"
-url: "https://github.com/your-org-or-user/amp-benchkit"
+repository-code: "https://github.com/bwedderburn/amp-benchkit"
+url: "https://github.com/bwedderburn/amp-benchkit"
 keywords:
   - instrumentation
   - labjack
