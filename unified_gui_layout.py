@@ -361,27 +361,8 @@ class UnifiedGUI(BaseGUI):
                 if cmds:
                     self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
-                pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
-                st=_parse_freq(self.sw_start2.text())
-                if st is None:
-                    self._log(self.gen_log, "CH2 sweep needs a numeric start frequency (Hz)"); return
-                en=_parse_freq(self.sw_end2.text())
-                if en is None:
-                    self._log(self.gen_log, "CH2 sweep needs a numeric end frequency (Hz)"); return
-                ts=int(self.sw_time2.text()) if self.sw_time2.text().strip() else None
-                md=self.sw_mode2.currentText()
-                if self.sw_amp2.text().strip():
-                    try:
-                        a=float(self.sw_amp2.text()); f=float(self.freq2.text() or 1000.0); o=float(self.off2.text() or 0.0); wf=self.wave2.currentText(); d=float(self.duty2.text()) if self.duty2.text().strip() else None
-                        cmds_apply = fy_apply(freq_hz=f, amp_vpp=a, wave=wf, off_v=o, duty=d, ch=2, port=pt, proto=pr)
-                        if cmds_apply:
-                            self._log(self.gen_log, "FY cmds: "+", ".join(cmds_apply))
-                    except Exception as e:
-                        self._log(self.gen_log,f"Amp set CH2 failed: {e}")
-                cmds = fy_sweep(pt,2,pr,st,en,ts,md,True)
-                self._log(self.gen_log,f"SWEEP START CH2: {st}→{en} Hz, {ts}s, {md}")
-                if cmds:
-                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
+                self._log(self.gen_log, "CH2 sweep not supported on FY3200S; use CH1.")
+                return
         except Exception as e:
             self._log(self.gen_log,f"Sweep start error: {e}")
 
@@ -393,10 +374,7 @@ class UnifiedGUI(BaseGUI):
                 if cmds:
                     self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
             else:
-                pr=self.proto2.currentText(); pt=self.port2.text().strip() or find_fy_port()
-                cmds = fy_sweep(pt,2,pr,run=False); self._log(self.gen_log,"SWEEP STOP CH2")
-                if cmds:
-                    self._log(self.gen_log, "FY cmds: "+", ".join(cmds))
+                self._log(self.gen_log, "CH2 sweep not supported on FY3200S; nothing to stop.")
         except Exception as e:
             self._log(self.gen_log,f"Sweep stop error: {e}")
 

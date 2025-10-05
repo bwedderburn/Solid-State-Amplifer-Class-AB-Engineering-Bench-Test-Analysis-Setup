@@ -67,19 +67,11 @@ def build_generator_tab(gui: Any) -> Optional[object]:
     pr2 = QHBoxLayout(); gui.port2 = QLineEdit(""); pr2.addWidget(QLabel("Serial (auto/override):")); pr2.addWidget(gui.port2)
     b2 = QPushButton("Scan"); b2.clicked.connect(lambda: gui.scan_serial_into(gui.port2)); pr2.addWidget(b2); c2.addLayout(pr2)
     c2.addWidget(QLabel("Sweep controls:"))
-    s2 = QHBoxLayout()
-    def col2(txt, wdg):
-        lay = QVBoxLayout(); lay.addWidget(QLabel(txt, alignment=Qt.AlignHCenter)); wdg.setMaximumWidth(140); lay.addWidget(wdg); return lay
-    gui.sw_start2 = QLineEdit(""); s2.addLayout(col2("Start Hz", gui.sw_start2))
-    gui.sw_end2 = QLineEdit(""); s2.addLayout(col2("End Hz", gui.sw_end2))
-    gui.sw_time2 = QLineEdit("10"); s2.addLayout(col2("Time s", gui.sw_time2))
-    gui.sw_mode2 = QComboBox(); gui.sw_mode2.addItems(["Linear","Log"]); s2.addLayout(col2("Mode", gui.sw_mode2))
-    gui.sw_amp2 = QLineEdit(""); s2.addLayout(col2("Amp Vpp", gui.sw_amp2))
-    gui.sw_dwell2 = QLineEdit(""); s2.addLayout(col2("Dwell ms", gui.sw_dwell2))
-    c2.addLayout(s2)
+    sweep_note = QLabel("FY3200S only supports sweeping on channel 1.")
+    sweep_note.setWordWrap(True)
+    c2.addWidget(sweep_note)
     ab2 = QHBoxLayout(); a2 = QPushButton("Apply CH2"); a2.clicked.connect(lambda: gui.apply_gen_side(2)); ab2.addWidget(a2)
-    rs2 = QPushButton("Start Sweep CH2"); rs2.clicked.connect(lambda: gui.start_sweep_side(2)); ab2.addWidget(rs2)
-    st2 = QPushButton("Stop Sweep CH2"); st2.clicked.connect(lambda: gui.stop_sweep_side(2)); ab2.addWidget(st2); c2.addLayout(ab2)
+    c2.addLayout(ab2)
 
     row.addLayout(c1); row.addSpacing(20); row.addLayout(c2)
     L.addLayout(row)
