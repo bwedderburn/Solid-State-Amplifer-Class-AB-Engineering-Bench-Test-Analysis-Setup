@@ -4,7 +4,7 @@ title: "amp-benchkit: Unified GUI + LabJack Instrumentation Toolkit"
 authors:
   - family-names: "Wedderburn"
     given-names: "Brian"
-version: "0.3.1"
+version: "0.3.2.dev0"
 license: MIT
 repository-code: "https://github.com/bwedderburn/amp-benchkit"
 url: "https://github.com/bwedderburn/amp-benchkit"
