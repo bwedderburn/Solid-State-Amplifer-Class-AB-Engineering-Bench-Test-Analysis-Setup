@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from contextlib import suppress
 
-from .deps import HAVE_U3, _u3
+from . import deps as _deps
 from .u3util import open_u3_safely as u3_open
 
 __all__ = [
@@ -19,6 +19,14 @@ __all__ = [
     "u3_pulse_line",
     "u3_autoconfigure_for_automation",
 ]
+
+
+def _have_u3() -> bool:
+    return bool(getattr(_deps, "HAVE_U3", False) and getattr(_deps, "_u3", None))
+
+
+def _u3_mod():
+    return getattr(_deps, "_u3", None)
 
 
 def u3_read_ain(ch=0):
@@ -70,9 +78,10 @@ def _global_index(line: str):
 
 
 def u3_set_line(line: str, state: int):
-    if not HAVE_U3:
+    if not _have_u3():
         return
-    if _u3 is None:
+    lj = _u3_mod()
+    if lj is None:
         return
     gi = _global_index(line)
     if gi is None:
@@ -81,7 +90,7 @@ def u3_set_line(line: str, state: int):
     try:
         st = 1 if state else 0
         try:
-            d.getFeedback(_u3.BitStateWrite(gi, st))
+            d.getFeedback(lj.BitStateWrite(gi, st))
         except Exception:
             with suppress(Exception):
                 d.setDOState(gi, st)
@@ -91,7 +100,7 @@ def u3_set_line(line: str, state: int):
 
 
 def u3_pulse_line(line: str, width_ms: float = 5.0, level: int = 1):
-    if not HAVE_U3:
+    if not _have_u3():
         return
     try:
         u3_set_line(line, level)
@@ -101,9 +110,10 @@ def u3_pulse_line(line: str, width_ms: float = 5.0, level: int = 1):
 
 
 def u3_set_dir(line: str, direction: int):
-    if not HAVE_U3:
+    if not _have_u3():
         return
-    if _u3 is None:
+    lj = _u3_mod()
+    if lj is None:
         return
     gi = _global_index(line)
     if gi is None:
@@ -111,7 +121,7 @@ def u3_set_dir(line: str, direction: int):
     d = u3_open()
     try:
         try:
-            d.getFeedback(_u3.BitDirWrite(gi, 1 if direction else 0))
+            d.getFeedback(lj.BitDirWrite(gi, 1 if direction else 0))
         except Exception:
             # Fallback: try PortDirWrite by masking
             with suppress(Exception):
@@ -119,18 +129,18 @@ def u3_set_dir(line: str, direction: int):
                 base = gi - idx_local
                 mask = 1 << idx_local
                 if base == 0:
-                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[mask, 0, 0]))
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[mask, 0, 0]))
                 elif base == 8:
-                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, mask, 0]))
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, mask, 0]))
                 else:
-                    d.getFeedback(_u3.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, 0, mask]))
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, 0, mask]))
     finally:
         with suppress(Exception):
             d.close()
 
 
 def u3_autoconfigure_for_automation(pulse_line: str, base: str = "current"):
-    if not HAVE_U3:
+    if not _have_u3():
         return
     d = None
     try:

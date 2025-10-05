@@ -8,19 +8,31 @@ starting with 0.x pre-release phases.
 [Unreleased]
 ------------
 
+_No changes yet._
+
+[0.3.1] - 2025-10-05
+--------------------
+
 **Added**
 
-- `sweep` CLI subcommand producing linear or log-spaced frequency point lists (headless usage).
 - `amp_benchkit.cli` wrapper module and console script entry points: `amp-benchkit`, `amp-benchkit-gui`.
-- README documentation for sweep usage and examples.
+- `sweep` CLI subcommand that generates linear or log-spaced frequency lists, plus README usage examples.
+- Bundled `results/sweep_scope.csv` dataset for quick automation demos.
 
 **Changed**
 
-- Recommended invocation now via console scripts instead of `python unified_gui_layout.py`.
+- Recommended invocation now routes through the console scripts instead of `python unified_gui_layout.py`.
+- Hardened FY generator sweep handling (CH2 handshake validation and frequency input checks) to avoid partial command sequences.
+
+**Fixed**
+
+- Docker image now copies the `patches/` directory reliably and installs PySide6 wheels by switching to a `python:3.11-slim` base.
+- Corrected metric values in the bundled `results/sweep_scope.csv` sample data.
 
 **Internal / Tooling**
 
-- Added tests for entrypoint wrapper (SystemExit handling, linear sweep output).
+- Added pre-commit configuration (ruff, black, mypy, large-file and virtualenv guards) and a CI workflow stub.
+- Expanded project metadata (PyPI classifiers, SECURITY policy) and hardened U3 helpers for mypy/pytest coverage.
 
 [0.3.0] - 2025-09-28
 --------------------
