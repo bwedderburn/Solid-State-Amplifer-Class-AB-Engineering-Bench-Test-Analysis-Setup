@@ -15,22 +15,23 @@ import os
 import sys
 import time
 from contextlib import suppress
+from typing import Any, Type
 
 import numpy as np
 
 # Ensure matplotlib can build its cache even when the user home dir is read-only.
 if "MPLCONFIGDIR" not in os.environ:
-    _mpl_cache: str | None = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")
     try:
-        os.makedirs(_mpl_cache, exist_ok=True)
+        os.makedirs(cache_dir, exist_ok=True)
     except Exception:
-        _mpl_cache = os.path.join(os.getcwd(), ".matplotlib-cache")
+        cache_dir = os.path.join(os.getcwd(), ".matplotlib-cache")
         try:
-            os.makedirs(_mpl_cache, exist_ok=True)
+            os.makedirs(cache_dir, exist_ok=True)
         except Exception:
-            _mpl_cache = None
-    if _mpl_cache:
-        os.environ["MPLCONFIGDIR"] = _mpl_cache
+            cache_dir = ""
+    if cache_dir:
+        os.environ["MPLCONFIGDIR"] = cache_dir
 
 import matplotlib
 
@@ -127,22 +128,20 @@ def scope_capture(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
 # -----------------------------
 # GUI
 # -----------------------------
+class _FallbackBase:
+    """Fallback stub when Qt is absent (keeps CLI helpers functional)."""
+
+    def __init__(self) -> None:
+        """No-op init to mirror QMainWindow signature."""
+
+        return
+
+
+BaseGUI: Type[Any]
 if HAVE_QT:
-
-    class _BaseGUI(QMainWindow):
-        """Base Qt window when Qt libraries are available."""
-
-        pass
-
+    BaseGUI = QMainWindow  # type: ignore[assignment]
 else:
-
-    class _BaseGUI:
-        """Fallback stub when Qt is absent (keeps CLI helpers functional)."""
-
-        pass
-
-
-BaseGUI = _BaseGUI
+    BaseGUI = _FallbackBase
 
 
 class UnifiedGUI(BaseGUI):
@@ -481,12 +480,11 @@ class UnifiedGUI(BaseGUI):
             self._test_status(str(e), "error")
         # Readback states (DI) and per-port masks
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
-                states = d.getFeedback(_u3.PortStateRead())[
-                    0
-                ]  # dict {'FIO':byte, 'EIO':byte, 'CIO':byte}
-                dirs = d.getFeedback(_u3.PortDirRead())[0]
+                states = d.getFeedback(lj.PortStateRead())[0]
+                dirs = d.getFeedback(lj.PortDirRead())[0]
             finally:
                 with suppress(Exception):
                     d.close()
@@ -513,14 +511,15 @@ class UnifiedGUI(BaseGUI):
             self._test_status(str(e), "error")
         # DACs
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
                 dv0 = max(0.0, min(5.0, float(self.test_dac0.text() or "0")))
                 dv1 = max(0.0, min(5.0, float(self.test_dac1.text() or "0")))
                 with suppress(Exception):
                     d.getFeedback(
-                        _u3.DAC0_8(Value=int(dv0 / 5.0 * 255)),
-                        _u3.DAC1_8(Value=int(dv1 / 5.0 * 255)),
+                        lj.DAC0_8(Value=int(dv0 / 5.0 * 255)),
+                        lj.DAC1_8(Value=int(dv1 / 5.0 * 255)),
                     )
             finally:
                 with suppress(Exception):
@@ -538,14 +537,15 @@ class UnifiedGUI(BaseGUI):
             self._test_status(str(e), "error")
         # Counters
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
                 try:
-                    c0 = d.getFeedback(_u3.Counter0(Reset=False))[0]
+                    c0 = d.getFeedback(lj.Counter0(Reset=False))[0]
                 except Exception:
                     c0 = None
                 try:
-                    c1 = d.getFeedback(_u3.Counter1(Reset=False))[0]
+                    c1 = d.getFeedback(lj.Counter1(Reset=False))[0]
                 except Exception:
                     c1 = None
             finally:
@@ -563,13 +563,14 @@ class UnifiedGUI(BaseGUI):
         if not HAVE_U3:
             return
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
                 if which == 0:
-                    d.getFeedback(_u3.Counter0(Reset=True))
+                    d.getFeedback(lj.Counter0(Reset=True))
                     self._log(self.test_log, "Counter0 reset")
                 else:
-                    d.getFeedback(_u3.Counter1(Reset=True))
+                    d.getFeedback(lj.Counter1(Reset=True))
                     self._log(self.test_log, "Counter1 reset")
             finally:
                 with suppress(Exception):
@@ -608,9 +609,10 @@ class UnifiedGUI(BaseGUI):
             vC = self._parse_mask_text(self.test_wdir_cio.text())
             mC = 0xFF
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
-                d.getFeedback(_u3.PortDirWrite(Direction=[vF, vE, vC], WriteMask=[mF, mE, mC]))
+                d.getFeedback(lj.PortDirWrite(Direction=[vF, vE, vC], WriteMask=[mF, mE, mC]))
             finally:
                 with suppress(Exception):
                     d.close()
@@ -640,9 +642,10 @@ class UnifiedGUI(BaseGUI):
             vC = self._parse_mask_text(self.test_wst_cio.text())
             mC = 0xFF
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
-                d.getFeedback(_u3.PortStateWrite(State=[vF, vE, vC], WriteMask=[mF, mE, mC]))
+                d.getFeedback(lj.PortStateWrite(State=[vF, vE, vC], WriteMask=[mF, mE, mC]))
             finally:
                 with suppress(Exception):
                     d.close()
@@ -664,12 +667,13 @@ class UnifiedGUI(BaseGUI):
             sf = self._parse_mask_text(self.test_wst_fio.text())
             se = self._parse_mask_text(self.test_wst_eio.text())
             sc = self._parse_mask_text(self.test_wst_cio.text())
+            lj = _require_u3()
             d = u3_open()
             try:
                 d.getFeedback(
-                    _u3.PortDirWrite(Direction=[df, de, dc], WriteMask=[0xFF, 0xFF, 0xFF])
+                    lj.PortDirWrite(Direction=[df, de, dc], WriteMask=[0xFF, 0xFF, 0xFF])
                 )
-                d.getFeedback(_u3.PortStateWrite(State=[sf, se, sc], WriteMask=[0xFF, 0xFF, 0xFF]))
+                d.getFeedback(lj.PortStateWrite(State=[sf, se, sc], WriteMask=[0xFF, 0xFF, 0xFF]))
             finally:
                 with suppress(Exception):
                     d.close()
@@ -689,10 +693,11 @@ class UnifiedGUI(BaseGUI):
             self._log(self.test_log, f"u3 missing → {INSTALL_HINTS['u3']}")
             return
         try:
+            lj = _require_u3()
             d = u3_open()
             try:
-                states = d.getFeedback(_u3.PortStateRead())[0]
-                dirs = d.getFeedback(_u3.PortDirRead())[0]
+                states = d.getFeedback(lj.PortStateRead())[0]
+                dirs = d.getFeedback(lj.PortDirRead())[0]
             finally:
                 with suppress(Exception):
                     d.close()
@@ -777,6 +782,7 @@ class UnifiedGUI(BaseGUI):
             self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}")
             return
         try:
+            _require_u3()
             d = u3_open()
             # Set power-up defaults back to factory via Device API
             d.setToFactoryDefaults()
@@ -792,6 +798,7 @@ class UnifiedGUI(BaseGUI):
             self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}")
             return
         try:
+            lj = _require_u3()
             d = u3_open()
             # Analog inputs / directions + Counters
             fio_an = self._mask_from_checks(self.ai_checks)
@@ -815,17 +822,17 @@ class UnifiedGUI(BaseGUI):
             fb = []
             # Use global IO numbering: FIO0-7 → 0..7, EIO0-7 → 8..15, CIO0-3 → 16..19
             for i in range(8):
-                fb.append(_u3.BitStateWrite(i, 1 if (fio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(i, 1 if (fio_state >> i) & 1 else 0))
             for i in range(8):
-                fb.append(_u3.BitStateWrite(8 + i, 1 if (eio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(8 + i, 1 if (eio_state >> i) & 1 else 0))
             for i in range(4):
-                fb.append(_u3.BitStateWrite(16 + i, 1 if (cio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(16 + i, 1 if (cio_state >> i) & 1 else 0))
             # DAC outputs (8-bit mode by default)
             with suppress(Exception):
                 dv0 = max(0.0, min(5.0, float(self.dac0.text() or "0")))
                 dv1 = max(0.0, min(5.0, float(self.dac1.text() or "0")))
-                fb.append(_u3.DAC0_8(Value=int(dv0 / 5.0 * 255)))
-                fb.append(_u3.DAC1_8(Value=int(dv1 / 5.0 * 255)))
+                fb.append(lj.DAC0_8(Value=int(dv0 / 5.0 * 255)))
+                fb.append(lj.DAC1_8(Value=int(dv1 / 5.0 * 255)))
             # Timer/Counter clock setup
             if self.t_clkbase.currentText() == "48MHz":
                 base = 48
@@ -938,13 +945,14 @@ class UnifiedGUI(BaseGUI):
                     CIODirection=cio_dir,
                 )
             # Digital states (apply now)
+            lj = _require_u3()
             fb = []
             for i in range(8):
-                fb.append(_u3.BitStateWrite(i, 1 if (fio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(i, 1 if (fio_state >> i) & 1 else 0))
             for i in range(8):
-                fb.append(_u3.BitStateWrite(8 + i, 1 if (eio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(8 + i, 1 if (eio_state >> i) & 1 else 0))
             for i in range(4):
-                fb.append(_u3.BitStateWrite(16 + i, 1 if (cio_state >> i) & 1 else 0))
+                fb.append(lj.BitStateWrite(16 + i, 1 if (cio_state >> i) & 1 else 0))
             try:
                 d.getFeedback(*fb)
             except Exception:
@@ -961,8 +969,8 @@ class UnifiedGUI(BaseGUI):
                 dv1 = max(0.0, min(5.0, float(self.dac1.text() or "0")))
                 with suppress(Exception):
                     d.getFeedback(
-                        _u3.DAC0_8(Value=int(dv0 / 5.0 * 255)),
-                        _u3.DAC1_8(Value=int(dv1 / 5.0 * 255)),
+                        lj.DAC0_8(Value=int(dv0 / 5.0 * 255)),
+                        lj.DAC1_8(Value=int(dv1 / 5.0 * 255)),
                     )
             # Timers / Counters
             with suppress(Exception):
@@ -1548,3 +1556,9 @@ def main():
 
 if __name__ == "__main__":
     main()
+def _require_u3() -> Any:
+    """Return the loaded LabJack module or raise if unavailable."""
+
+    if _u3 is None:
+        raise RuntimeError("LabJack U3 bindings unavailable")
+    return _u3
