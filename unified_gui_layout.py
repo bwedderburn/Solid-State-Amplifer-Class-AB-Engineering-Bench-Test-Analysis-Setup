@@ -15,7 +15,7 @@ import os
 import sys
 import time
 from contextlib import suppress
-from typing import Any, Type
+from typing import Any
 
 import numpy as np
 
@@ -125,6 +125,7 @@ def scope_capture(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
 
 ## Migrated scope_* and U3 basic helpers moved to amp_benchkit.tek and amp_benchkit.u3config
 
+
 # -----------------------------
 # GUI
 # -----------------------------
@@ -137,7 +138,7 @@ class _FallbackBase:
         return
 
 
-BaseGUI: Type[Any]
+BaseGUI: type[Any]
 if HAVE_QT:
     BaseGUI = QMainWindow  # type: ignore[assignment]
 else:
@@ -670,9 +671,7 @@ class UnifiedGUI(BaseGUI):
             lj = _require_u3()
             d = u3_open()
             try:
-                d.getFeedback(
-                    lj.PortDirWrite(Direction=[df, de, dc], WriteMask=[0xFF, 0xFF, 0xFF])
-                )
+                d.getFeedback(lj.PortDirWrite(Direction=[df, de, dc], WriteMask=[0xFF, 0xFF, 0xFF]))
                 d.getFeedback(lj.PortStateWrite(State=[sf, se, sc], WriteMask=[0xFF, 0xFF, 0xFF]))
             finally:
                 with suppress(Exception):
@@ -1556,6 +1555,8 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
 def _require_u3() -> Any:
     """Return the loaded LabJack module or raise if unavailable."""
 
