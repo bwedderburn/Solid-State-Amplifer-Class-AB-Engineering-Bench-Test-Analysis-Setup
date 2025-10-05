@@ -20,7 +20,7 @@ make changes, and propose them for inclusion.
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/your-org-or-user/amp-benchkit.git
+git clone https://github.com/bwedderburn/amp-benchkit.git
 cd amp-benchkit
 ```
 2. Create a virtual environment:
