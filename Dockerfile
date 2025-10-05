@@ -19,7 +19,7 @@ RUN apk add --no-cache python3 py3-pip python3-dev build-base libusb-dev git bas
 WORKDIR /app
 COPY unified_gui_layout.py ./
 COPY scripts/ ./scripts/
-COPY patches/ ./patches/ || true
+COPY patches/ ./patches/
 
 # Install Python deps (explicit list; could move to requirements.txt later)
 RUN pip install --upgrade pip \
