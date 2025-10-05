@@ -138,11 +138,7 @@ class _FallbackBase:
         return
 
 
-BaseGUI: type[Any]
-if HAVE_QT:
-    BaseGUI = QMainWindow  # type: ignore[assignment]
-else:
-    BaseGUI = _FallbackBase
+BaseGUI: type[Any] = QMainWindow if HAVE_QT else _FallbackBase  # type: ignore[assignment]
 
 
 class UnifiedGUI(BaseGUI):
