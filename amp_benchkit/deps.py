@@ -105,7 +105,9 @@ except Exception as e1:  # pragma: no cover
             QCheckBox,
             QSpinBox,
             Qt,
-        ) = (None,) * 15  # type: ignore
+        ) = (
+            None,
+        ) * 15  # type: ignore
 
 HAVE_PYVISA = _pyvisa is not None
 HAVE_SERIAL = _serial is not None and _lp is not None
