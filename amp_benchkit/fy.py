@@ -99,20 +99,21 @@ def fy_sweep(port, ch, proto, start=None, end=None, t_s=None, mode=None, run=Non
                     cmd = "tt2"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                     commands.append(cmd)
                     sent_handshake = True
+            pref = 'b' if ch == 1 else 'd'
             if start is not None:
-                cmd = f"bb{int(start * 100):09d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                cmd = f"{pref}b{int(start * 100):09d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
             if end is not None:
-                cmd = f"be{int(end * 100):09d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                cmd = f"{pref}e{int(end * 100):09d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
             if t_s is not None:
-                cmd = f"bt{int(t_s):02d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                cmd = f"{pref}t{int(t_s):02d}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
             if mode is not None:
-                cmd = f"bm{SWEEP_MODE.get(mode, '0')}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                cmd = f"{pref}m{SWEEP_MODE.get(mode, '0')}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
             if run is not None:
-                cmd = f"br{1 if run else 0}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
+                cmd = f"{pref}r{1 if run else 0}"; log.debug("write %s", cmd); s.write((cmd + eol).encode()); time.sleep(0.02)
                 commands.append(cmd)
     except Exception as e:
         msg = f"FY sweep command failed on {port}: {e}"
