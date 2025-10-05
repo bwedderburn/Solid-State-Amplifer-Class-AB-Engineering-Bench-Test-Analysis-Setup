@@ -57,10 +57,8 @@ try:  # Qt symbol imports (available if HAVE_QT True)
     from amp_benchkit.deps import (
         QApplication, QMainWindow, QWidget, QTabWidget, QVBoxLayout, QHBoxLayout,
         QLabel, QLineEdit, QComboBox, QPushButton, QTextEdit, QProgressBar,
-        QCheckBox, QSpinBox, Qt
+        QCheckBox, QSpinBox, Qt, QTimer, QFont
     )
-    from PySide6.QtCore import QTimer  # or PyQt5 equivalent already resolved inside deps
-    from PySide6.QtGui import QFont
 except Exception:
     # If Qt not available, placeholders are already None in deps
     pass

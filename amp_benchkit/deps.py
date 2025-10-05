@@ -125,5 +125,5 @@ __all__ = [
     '_pyvisa','_serial','_u3',
     # Qt symbols (may be None if unavailable)
     'QApplication','QMainWindow','QWidget','QTabWidget','QVBoxLayout','QHBoxLayout',
-    'QLabel','QLineEdit','QComboBox','QPushButton','QTextEdit','QProgressBar','QCheckBox','QSpinBox','Qt'
+    'QLabel','QLineEdit','QComboBox','QPushButton','QTextEdit','QProgressBar','QCheckBox','QSpinBox','Qt','QTimer','QFont'
 ]
