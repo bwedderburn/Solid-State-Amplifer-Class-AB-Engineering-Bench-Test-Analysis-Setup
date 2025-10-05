@@ -1,5 +1,5 @@
 /*
- * A library to help you build Modbus functions for LabJack devices. For more 
+ * A library to help you build Modbus functions for LabJack devices. For more
  * information on Modbus, please see:
  *
  * http://labjack.com/support/modbus
@@ -33,7 +33,7 @@ extern "C"{
 int buildReadHoldingRegistersPacket( unsigned char* sendBuffer, int startReg, int numRegs, int unitId, int prependZeros );
 /* buildReadHoldingRegistersPacket takes a byte array and sets the bytes to be a
  * Modbus packet to read a register. It returns the number of bytes to read.
- * 
+ *
  * Args:
  * - sendBuffer: an array of length 12 or 14 (if prependZeros != 0 )
  * - startReg: The starting register.
@@ -50,14 +50,14 @@ int numRegs = 2; // AIN0 is a floating point value, so need to read 2 registers
 int unitId = 0; // For UD family devices, always 0
 int prependZeros = 1; // For UD family devices on USB, always 1
 int numBytesToRead;
- 
+
 numBytesToRead = buildReadHoldingRegistersPacket(
                     sendBuffer, startReg, numRegs, unitId, prependZeros );
  */
 
 float parseFPRegisterResponse(unsigned char* recBuffer, int offset);
 /*
- * parseFPRegisterResponse takes the recBuffer and an offset, and returns the 
+ * parseFPRegisterResponse takes the recBuffer and an offset, and returns the
  * floating point value. recBuffer must have a length equal to offset+3.
  *
  * Args:
@@ -69,10 +69,10 @@ unsigned char recBuffer = { 0x40, 0x0, 0x0, 0x0 };
 float value = parseFPRegisterResponse(recBuffer, 0);
 // value -> 2.0
  */
- 
+
 int parseIntRegisterResponse(unsigned char* recBuffer, int offset);
 /*
- * parseIntRegisterResponse takes the recBuffer and an offset, and returns the 
+ * parseIntRegisterResponse takes the recBuffer and an offset, and returns the
  * integer value. recBuffer must have a length equal to offset+4.
  *
  * Args:
@@ -87,7 +87,7 @@ int value = parseIntRegisterResponse(recBuffer, 0);
 
 short parseShortRegisterResponse(unsigned char* recBuffer, int offset);
 /*
- * parseShortRegisterResponse takes the recBuffer and an offset, and returns the 
+ * parseShortRegisterResponse takes the recBuffer and an offset, and returns the
  * short value. recBuffer must have a length equal to offset+2.
  *
  * Args:
@@ -107,7 +107,7 @@ int buildWriteHoldingRegistersPacket(unsigned char* sendBuffer, int startReg, in
  * Modbus packet to write registers. It returns the number of bytes to read.
  * After calling this function, you must use the put*ToBuffer functions to set
  * the values on the end.
- * 
+ *
  * Args:
  * - sendBuffer: an array of length 13+(2*numReg) (+2 if prependZeros != 0 )
  * - startReg: The starting register.
@@ -124,7 +124,7 @@ int unitId = 0; // For UD family devices, always 0
 int prependZeros = 1; // For UD family devices on USB, always 1
 unsigned char sendBuffer[19]; // 13 + (2*2) + 2 = 19
 int numBytesToRead;
- 
+
 numBytesToRead = buildWriteHoldingRegistersPacket(
                     sendBuffer, startReg, numRegs, unitId, prependZeros );
 putFPIntoBuffer(sendBuffer, 15, 2.0);
@@ -134,7 +134,7 @@ putFPIntoBuffer(sendBuffer, 15, 2.0);
 
 int putFPIntoBuffer( unsigned char* sendBuffer, int offset, float value);
 /*
- * putFPIntoBuffer writes the bytes of value into sendBuffer at offset. 
+ * putFPIntoBuffer writes the bytes of value into sendBuffer at offset.
  * sendBuffer must have a length equal to offset+4. Returns zero for success.
  *
  * Args:
@@ -150,7 +150,7 @@ putFPIntoBuffer(sendBuffer, 0, 2.0);
 
 int putIntIntoBuffer( unsigned char* sendBuffer, int offset, int value );
 /*
- * putIntIntoBuffer writes the bytes of value into sendBuffer at offset. 
+ * putIntIntoBuffer writes the bytes of value into sendBuffer at offset.
  * sendBuffer must have a length equal to offset+4. Returns zero for success.
  *
  * Args:
@@ -166,7 +166,7 @@ putIntIntoBuffer(sendBuffer, 0, 8675309);
 
 int putShortIntoBuffer( unsigned char* sendBuffer, int offset, short value );
 /*
- * putShortIntoBuffer inserts the bytes of value into sendBuffer at offset. 
+ * putShortIntoBuffer inserts the bytes of value into sendBuffer at offset.
  * sendBuffer must have a length equal to offset+2. Returns zero for success.
  *
  * Args:

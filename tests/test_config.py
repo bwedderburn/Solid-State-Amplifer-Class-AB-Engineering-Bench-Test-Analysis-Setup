@@ -1,8 +1,5 @@
 import importlib
 import json
-from pathlib import Path
-
-import pytest
 
 
 def test_config_roundtrip(tmp_path):
@@ -56,9 +53,11 @@ def test_config_corrupt_file(tmp_path):
 def test_u3_disabled_graceful(monkeypatch):
     # Simulate environment with no U3 support and ensure helper no-ops without error.
     import amp_benchkit.deps as deps
+
     monkeypatch.setattr(deps, "HAVE_U3", False, raising=False)
     # Reload main module so its cached constant reflects False
     import unified_gui_layout as main_mod
+
     importlib.reload(main_mod)
     # Calling u3_set_line should not raise even though U3 disabled
     main_mod.u3_set_line("FIO3", 1)

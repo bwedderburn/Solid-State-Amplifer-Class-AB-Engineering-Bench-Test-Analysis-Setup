@@ -88,7 +88,7 @@ int StreamConfig_example(HANDLE hDevice)
         else
             printf("Error : did not write all of the buffer (StreamConfig).\n");
         return -1;
-    } 
+    }
 
     //Reading response from UE9
     recChars = LJUSB_Read(hDevice, recBuff, 8);

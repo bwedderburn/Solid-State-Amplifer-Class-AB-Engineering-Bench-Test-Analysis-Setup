@@ -179,7 +179,7 @@ long getAinVoltCalibrated( u6CalibrationInfo *caliInfo,
 //                  0=default, 1-8 for high speed ADC, 9-13 for higres ADC (U6-Pro).
 //gainIndex = The gain index used when reading the binary AIN voltage.
 //            0 = +-10V, 1 = +-1V, 2 = +-100mV, 3 = +-10mV
-//bits24 = Indicates if the voltage bytes passed is a 24-bit binary value, 
+//bits24 = Indicates if the voltage bytes passed is a 24-bit binary value,
 //         otherwise considered to be 16-bits.
 //bytesVolt = The binary voltage that will be converted.  Can be a 16 or 24 bit
 //            value.

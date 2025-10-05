@@ -363,7 +363,7 @@ long getTdacCalibrationInfo( HANDLE hDevice, u3TdacCalibrationInfo *caliInfo, ui
 
     //Performing I2C low-level call
     err = I2C(hDevice, options, speedAdjust, sdaPinNum,
-              sclPinNum, address, numByteToSend, numBytesToRec, 
+              sclPinNum, address, numByteToSend, numBytesToRec,
               bytesComm, &errorcode, ackArray, bytesResp);
 
     if( errorcode != 0 )
@@ -753,7 +753,7 @@ long I2C(HANDLE hDevice, uint8 I2COptions, uint8 SpeedAdjust, uint8 SDAPinNum, u
         ret = -1;
     }
 
-    //ackArray should ack the Address byte in the first ack bit, but did not 
+    //ackArray should ack the Address byte in the first ack bit, but did not
     //until firmware 1.44
     ackArrayTotal = AckArray[0] + AckArray[1]*256 + AckArray[2]*65536 + AckArray[3]*16777216;
     expectedAckArray = pow(2.0,  NumI2CBytesToSend+1)-1;

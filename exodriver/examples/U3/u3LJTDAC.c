@@ -203,7 +203,7 @@ int LJTDAC_example(HANDLE hDevice, u3TdacCalibrationInfo *caliInfo)
 
     /* More advanced operations. */
 
-    /* Display LJTDAC calibration constants.  Code for getting the calibration 
+    /* Display LJTDAC calibration constants.  Code for getting the calibration
      * constants is in the getLJTDACCalibrationInfo function in the u3.c file.
      */
     printf("DACA Slope = %.1f bits/volt\n", caliInfo->ccConstants[0]);
@@ -303,7 +303,7 @@ int LJTDAC_example(HANDLE hDevice, u3TdacCalibrationInfo *caliInfo)
     numBytesToSend = 1;  //NumI2CByteToSend : 1 byte for the EEPROM address
     numBytesToReceive = 52;  //NumI2CBytesToReceive : getting 52 bytes starting
                              //at EEPROM address specified in I2CByte0
-    bytesCommand[0] = 0;  //I2CByte0 : Memory Address, starting at address 0 
+    bytesCommand[0] = 0;  //I2CByte0 : Memory Address, starting at address 0
                           //(User Area)
 
     //Performing I2C low-level call

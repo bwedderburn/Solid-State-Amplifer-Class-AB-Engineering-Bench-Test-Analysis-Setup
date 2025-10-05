@@ -314,7 +314,7 @@ int StreamData_example(HANDLE hDevice, u3CalibrationInfo *caliInfo, int isDAC1En
     int i, j, k, m;
     int totalPackets;  //The total number of StreamData responses read
     int numDisplay;  //Number of times to display streaming information
-    int numReadsPerDisplay;  //Number of packets to read before displaying 
+    int numReadsPerDisplay;  //Number of packets to read before displaying
                              //streaming information
     int readSizeMultiplier;  //Multiplier for the StreamData receive buffer size
     int responseSize;  //The number of bytes in a StreamData response
@@ -350,7 +350,7 @@ int StreamData_example(HANDLE hDevice, u3CalibrationInfo *caliInfo, int isDAC1En
         for( j = 0; j < numReadsPerDisplay; j++ )
         {
             /* For USB StreamData, use Endpoint 3 for reads.  You can read the
-             * multiple StreamData responses of 64 bytes only if 
+             * multiple StreamData responses of 64 bytes only if
              * SamplesPerPacket is 25 to help improve streaming performance.  In
              * this example this multiple is adjusted by the readSizeMultiplier
              * variable.

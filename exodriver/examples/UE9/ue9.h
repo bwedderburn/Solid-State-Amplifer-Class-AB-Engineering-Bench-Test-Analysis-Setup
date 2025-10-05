@@ -12,7 +12,7 @@
 // functions that apply the calibration constants. (06/25/2009)
 //-Replaced LJUSB_BulkWrite/Read with LJUSB_write/Read calls.  Added serial
 // support to openUSBConnection. (05/25/2011)
-//-Updated functions to have C bindings. (04/08/2016) 
+//-Updated functions to have C bindings. (04/08/2016)
 
 #ifndef _UE9_H
 #define _UE9_H
@@ -231,7 +231,7 @@ long getAinVoltUncalibrated( uint8 gainBip,
 long getDacBinVoltUncalibrated( int dacNumber,
                                 double analogVolt,
                                 uint16 *bytesVolt);
-//Translates an analog output voltage to a binary 16 bit value (uncalibrated) 
+//Translates an analog output voltage to a binary 16 bit value (uncalibrated)
 //that can be sent to a UE9.  Returns -1 on error, 0 on success.
 //dacNumber - channel number of the DAC
 //analogVoltage = the analog voltage that will be converted to a 2 byte value
@@ -346,7 +346,7 @@ long eDO( HANDLE Handle,
 //no error, or -1 or >0 value (low-level errorcode) on error.
 //Handle = Handle to a UE9 device.
 //Channel = The channel to write to.  0-19 corresponds to FIO0-MIO2.
-//State = The state to write to the digital output.  0=False=Low and 
+//State = The state to write to the digital output.  0=False=Low and
 //        1=True=High.
 
 long eTCConfig( HANDLE Handle,

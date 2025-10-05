@@ -1,8 +1,8 @@
 //Author: LabJack
 //May 25, 2011
 //This example program makes 3 SingleIO low-level function calls.  One call sets
-//DAC0 to 2.500 V.  One call reads voltage from AIN0.  One call reads the 
-//temperature from the internal temperature sensor.  Control firmware version 
+//DAC0 to 2.500 V.  One call reads voltage from AIN0.  One call reads the
+//temperature from the internal temperature sensor.  Control firmware version
 //1.03 and above needed for SingleIO.
 #include "ue9.h"
 
@@ -14,7 +14,7 @@ int main(int argc, char **argv)
     HANDLE hDevice;
     ue9CalibrationInfo caliInfo;
 
-    //Opening first found UE9 over USB 
+    //Opening first found UE9 over USB
     if( (hDevice = openUSBConnection(-1)) == NULL )
         goto done;
 
@@ -30,7 +30,7 @@ done:
     return 0;
 }
 
-//Sends 3 SingleIO low-level commands to set DAC0, read AIN0 and read the 
+//Sends 3 SingleIO low-level commands to set DAC0, read AIN0 and read the
 //temperature
 int singleIO_AV_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
 {
@@ -39,7 +39,7 @@ int singleIO_AV_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     int sendChars, recChars;
     double voltage;
     double temperature;  //in Kelvins
-    
+
     ainResolution = 12;
     //ainResolution = 18;  //high-res mode for UE9 Pro only
 
@@ -52,8 +52,8 @@ int singleIO_AV_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     sendBuff[2] = (uint8)(0x05);  //IOType = 5 (analog out)
     sendBuff[3] = (uint8)(0x00);  //Channel = 0 (DAC0)
     sendBuff[4] = (uint8)( bytesVoltage & (0x00FF) );  //low bits of voltage
-    sendBuff[5] = (uint8)( bytesVoltage /256 ) + 192;  //high bits of voltage 
-                                                       //(bit 7 : Enable, 
+    sendBuff[5] = (uint8)( bytesVoltage /256 ) + 192;  //high bits of voltage
+                                                       //(bit 7 : Enable,
                                                        // bit 6: Update)
     sendBuff[6] = (uint8)(0x00);  //Settling time - does not apply to analog output
     sendBuff[7] = (uint8)(0x00);  //Reserved
@@ -159,7 +159,7 @@ int singleIO_AV_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     {
         if( sendChars == 0 )
             goto sendError0;
-        else  
+        else
             goto sendError1;
     }
 
@@ -205,7 +205,7 @@ sendError1:
 recvError0:
     printf("Error : read failed\n");
     return -1;
-recvError1:  
+recvError1:
     printf("Error : did not read all of the buffer\n");
     return -1;
 chksumError:
@@ -214,10 +214,10 @@ chksumError:
 commandByteError:
     printf("Error : read buffer has wrong command byte\n");
     return -1;
-IOTypeError:  
+IOTypeError:
     printf("Error : read buffer has wrong IOType\n");
     return -1;
-channelError:  
+channelError:
     printf("Error : read buffer has wrong channel\n");
     return -1;
 }

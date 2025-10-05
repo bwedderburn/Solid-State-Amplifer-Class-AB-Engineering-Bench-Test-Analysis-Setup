@@ -1,7 +1,7 @@
 //Author: LabJack
 //May 25, 2011
 //This example program calls the Feedback low-level function.  DAC0 will be set
-//to 2.5 volts and DAC1 will be set to 3.5 volts.  The states and directions 
+//to 2.5 volts and DAC1 will be set to 3.5 volts.  The states and directions
 //will be read from FIO0 - FIO3 and the voltages (calibrated) from AI0-AI3.
 
 #include "ue9.h"
@@ -25,12 +25,12 @@ int main(int argc, char **argv)
     feedback_example(hDevice, &caliInfo);
 
 close:
-    closeUSBConnection(hDevice);  
+    closeUSBConnection(hDevice);
 done:
     return 0;
 }
 
-//Sends a Feedback low-level command to set DAC0, DAC1, read FIO0-FIO3 and 
+//Sends a Feedback low-level command to set DAC0, DAC1, read FIO0-FIO3 and
 //AI0-AI3.
 int feedback_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
 {
@@ -48,7 +48,7 @@ int feedback_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     sendBuff[2] = (uint8)(0x0E);  //Number of data words
     sendBuff[3] = (uint8)(0x00);  //Extended command number
 
-    //All these bytes are set to zero since we are not changing the FIO, EIO, CIO 
+    //All these bytes are set to zero since we are not changing the FIO, EIO, CIO
     //and MIO directions and states
     for( i = 6; i <= 15; i++ )
         sendBuff[i] = (uint8)(0x00);
@@ -58,15 +58,15 @@ int feedback_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
 
     //setting the voltage of DAC0
     sendBuff[16] = (uint8)( bytesVoltage & (0x00FF) );   //low bits of DAC0
-    sendBuff[17] = (uint8)( bytesVoltage / 256 ) + 192;  //high bits of DAC0 
-                                                         //(bit 7 : Enable, 
+    sendBuff[17] = (uint8)( bytesVoltage / 256 ) + 192;  //high bits of DAC0
+                                                         //(bit 7 : Enable,
                                                          // bit 6: Update)
     if( getDacBinVoltCalibrated(caliInfo, 1, 3.500, &bytesVoltage) < 0 )
         return -1;
 
     //setting the voltage of DAC1
     sendBuff[18] = (uint8)( bytesVoltage & (0x00FF) );   //low bits of DAC1
-    sendBuff[19] = (uint8)( bytesVoltage / 256 ) + 192;  //high bits of DAC1 
+    sendBuff[19] = (uint8)( bytesVoltage / 256 ) + 192;  //high bits of DAC1
                                                          //(bit 7 : Enable,
                                                          // bit 6: Update)
     sendBuff[20] = (uint8)(0x0f);  //AINMask - reading AIN0-AIN3, not AIN4-AIN7

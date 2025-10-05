@@ -88,7 +88,7 @@ uint8 extendedChecksum8(uint8 *b)
 {
     int i, a, bb;
 
-    //Sums bytes 1 to 5. Sums quotient and remainder of 256 division. Again, sums 
+    //Sums bytes 1 to 5. Sums quotient and remainder of 256 division. Again, sums
     //quotient and remainder of 256 division.
     for( i = 1, a = 0; i < 6; i++ )
         a += (uint16)b[i];
@@ -111,7 +111,7 @@ HANDLE openUSBConnection(int localID)
     HANDLE hDevice = 0;
 
     numDevices = LJUSB_GetDevCount(UE9_PRODUCT_ID);
-    if( numDevices == 0 ) 
+    if( numDevices == 0 )
     {
         printf("Open error: No UE9 devices could be found\n");
         return NULL;
@@ -165,7 +165,7 @@ HANDLE openUSBConnection(int localID)
                 //Check local ID
                 if( (int)buffer[8] == localID )
                     return hDevice;
-                
+
                 //Check serial number
                 serial = buffer[28] + buffer[29]*256 + buffer[30]*65536 + 0x10000000;
                 if( serial == localID )
@@ -187,7 +187,7 @@ locid_error:
 }
 
 
-void closeUSBConnection(HANDLE hDevice) 
+void closeUSBConnection(HANDLE hDevice)
 {
     LJUSB_CloseDevice(hDevice);
 }
@@ -317,8 +317,8 @@ long getTdacCalibrationInfo(HANDLE hDevice, ue9TdacCalibrationInfo *caliInfo, ui
 }
 
 
-double FPuint8ArrayToFPDouble(uint8 *buffer, int startIndex) 
-{ 
+double FPuint8ArrayToFPDouble(uint8 *buffer, int startIndex)
+{
     uint32 resultDec = 0, resultWh = 0;
 
     resultDec = (uint32)buffer[startIndex] |
@@ -412,16 +412,16 @@ long getDacBinVoltCalibrated(ue9CalibrationInfo *caliInfo, int dacNumber, double
 
     tBytesVolt = analogVolt*caliInfo->ccConstants[10 + dacNumber*2] +   caliInfo->ccConstants[11 + dacNumber*2];
 
-    //Checking to make sure bytesVoltage will be a value between 0 and 4095, or 
-    //that a uint16 overflow does not occur.  A too high analogVoltage (above 5 
-    //volts) or too low analogVoltage (below 0 volts) will cause a value not 
+    //Checking to make sure bytesVoltage will be a value between 0 and 4095, or
+    //that a uint16 overflow does not occur.  A too high analogVoltage (above 5
+    //volts) or too low analogVoltage (below 0 volts) will cause a value not
     //between 0 and 4095.
     if( tBytesVolt < 0 )
         tBytesVolt = 0;
     if( tBytesVolt > 4095 )
         tBytesVolt = 4095;
 
-    *bytesVolt = (uint16)tBytesVolt; 
+    *bytesVolt = (uint16)tBytesVolt;
 
     return 0;
 }
@@ -448,7 +448,7 @@ long getTdacBinVoltCalibrated(ue9TdacCalibrationInfo *caliInfo, int dacNumber, d
 
     *bytesVolt = (uint16)tBytesVolt;
 
-    return 0;  
+    return 0;
 }
 
 

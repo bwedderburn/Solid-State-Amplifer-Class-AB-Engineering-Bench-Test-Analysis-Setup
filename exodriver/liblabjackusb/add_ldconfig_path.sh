@@ -28,4 +28,3 @@ done
 
 echo "echo \"$path\" >> $ldconfig_file"
 echo "$path" >> $ldconfig_file
-
