@@ -1,6 +1,6 @@
 # Minimal container for amp-benchkit unified GUI + LabJack Exodriver
 # Multi-stage could be added later; kept single stage for clarity.
-FROM alpine:latest
+FROM alpine:3.18
 
 # Ensure all packages are up-to-date
 RUN apk update && apk upgrade --no-cache
