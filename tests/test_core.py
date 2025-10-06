@@ -4,6 +4,7 @@ import numpy as np
 
 from amp_benchkit.dsp import find_knees, thd_fft
 from amp_benchkit.fy import build_fy_cmds
+from amp_benchkit.tek import parse_ieee_block
 from unified_gui_layout import _decode_ieee_block
 
 
@@ -36,3 +37,10 @@ def test_find_knees():
     amps = np.array([1, 1, 1, 1, 1, 1, 1, 0.7, 0.4, 0.2], dtype=float)
     f_lo, f_hi, ref_amp, ref_db = find_knees(freqs, amps, ref_mode="max", drop_db=3.0)
     assert math.isfinite(f_hi) and f_hi > 1000
+
+
+def test_parse_ieee_block_passthrough_bytes():
+    raw = b"hello"
+    out = parse_ieee_block(raw)
+    assert isinstance(out, (bytes, bytearray))
+    assert out == raw

@@ -69,8 +69,8 @@ def parse_ieee_block(block: bytes):
                 parts = [int(x) for x in txt.split(",") if x]
                 return np.array(parts)
         except Exception:
-            return np.array([])
-        return np.array([])
+            return block
+        return block
     if len(block) < 2:
         return np.array([])
     n_dig = int(chr(block[1]))
