@@ -14,7 +14,7 @@ lint:
 	ruff check .
 
 type:
-	mypy amp_benchkit || true
+	mypy amp_benchkit unified_gui_layout.py
 
 format:
 	black .
@@ -99,4 +99,4 @@ coverage: deps
 	$(PY) -m pytest --cov=amp_benchkit --cov-report=term-missing
 
 type: deps
-	$(VENV)/bin/mypy --ignore-missing-imports amp_benchkit || true
+	$(VENV)/bin/mypy amp_benchkit unified_gui_layout.py

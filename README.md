@@ -39,6 +39,9 @@ python unified_gui_layout.py selftest
 
 # Launch GUI (if X / Wayland or VS Code desktop available)
 python unified_gui_layout.py gui --gui
+
+# Optional: static type check
+python -m mypy amp_benchkit unified_gui_layout.py
 ```
 
 ### Installed (Package) Usage
