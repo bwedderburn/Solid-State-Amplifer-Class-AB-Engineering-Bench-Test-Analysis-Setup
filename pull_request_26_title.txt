@@ -1,0 +1,1 @@
+Normalize indentation for optional dependency keys in pyproject.toml
