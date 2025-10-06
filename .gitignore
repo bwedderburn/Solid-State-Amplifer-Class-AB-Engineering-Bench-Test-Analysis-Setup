@@ -50,6 +50,9 @@ Thumbs.db
 *.matplotlib
 .mplconfig/
 
+# Generated measurement artifacts
+results/
+
 # Jupyter
 .ipynb_checkpoints/
 
