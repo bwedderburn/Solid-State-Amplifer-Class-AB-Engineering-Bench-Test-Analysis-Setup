@@ -4,7 +4,7 @@ import numpy as np
 
 from amp_benchkit.dsp import find_knees, thd_fft
 from amp_benchkit.fy import build_fy_cmds
-from amp_benchkit.tek import parse_ieee_block
+from amp_benchkit.tek import _resolve_data_source, parse_ieee_block, tek_setup_channel
 from unified_gui_layout import _decode_ieee_block
 
 
@@ -44,3 +44,23 @@ def test_parse_ieee_block_passthrough_bytes():
     out = parse_ieee_block(raw)
     assert isinstance(out, (bytes, bytearray))
     assert out == raw
+
+
+def test_tek_setup_channel_math_source():
+    class DummyScope:
+        def __init__(self):
+            self.cmds = []
+
+        def write(self, cmd):
+            self.cmds.append(cmd)
+
+    sc = DummyScope()
+    tek_setup_channel(sc, ch="MATH")
+    assert "DATA:SOURCE MATH" in sc.cmds
+
+
+def test_resolve_data_source_variants():
+    assert _resolve_data_source("math") == "MATH"
+    assert _resolve_data_source("CH2") == "CH2"
+    assert _resolve_data_source("2") == "CH2"
+    assert _resolve_data_source(3) == "CH3"
