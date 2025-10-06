@@ -15,7 +15,7 @@ import os
 import sys
 import time
 from contextlib import suppress
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 
@@ -139,7 +139,10 @@ class _FallbackBase:
         return
 
 
-BaseGUI: type[Any] = QMainWindow if HAVE_QT else _FallbackBase  # type: ignore[assignment]
+if HAVE_QT and "QMainWindow" in globals() and QMainWindow is not None:
+    BaseGUI: type[Any] = cast(type[Any], QMainWindow)
+else:
+    BaseGUI = _FallbackBase
 
 
 class UnifiedGUI(BaseGUI):
