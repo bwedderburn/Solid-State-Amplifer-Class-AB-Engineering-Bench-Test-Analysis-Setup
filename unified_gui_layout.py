@@ -88,6 +88,15 @@ with suppress(Exception):  # Qt symbol imports (available if HAVE_QT True)
 
 FY_PROTOCOLS = ["FY ASCII 9600", "Auto (115200/CRLF→9600/LF)"]
 
+
+def _require_u3() -> Any:
+    """Return the loaded LabJack module or raise if unavailable."""
+
+    if _u3 is None:
+        raise RuntimeError("LabJack U3 bindings unavailable")
+    return _u3
+
+
 # -----------------------------
 # Utility / status helpers
 # -----------------------------
@@ -1555,11 +1564,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-def _require_u3() -> Any:
-    """Return the loaded LabJack module or raise if unavailable."""
-
-    if _u3 is None:
-        raise RuntimeError("LabJack U3 bindings unavailable")
-    return _u3
