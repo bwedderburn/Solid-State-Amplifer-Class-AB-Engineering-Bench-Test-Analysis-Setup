@@ -1,14 +1,16 @@
 # Release v0.3.1
 
 ## Highlights
-- Adds console scripts (`amp-benchkit`, `amp-benchkit-gui`) and a new `sweep` CLI subcommand for generating linear or logarithmic frequency lists.
-- Bundles an example sweep dataset (`results/sweep_scope.csv`) and documents headless automation usage in the README.
-- Improves FY generator sweep handling for channel 2 and strengthens LabJack U3 helpers for environments without attached hardware.
-- Rebuilds the Docker image on top of `python:3.11-slim`, ensuring PySide6 wheels install cleanly and patches are copied consistently.
+- Added console entry points `amp-benchkit` and `amp-benchkit-gui`, plus a new `sweep` CLI subcommand for generating linear or logarithmic frequency lists.
+- Bundled `results/sweep_scope.csv` and documented headless automation so users can demo sweeps without hardware on hand.
+- Hardened FY generator channel-2 sweep handling to validate command sequences and frequency inputs.
+- Toughened LabJack U3 helpers so they no-op cleanly when the device or driver is missing, keeping pytest runs green on non-hardware machines.
+- Rebuilt the Docker image on top of `python:3.11-slim`, guaranteeing PySide6 wheels install cleanly and always copying the `patches/` directory.
 
 ## Upgrade Notes
-- Install the package (`pip install amp-benchkit`) to gain access to the new console entry points; the legacy `python unified_gui_layout.py` path remains but is considered deprecated.
-- For Docker users, rebuild images to pick up the new base and dependency layout.
+- Install or upgrade via `pip install amp-benchkit` (or rebuild the Docker image) to pick up the new console scripts and curated sample data.
+- If you depend on the Docker workflow, rebuild locally to pick up the new base image and dependency layout.
 
-## Changelog Summary
-See `CHANGELOG.md` for the structured list of additions, changes, and fixes included in this release.
+## Documentation
+- README now includes sweep CLI examples and automation tips.
+- See `CHANGELOG.md` for the full list of changes.
