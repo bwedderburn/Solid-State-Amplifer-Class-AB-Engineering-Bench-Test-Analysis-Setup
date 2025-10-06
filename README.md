@@ -18,6 +18,7 @@ Unified GUI + LabJack instrumentation helper environment.
 - `amp_benchkit/dsp.py` – DSP helpers (RMS, Vpp, THD FFT, bandwidth knees).
 - `amp_benchkit/gui/` – Incremental extraction of GUI tabs (generator, scope, DAQ extracted).
 - `amp_benchkit/u3util.py` – LabJack U3 safe‑open and feature detection utilities.
+- `docs/amp-benchkit_test_recipes.md` – Practical amplifier test playbooks (crest factor, tone bursts, IMD).
 
 - `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
 - `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
