@@ -19,19 +19,20 @@ from typing import Any
 
 import numpy as np
 
-# Ensure matplotlib can build its cache even when the user home dir is read-only.
+# Ensure matplotlib caches inside the repository so read-only homes don't noise up runs.
 if "MPLCONFIGDIR" not in os.environ:
-    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")
+    repo_root = os.path.dirname(os.path.abspath(__file__))
+    cache_dir = os.path.join(repo_root, ".mplconfig")
     try:
         os.makedirs(cache_dir, exist_ok=True)
     except Exception:
-        cache_dir = os.path.join(os.getcwd(), ".matplotlib-cache")
-        try:
-            os.makedirs(cache_dir, exist_ok=True)
-        except Exception:
-            cache_dir = ""
+        cache_dir = ""
     if cache_dir:
         os.environ["MPLCONFIGDIR"] = cache_dir
+    else:  # pragma: no cover - only if repo directory is unwritable
+        import tempfile
+
+        os.environ["MPLCONFIGDIR"] = tempfile.mkdtemp(prefix="mplconfig-")
 
 import matplotlib
 

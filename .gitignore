@@ -48,6 +48,7 @@ Thumbs.db
 
 # Matplotlib / Qt runtime
 *.matplotlib
+.mplconfig/
 
 # Jupyter
 .ipynb_checkpoints/
