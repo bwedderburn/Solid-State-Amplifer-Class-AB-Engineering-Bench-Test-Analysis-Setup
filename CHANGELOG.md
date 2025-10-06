@@ -10,6 +10,13 @@ starting with 0.x pre-release phases.
 
 _No changes yet._
 
+[0.3.2] - 2025-10-06
+--------------------
+
+**Changed**
+
+- Finalize version for 0.3.2 release (packaging metadata bump from 0.3.2.dev0).
+
 [0.3.1] - 2025-10-05
 --------------------
 
