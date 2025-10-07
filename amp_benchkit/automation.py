@@ -251,7 +251,7 @@ def sweep_audio_kpis(
         # Capture
         try:
             src = "MATH" if use_math else scope_channel
-            t, v = scope_capture_calibrated(scope_resource, src)
+            t, v = scope_capture_calibrated(scope_resource, ch=src)
         except Exception as e:
             logger(f"Scope capture error @ {f} Hz: {e}")
             t = []

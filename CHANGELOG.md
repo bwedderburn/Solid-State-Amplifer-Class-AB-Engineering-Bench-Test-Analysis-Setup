@@ -10,6 +10,14 @@ starting with 0.x pre-release phases.
 
 _No changes yet._
 
+[0.3.6] - 2025-10-07
+--------------------
+
+**Fixed**
+
+- `sweep_audio_kpis` now routes channel/mathematics captures through `scope_capture_calibrated` using an explicit `ch` parameter, fixing Tektronix math/differential sweeps.
+- Tek scope utilities normalise channel names (including `MATH`) and guard timeout parsing so GUI/automation captures no longer fall back to CH1 or raise `ValueError`.
+
 [0.3.2] - 2025-10-06
 --------------------
 
