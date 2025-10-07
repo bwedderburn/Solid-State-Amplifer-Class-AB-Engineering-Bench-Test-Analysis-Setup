@@ -25,7 +25,7 @@ def build_scope_tab(gui: Any) -> object | None:
     L = QVBoxLayout(w)
     # Provide default scope resource if gui object does not define one (test safety)
     if not hasattr(gui, "scope_res"):
-        gui.scope_res = ""
+        gui.scope_res = ""  # type: ignore
     r = QHBoxLayout()
     r.addWidget(QLabel("VISA Resource:"))
     gui.scope_edit = QLineEdit(gui.scope_res)

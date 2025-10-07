@@ -16,7 +16,7 @@ import sys
 try:
     from importlib.metadata import version as _pkg_version
 
-    __version__ = _pkg_version("amp-benchkit")
+    __version__ = _pkg_version("amp-benchkit")  # type: ignore
 except Exception:  # pragma: no cover - best effort
     __version__ = "0.0.0"
 

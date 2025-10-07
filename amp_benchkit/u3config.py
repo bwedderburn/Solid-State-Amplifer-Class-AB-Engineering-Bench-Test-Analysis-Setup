@@ -128,19 +128,12 @@ def u3_set_dir(line: str, direction: int):
                 idx_local = gi % 8
                 base = gi - idx_local
                 mask = 1 << idx_local
-                dir_mask = mask if direction else 0
-                dirs = [0, 0, 0]
-                writes = [0, 0, 0]
                 if base == 0:
-                    dirs[0] = dir_mask
-                    writes[0] = mask
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[mask, 0, 0]))
                 elif base == 8:
-                    dirs[1] = dir_mask
-                    writes[1] = mask
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, mask, 0]))
                 else:
-                    dirs[2] = dir_mask
-                    writes[2] = mask
-                d.getFeedback(lj.PortDirWrite(Direction=dirs, WriteMask=writes))
+                    d.getFeedback(lj.PortDirWrite(Direction=[0, 0, 0], WriteMask=[0, 0, mask]))
     finally:
         with suppress(Exception):
             d.close()

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..fy import FY_PROTOCOLS
+from ..fy import FY_PROTOCOLS  # type: ignore
 from ._qt import require_qt
 
 

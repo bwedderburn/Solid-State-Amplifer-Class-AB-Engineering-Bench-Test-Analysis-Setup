@@ -45,30 +45,10 @@ def _need_pyvisa():  # internal guard
         raise ImportError(f"pyvisa not available. {INSTALL_HINTS['pyvisa']}")
 
 
-def _resolve_data_source(ch: int | str) -> str:
-    """Return a Tektronix DATA:SOURCE token for a channel or MATH."""
-
-    if isinstance(ch, str):
-        token = ch.strip().upper()
-        if token == "MATH":
-            return "MATH"
-        if token.startswith("CH"):
-            return token
-        try:
-            return f"CH{int(token)}"
-        except Exception:
-            pass
-    try:
-        return f"CH{int(ch)}"
-    except Exception:
-        return "CH1"
-
-
 def tek_setup_channel(sc, ch=1):
     sc.write("HEADER OFF")
-    source = _resolve_data_source(ch)
     try:
-        sc.write(f"DATA:SOURCE {source}")
+        sc.write(f"DATA:SOURCE CH{ch}")
         sc.write("DATa:ENCdg RIBinary;WIDth 1")
         sc.write("DATA:START 1")
         sc.write("HORIZONTAL:RECORDLENGTH 10000")
@@ -89,8 +69,8 @@ def parse_ieee_block(block: bytes):
                 parts = [int(x) for x in txt.split(",") if x]
                 return np.array(parts)
         except Exception:
-            return block
-        return block
+            return np.array([])
+        return np.array([])
     if len(block) < 2:
         return np.array([])
     n_dig = int(chr(block[1]))
