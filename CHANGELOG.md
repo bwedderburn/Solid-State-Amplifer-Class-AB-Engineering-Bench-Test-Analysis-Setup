@@ -10,23 +10,12 @@ starting with 0.x pre-release phases.
 
 _No changes yet._
 
-[0.3.2] - 2025-10-07
+[0.3.2] - 2025-10-06
 --------------------
 
-**Reverted**
+**Changed**
 
-- Restored repository state to v0.3.1 baseline (commit 782afaa0) to remove unintended changes from subsequent commits.
-- This reversion addresses issues introduced after v0.3.1 that impacted project stability.
-
-**Fixed**
-
-- Suppressed LabJackPython stdout messages during module import to prevent test failures.
-- Updated Ruff configuration to use modern `[lint]` namespace format, eliminating deprecation warnings.
-
-**Internal / Tooling**
-
-- CI workflows remain stable with all lint and test checks passing.
-- Maintained compatibility with Python 3.10, 3.11, and 3.12.
+- Finalize version for 0.3.2 release (packaging metadata bump from 0.3.2.dev0).
 
 [0.3.1] - 2025-10-05
 --------------------
