@@ -8,6 +8,8 @@ Unified GUI + LabJack instrumentation helper environment.
 ![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
 ![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
 
+> **Note on v0.3.2 (Maintenance Release):** This release restores the repository to the v0.3.1 baseline state to remove unintended changes introduced in subsequent commits. Key improvements include fixing LabJackPython import warnings in test output and updating Ruff configuration to modern format. All CI checks pass cleanly.
+
 
 ## Contents
 
