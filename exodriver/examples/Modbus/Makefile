@@ -17,10 +17,10 @@ all: testModbusFunctions readModbusExample writeModbusExample
 
 testModbusFunctions: $(TESTMODBUS_OBJ)
 	$(CC) -o testModbusFunctions $(TESTMODBUS_OBJ) $(LDFLAGS) $(LIBS)
-	
+
 readModbusExample: $(READMODBUS_OBJ)
 	$(CC) -o readModbusExample $(READMODBUS_OBJ) $(LDFLAGS) $(LIBS)
-	
+
 writeModbusExample: $(WRITEMODBUS_OBJ)
 	$(CC) -o writeModbusExample $(WRITEMODBUS_OBJ) $(LDFLAGS) $(LIBS)
 

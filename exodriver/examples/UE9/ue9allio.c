@@ -49,7 +49,7 @@ int allIO(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     numIterations = 1000;
     initialize = 1;
     time = 0;
-    numChannels = 8; 
+    numChannels = 8;
     ainResolution = 12;
     for( i = 0; i < 16; i++ )
         valueAIN[i] = 9999.0;
@@ -76,12 +76,12 @@ int allIO(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
     sendBuff[15] = 0;   //MIODirState : setting all MIO directions to input,
                         //              state writes do not apply
 
-    //Getting binary DAC0 value of 2.5 volts 
+    //Getting binary DAC0 value of 2.5 volts
     if( getDacBinVoltCalibrated(caliInfo, 0, 2.500, &bytesVoltage) < 0 )
         return -1;
     //Setting the voltage of DAC0 to 2.5
     sendBuff[16] = (uint8)(bytesVoltage & 255);      //low bits of DAC0
-    sendBuff[17] = (uint8)(bytesVoltage/256) + 192;  //high bits of DAC0 
+    sendBuff[17] = (uint8)(bytesVoltage/256) + 192;  //high bits of DAC0
                                                      //(bit 7 : Enable,
                                                      // bit 6: Update)
     //Getting binary DAC1 value of 3.5 volts
@@ -89,7 +89,7 @@ int allIO(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
         return -1;
     //Setting the voltage of DAC1 to 3.5 volts
     sendBuff[18] = (uint8)(bytesVoltage & 255);      //low bits of DAC1
-    sendBuff[19] = (uint8)(bytesVoltage/256) + 192;  //high bits of DAC1 
+    sendBuff[19] = (uint8)(bytesVoltage/256) + 192;  //high bits of DAC1
                                                      //(bit 7 : Enable,
                                                      // bit 6: Update)
 
@@ -102,7 +102,7 @@ int allIO(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
                                    //             ainResolution
     sendBuff[25] = settlingTime;   //SettlingTime
 
-    //Setting all BipGains (Gain = 1, Bipolar = 1) 
+    //Setting all BipGains (Gain = 1, Bipolar = 1)
     for( i = 26; i < 34; i++ )
         sendBuff[i] = (uint8)(0x00);
 
@@ -166,15 +166,15 @@ int allIO(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
 
         if( initialize == 1 )
         {
-            //Unsetting digital IO bit masks since we only want to read states now 
-            sendBuff[6] = 0;   //FIOMask 
+            //Unsetting digital IO bit masks since we only want to read states now
+            sendBuff[6] = 0;   //FIOMask
             sendBuff[9] = 0;   //EIOMask
-            sendBuff[12] = 0;  //CIOMask 
-            sendBuff[14] = 0;  //MIOMask 
+            sendBuff[12] = 0;  //CIOMask
+            sendBuff[14] = 0;  //MIOMask
 
             //Turning off Update bit of DACs
-            sendBuff[17] = sendBuff[17] - 64;  //high bits of DAC0  
-            sendBuff[19] = sendBuff[19] - 64;  //high bits of DAC1 
+            sendBuff[17] = sendBuff[17] - 64;  //high bits of DAC0
+            sendBuff[19] = sendBuff[19] - 64;  //high bits of DAC1
 
             extendedChecksum(sendBuff, 34);
 

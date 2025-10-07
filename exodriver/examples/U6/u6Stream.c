@@ -168,7 +168,7 @@ int StreamConfig_example(HANDLE hDevice)
     for( i = 0; i < NumChannels; i++ )
     {
         sendBuff[14 + i*2] = i;  //ChannelNumber (Positive) = i
-        sendBuff[15 + i*2] = 0;  //ChannelOptions: 
+        sendBuff[15 + i*2] = 0;  //ChannelOptions:
                                  //  Bit 7: Differential = 0
                                  //  Bit 5-4: GainIndex = 0 (+-10V)
     }

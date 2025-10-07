@@ -1,7 +1,7 @@
 /*
 An example that shows how to use sockets to talk with the UE9. You may notice
 that the code is VERY similar to ue9BasicCommConfig.c. The only difference is
-using socket calls instead of calls to the Exodriver. 
+using socket calls instead of calls to the Exodriver.
 
 You can compile this example with the following command:
   $ g++ -o ue9EthernetExample ue9EthernetExample.c
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
        fprintf(stderr,"Usage: %s <IP Address>\n", argv[0]);
        exit(-1);
     }
-    
+
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
         exit(-1);
     }
     printf("Done\n");
-    
+
     printf("Connecting (time out after a minute)... ");
     fflush(stdout);
     r = connect(devHandle, res->ai_addr, res->ai_addrlen);
@@ -99,40 +99,40 @@ int main(int argc, char *argv[]) {
 
     // Builds the CommConfig command
     buildCommConfigBytes(sendBuffer);
-    
+
     // Write the command to the device.
     // LJUSB_Write( handle, sendBuffer, length of sendBuffer )
     r = write( devHandle, sendBuffer, COMMCONFIG_COMMAND_LENGTH );
-    
+
     if( r != COMMCONFIG_COMMAND_LENGTH ) {
         printf("An error occurred when trying to write the buffer. The error was: %d\n", errno);
         // *Always* close the device when you error out.
         close(devHandle);
         exit(-1);
     }
-    
+
     // Read the result from the device.
     // LJUSB_Read( handle, recBuffer, number of bytes to read)
     r = read( devHandle, recBuffer, COMMCONFIG_RESPONSE_LENGTH );
-    
+
     if( r != COMMCONFIG_RESPONSE_LENGTH ) {
         printf("An error occurred when trying to read from the UE9. The error was: %d\n", errno);
         close(devHandle);
         exit(-1);
     }
-    
+
     // Check the command for errors
     if( checkResponseForErrors(recBuffer) != 0 ){
         close(devHandle);
         exit(-1);
     }
-    
+
     // Parse the response into something useful
     parseCommConfigBytes(recBuffer);
-    
+
     //Close the device.
     close(devHandle);
-    
+
     return 0;
 }
 
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 void buildCommConfigBytes(BYTE * sendBuffer) {
     int i; // For loops
     int checksum = 0;
-    
+
     // Build up the bytes
     //sendBuffer[0] = Checksum8
     sendBuffer[1] = 0x78;
@@ -152,22 +152,22 @@ void buildCommConfigBytes(BYTE * sendBuffer) {
     sendBuffer[3] = 0x01;
     //sendBuffer[4] = Checksum16 (LSB)
     //sendBuffer[5] = Checksum16 (MSB)
-    
+
     // We just want to read, so we set the WriteMask to zero, and zero out the
     // rest of the bytes.
     sendBuffer[6] = 0;
     for( i = 7; i < COMMCONFIG_COMMAND_LENGTH; i++){
         sendBuffer[i] = 0;
     }
-    
+
     // Calculate and set the checksum16
     checksum = calculateChecksum16(sendBuffer, COMMCONFIG_COMMAND_LENGTH);
     sendBuffer[4] = (BYTE)( checksum & 0xff );
     sendBuffer[5] = (BYTE)( (checksum / 256) & 0xff );
-    
+
     // Calculate and set the checksum8
     sendBuffer[0] = calculateChecksum8(sendBuffer);
-    
+
     // The bytes have been set, and the checksum calculated. We are ready to
     // write to the UE9.
 }
@@ -186,19 +186,19 @@ int checkResponseForErrors(BYTE * recBuffer) {
     }
     // Normally, we would check byte 6 for errorcodes. CommConfig is an
     // exception to that rule.
-    
+
     // Calculate the checksums.
     int checksum16 = calculateChecksum16(recBuffer, COMMCONFIG_RESPONSE_LENGTH);
     BYTE checksum8 = calculateChecksum8(recBuffer);
-    
+
     if ( checksum8 != recBuffer[0] || recBuffer[4] != (BYTE)( checksum16 & 0xff ) || recBuffer[5] != (BYTE)( (checksum16 / 256) & 0xff ) ) {
         // Check the checksum
         printf("Response had invalid checksum.\n%d != %d, %d != %d, %d != %d\n", checksum8, recBuffer[0], (BYTE)( checksum16 & 0xff ), recBuffer[4], (BYTE)( (checksum16 / 256) & 0xff ), recBuffer[5] );
         return -1;
     }
-    
+
     return 0;
-    
+
 }
 
 // Parses the CommConfig packet into something useful.
@@ -214,14 +214,14 @@ void parseCommConfigBytes(BYTE * recBuffer){
     printf("  DHCPEnabled = %d\n", recBuffer[26]);
     printf("  ProductID = %d\n", recBuffer[27]);
     printf("  MACAddress = %02X:%02X:%02X:%02X:%02X:%02X\n", recBuffer[33], recBuffer[32], recBuffer[31], recBuffer[30], recBuffer[29], recBuffer[28]);
-    
+
     BYTE serialBytes[4];
     serialBytes[0] = recBuffer[28];
     serialBytes[1] = recBuffer[29];
     serialBytes[2] = recBuffer[30];
     serialBytes[3] = 0x10;
     printf("  SerialNumber = %d\n", makeInt(serialBytes, 0));
-    
+
     printf("  HardwareVersion = %d.%02d\n", recBuffer[35], recBuffer[34]);
     printf("  FirmwareVersion = %d.%02d\n", recBuffer[37], recBuffer[36]);
 }
@@ -244,15 +244,15 @@ BYTE calculateChecksum8(BYTE* buffer){
     int i; // For loops
     int temp; // For holding a value while we working.
     int checksum = 0;
-    
+
     for( i = 1; i < 6; i++){
         checksum += buffer[i];
     }
-    
+
     temp = checksum/256;
     checksum = ( checksum - 256 * temp ) + temp;
     temp = checksum/256;
-    
+
     return (BYTE)( ( checksum - 256 * temp ) + temp );
 }
 
@@ -260,10 +260,10 @@ BYTE calculateChecksum8(BYTE* buffer){
 int calculateChecksum16(BYTE* buffer, int len){
     int i;
     int checksum = 0;
-    
+
     for( i = 6; i < len; i++){
         checksum += buffer[i];
     }
-    
+
     return checksum;
 }

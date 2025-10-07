@@ -3,8 +3,13 @@
 Provides a get_logger() helper and setup_logging() to configure root handlers.
 GUI and CLI can route textual output through this for consistency.
 """
+
 from __future__ import annotations
-import logging, sys, os, pathlib
+
+import logging
+import os
+import pathlib
+import sys
 from logging.handlers import RotatingFileHandler
 
 _DEFAULT_FORMAT = "[%(levelname).1s %(asctime)s] %(message)s"
@@ -14,16 +19,28 @@ _logger = logging.getLogger("amp_benchkit")
 _def_handler: logging.Handler | None = None
 _file_handler: logging.Handler | None = None
 
+
 def _log_dir():
-    base = os.environ.get('XDG_STATE_HOME') or os.environ.get('XDG_CACHE_HOME') or os.path.expanduser('~/.cache')
-    p = pathlib.Path(base) / 'amp-benchkit'
+    base = (
+        os.environ.get("XDG_STATE_HOME")
+        or os.environ.get("XDG_CACHE_HOME")
+        or os.path.expanduser("~/.cache")
+    )
+    p = pathlib.Path(base) / "amp-benchkit"
     try:
         p.mkdir(parents=True, exist_ok=True)
     except Exception:
         return None
     return p
 
-def setup_logging(verbose: bool = False, stream=None, file_logging: bool = True, max_bytes: int = 256_000, backups: int = 3):
+
+def setup_logging(
+    verbose: bool = False,
+    stream=None,
+    file_logging: bool = True,
+    max_bytes: int = 256_000,
+    backups: int = 3,
+):
     global _def_handler, _file_handler
     lvl = logging.DEBUG if verbose else logging.INFO
     _logger.setLevel(lvl)
@@ -38,7 +55,7 @@ def setup_logging(verbose: bool = False, stream=None, file_logging: bool = True,
     if file_logging:
         logdir = _log_dir()
         if logdir is not None:
-            logfile = logdir / 'benchkit.log'
+            logfile = logdir / "benchkit.log"
             try:
                 fh = RotatingFileHandler(logfile, maxBytes=max_bytes, backupCount=backups)
                 fh.setFormatter(logging.Formatter(_DEFAULT_FORMAT, datefmt="%Y-%m-%d %H:%M:%S"))
@@ -51,6 +68,7 @@ def setup_logging(verbose: bool = False, stream=None, file_logging: bool = True,
                 pass
     _logger.debug("Logging initialized (verbose=%s)", verbose)
     return _logger
+
 
 def get_logger():
     return _logger

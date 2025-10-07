@@ -1,6 +1,6 @@
 //Author: LabJack
 //May 25, 2011
-//This example program sends a ControlConfig low-level command, and reads the 
+//This example program sends a ControlConfig low-level command, and reads the
 //various parameters associated with the Control processor.
 
 #include "ue9.h"
@@ -29,7 +29,7 @@ done:
     return 0;
 }
 
-//Sends a ControlConfig low-level command to read the configuration settings 
+//Sends a ControlConfig low-level command to read the configuration settings
 //associated with the Control chip.
 int controlConfig_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
 {
@@ -102,10 +102,10 @@ int controlConfig_example(HANDLE hDevice, ue9CalibrationInfo *caliInfo)
         return -1;
     }
 
-    printf("PowerLevel default (byte 7): %d\n", (unsigned int)recBuff[7]);  
-    printf("ResetSource (byte 8): %d\n", (unsigned int)recBuff[8]); 
-    printf("ControlFW Version (bytes 9 and 10): %.3f\n", (unsigned int)recBuff[10] + (double)recBuff[9]/100.0); 
-    printf("ControlBL Version (bytes 11 and 12): %.3f\n", (unsigned int)recBuff[12] + (double)recBuff[11]/100.0);  
+    printf("PowerLevel default (byte 7): %d\n", (unsigned int)recBuff[7]);
+    printf("ResetSource (byte 8): %d\n", (unsigned int)recBuff[8]);
+    printf("ControlFW Version (bytes 9 and 10): %.3f\n", (unsigned int)recBuff[10] + (double)recBuff[9]/100.0);
+    printf("ControlBL Version (bytes 11 and 12): %.3f\n", (unsigned int)recBuff[12] + (double)recBuff[11]/100.0);
     printf("FIO default directions and states (bytes 14 and 15):\n");
 
     for( i = 0; i < 8; i++ )

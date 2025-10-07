@@ -360,7 +360,7 @@ int feedback_loop_example(HANDLE hDevice, u6CalibrationInfo *caliInfo)
     sendBuff[8] = 0;         //Positive channel
     sendBuff[9] = 8 + 0*16;  //ResolutionIndex(Bits 0-3) = 8,
                              //GainIndex(Bits 4-7) = 0 (+-10V)
-                            
+
     sendBuff[10] =  0 + 0*128;  //SettlingFactor(Bits 0-2) = 0 (5 microseconds),
                                 // Differential(Bit 7) = 0
 

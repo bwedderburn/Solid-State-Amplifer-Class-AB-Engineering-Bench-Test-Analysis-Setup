@@ -53,7 +53,7 @@ int main() {
 
     // Open the U6
     devHandle = LJUSB_OpenDevice(1, 0, U6_PRODUCT_ID);
-    
+
     if( devHandle == NULL ) {
         printf("Couldn't open U6. Please connect one and try again.\n");
         exit(-1);
@@ -61,40 +61,40 @@ int main() {
 
     // Builds the ConfigU6 command
     buildConfigU6Bytes(sendBuffer);
-    
+
     // Write the command to the device.
     // LJUSB_Write( handle, sendBuffer, length of sendBuffer )
     r = LJUSB_Write( devHandle, sendBuffer, CONFIGU6_COMMAND_LENGTH );
-    
+
     if( r != CONFIGU6_COMMAND_LENGTH ) {
         printf("An error occurred when trying to write the buffer. The error was: %d\n", errno);
         // *Always* close the device when you error out.
         LJUSB_CloseDevice(devHandle);
         exit(-1);
     }
-    
+
     // Read the result from the device.
     // LJUSB_Read( handle, recBuffer, number of bytes to read)
     r = LJUSB_Read( devHandle, recBuffer, CONFIGU6_RESPONSE_LENGTH );
-    
+
     if( r != CONFIGU6_RESPONSE_LENGTH ) {
         printf("An error occurred when trying to read from the U6. The error was: %d\n", errno);
         LJUSB_CloseDevice(devHandle);
         exit(-1);
     }
-    
+
     // Check the command for errors
     if( checkResponseForErrors(recBuffer) != 0 ){
         LJUSB_CloseDevice(devHandle);
         exit(-1);
     }
-    
+
     // Parse the response into something useful
     parseConfigU6Bytes(recBuffer);
-    
+
     //Close the device.
     LJUSB_CloseDevice(devHandle);
-    
+
     return 0;
 }
 
@@ -106,7 +106,7 @@ int main() {
 void buildConfigU6Bytes(BYTE * sendBuffer) {
     int i; // For loops
     int checksum = 0;
-    
+
     // Build up the bytes
     //sendBuffer[0] = Checksum8
     sendBuffer[1] = 0xF8;
@@ -114,22 +114,22 @@ void buildConfigU6Bytes(BYTE * sendBuffer) {
     sendBuffer[3] = 0x08;
     //sendBuffer[4] = Checksum16 (LSB)
     //sendBuffer[5] = Checksum16 (MSB)
-    
+
     // We just want to read, so we set the WriteMask to zero, and zero out the
     // rest of the bytes.
     sendBuffer[6] = 0;
     for( i = 7; i < CONFIGU6_COMMAND_LENGTH; i++){
         sendBuffer[i] = 0;
     }
-    
+
     // Calculate and set the checksum16
     checksum = calculateChecksum16(sendBuffer, CONFIGU6_COMMAND_LENGTH);
     sendBuffer[4] = (BYTE)( checksum & 0xff );
     sendBuffer[5] = (BYTE)( (checksum / 256) & 0xff );
-    
+
     // Calculate and set the checksum8
     sendBuffer[0] = calculateChecksum8(sendBuffer);
-    
+
     // The bytes have been set, and the checksum calculated. We are ready to
     // write to the U6.
 }
@@ -146,11 +146,11 @@ int checkResponseForErrors(BYTE * recBuffer) {
         printf("Got the wrong command bytes back from the U6.\n");
         return -1;
     }
-    
+
     // Calculate the checksums.
     int checksum16 = calculateChecksum16(recBuffer, CONFIGU6_RESPONSE_LENGTH);
     BYTE checksum8 = calculateChecksum8(recBuffer);
-    
+
     if ( checksum8 != recBuffer[0] || recBuffer[4] != (BYTE)( checksum16 & 0xff ) || recBuffer[5] != (BYTE)( (checksum16 / 256) & 0xff ) ) {
         // Check the checksum
         printf("Response had invalid checksum.\n%d != %d, %d != %d, %d != %d\n", checksum8, recBuffer[0], (BYTE)( checksum16 & 0xff ), recBuffer[4], (BYTE)( (checksum16 / 256) & 0xff ), recBuffer[5] );
@@ -162,9 +162,9 @@ int checkResponseForErrors(BYTE * recBuffer) {
         printf("Command returned with an errorcode = %d\n", recBuffer[6]);
         return -1;
     }
-    
+
     return 0;
-    
+
 }
 
 // Parses the ConfigU6 packet into something useful.
@@ -177,14 +177,14 @@ void parseConfigU6Bytes(BYTE * recBuffer){
     printf("  ProductID = %d\n", makeShort(recBuffer, 19));
     printf("  LocalID = %d\n", recBuffer[21]);
     printf("  VersionInfo = %d\n", recBuffer[37]);
-    
+
     if( recBuffer[37] == 4 ){
         printf("  DeviceName = U6\n");
     }
     else if(recBuffer[37] == 12) {
         printf("  DeviceName = U6-Pro\n");
     }
-    
+
 }
 
 
@@ -205,15 +205,15 @@ BYTE calculateChecksum8(BYTE* buffer){
     int i; // For loops
     int temp; // For holding a value while we working.
     int checksum = 0;
-    
+
     for( i = 1; i < 6; i++){
         checksum += buffer[i];
     }
-    
+
     temp = checksum/256;
     checksum = ( checksum - 256 * temp ) + temp;
     temp = checksum/256;
-    
+
     return (BYTE)( ( checksum - 256 * temp ) + temp );
 }
 
@@ -221,10 +221,10 @@ BYTE calculateChecksum8(BYTE* buffer){
 int calculateChecksum16(BYTE* buffer, int len){
     int i;
     int checksum = 0;
-    
+
     for( i = 6; i < len; i++){
         checksum += buffer[i];
     }
-    
+
     return checksum;
 }

@@ -624,7 +624,7 @@ int feedback_loop_example(HANDLE hDevice, u3CalibrationInfo *caliInfo, int isDAC
 
         if( recBuff[6] != 0 )
         {
-            printf("Feedback loop error : received errorcode %d for frame %d ", recBuff[6], recBuff[7]); 
+            printf("Feedback loop error : received errorcode %d for frame %d ", recBuff[6], recBuff[7]);
             switch( recBuff[7] )
             {
                 case 1: printf("(AIN(SE))\n"); break;
@@ -774,7 +774,7 @@ int feedback_loop_HV_example(HANDLE hDevice, u3CalibrationInfo *caliInfo)
 
         if( recBuff[6] != 0 )
         {
-            printf("Feedback loop HV error : received errorcode %d for frame %d ", recBuff[6], recBuff[7]); 
+            printf("Feedback loop HV error : received errorcode %d for frame %d ", recBuff[6], recBuff[7]);
             switch( recBuff[7] )
             {
                 case 1: printf("(AIN0(SE))\n"); break;

@@ -472,7 +472,7 @@ static bool LJUSB_libusb_initialize(void)
         }
         gIsLibUSBInitialized = true;
     }
-    
+
     return true;
 }
 

@@ -8,6 +8,8 @@ Unified GUI + LabJack instrumentation helper environment.
 ![Python Versions](https://img.shields.io/pypi/pyversions/amp-benchkit.svg)
 ![PyPI](https://img.shields.io/pypi/v/amp-benchkit.svg)
 
+> **Note on v0.3.2 (Maintenance Release):** This release restores the repository to the v0.3.1 baseline state to remove unintended changes introduced in subsequent commits. Key improvements include fixing LabJackPython import warnings in test output and updating Ruff configuration to modern format. All CI checks pass cleanly.
+
 
 ## Contents
 
@@ -18,7 +20,7 @@ Unified GUI + LabJack instrumentation helper environment.
 - `amp_benchkit/dsp.py` – DSP helpers (RMS, Vpp, THD FFT, bandwidth knees).
 - `amp_benchkit/gui/` – Incremental extraction of GUI tabs (generator, scope, DAQ extracted).
 - `amp_benchkit/u3util.py` – LabJack U3 safe‑open and feature detection utilities.
-  
+
 - `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
 - `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
 
@@ -299,7 +301,7 @@ twine check dist/*
 
 Install from a specific tag directly:
 ```bash
-pip install git+https://github.com/your-org-or-user/amp-benchkit@v0.2.0
+pip install git+https://github.com/bwedderburn/amp-benchkit@v0.2.0
 ```
 
 ## Next Steps / Roadmap
@@ -344,5 +346,3 @@ pip install git+https://github.com/your-org-or-user/amp-benchkit@v0.2.0
 - Add a simple REST or WebSocket bridge for remote automation control.
 - Extend Makefile with `format` / `lint` targets (black, ruff, mypy).
 - Optional plugin architecture for new instrument tabs.
-
-

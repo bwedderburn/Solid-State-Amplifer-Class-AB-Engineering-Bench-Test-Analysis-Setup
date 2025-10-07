@@ -252,7 +252,7 @@ int allIO(HANDLE hDevice, u3CalibrationInfo *caliInfo, int isDAC1Enabled)
     recBuff = (uint8 *)malloc(recSize*sizeof(uint8));
 
     sendBuff[1] = (uint8)(0xF8);  //Command byte
-    sendBuff[2] = (sendSize - 6)/2;  //Number of data words 
+    sendBuff[2] = (sendSize - 6)/2;  //Number of data words
     sendBuff[3] = (uint8)(0x00);  //Extended command number
 
     sendBuff[6] = 0;  //Echo
@@ -320,7 +320,7 @@ int allIO(HANDLE hDevice, u3CalibrationInfo *caliInfo, int isDAC1Enabled)
         {
             printf("Feedback error (Iteration %d): read buffer has bad checksum16(LBS)\n", i);
             ret = -1;
-            goto cleanmem; 
+            goto cleanmem;
         }
 
         if( extendedChecksum8(recBuff) != recBuff[0] )

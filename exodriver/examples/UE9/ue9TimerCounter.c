@@ -1,8 +1,8 @@
 //Author: LabJack
 //May 25, 2011
 //This example program calls the TimerCounter function, and reads both counters
-//and enables 2 timers with PWM output.  Connect FIO0/FIO1 to FIO2/FIO3 to have 
-//the counter read something.  After 1 second the counters' counts are outputted 
+//and enables 2 timers with PWM output.  Connect FIO0/FIO1 to FIO2/FIO3 to have
+//the counter read something.  After 1 second the counters' counts are outputted
 //to the screen.
 
 #include <unistd.h>
@@ -25,10 +25,10 @@ int main(int argc, char **argv)
     return 0;
 }
 
-//Sends a TimerCounter low-level command to enable and set two Timers 
-//(FIO0, FIO1) and two Counters (FIO2, FIO3), then sends a TimerCounter 
-//command a second later to read from the Counters and last sends a 
-//TimerCounter command to disable the Timers and Counters. 
+//Sends a TimerCounter low-level command to enable and set two Timers
+//(FIO0, FIO1) and two Counters (FIO2, FIO3), then sends a TimerCounter
+//command a second later to read from the Counters and last sends a
+//TimerCounter command to disable the Timers and Counters.
 int timerCounter_example(HANDLE hDevice)
 {
     //Note: If using the quadrature input timer mode, the returned 32 bit
@@ -42,10 +42,10 @@ int timerCounter_example(HANDLE hDevice)
     sendBuff[2] = (uint8)(0x0C);  //Number of data words
     sendBuff[3] = (uint8)(0x18);  //Extended command number
     sendBuff[6] = (uint8)(0x03);  //TimerClockDivisor = 3
-    sendBuff[7] = (uint8)(0x9A);  //Updating: 2 Timers enabled, Counter0 and 
+    sendBuff[7] = (uint8)(0x9A);  //Updating: 2 Timers enabled, Counter0 and
                                   //Counter1 enabled
-    sendBuff[8] = (uint8)(0x00);  //TimerClockConfig = 750 kHz (if using system 
-                                  //clock, call ControlConfig first and set the 
+    sendBuff[8] = (uint8)(0x00);  //TimerClockConfig = 750 kHz (if using system
+                                  //clock, call ControlConfig first and set the
                                   //PowerLevel to a fixed state)
     sendBuff[9] = (uint8)(0x00);  //UpdateReset - not resetting anything
     sendBuff[10] = (uint8)(0x00);  //Timer0Mode = 16-Bit PWM
@@ -64,7 +64,7 @@ int timerCounter_example(HANDLE hDevice)
         sendBuff[i] = (uint8)(0x00);
 
     sendBuff[28] = (uint8)(0x00);  //Counter0Mode (pass 0)
-    sendBuff[29] = (uint8)(0x00);  //Counter1Mode (pass 0) 
+    sendBuff[29] = (uint8)(0x00);  //Counter1Mode (pass 0)
 
     extendedChecksum(sendBuff, 30);
 
@@ -95,8 +95,8 @@ int timerCounter_example(HANDLE hDevice)
     sleep(1);
 
     sendBuff[1] = (uint8)(0xF8);  //Command bytes
-    sendBuff[2] = (uint8)(0x0C);  //Number of data words  
-    sendBuff[3] = (uint8)(0x18);  //Extended command number    
+    sendBuff[2] = (uint8)(0x0C);  //Number of data words
+    sendBuff[3] = (uint8)(0x18);  //Extended command number
 
     //Not updating our configuration.  We only want to read the counter values.
     for( i = 6; i < 30; i++ )
@@ -120,7 +120,7 @@ int timerCounter_example(HANDLE hDevice)
     {
         if( recChars == 0 )
             goto readError0;
-        else  
+        else
             goto readError1;
     }
 
@@ -130,7 +130,7 @@ int timerCounter_example(HANDLE hDevice)
     printf("Current counts from counters after 1 second:\n");
     for( i = 0; i < 2; i++ )
     {
-        cnt = (unsigned int)recBuff[32 + 4*i] + (unsigned int)recBuff[33 + 4*i]*256 + 
+        cnt = (unsigned int)recBuff[32 + 4*i] + (unsigned int)recBuff[33 + 4*i]*256 +
               (unsigned int)recBuff[34 + 4*i]*65536 + (unsigned int)recBuff[35 + 4*i]*16777216;
         printf("  Counter%d : %u\n", i, cnt);
     }
@@ -140,8 +140,8 @@ int timerCounter_example(HANDLE hDevice)
     sendBuff[2] = (uint8)(0x0C);  //Number of data words
     sendBuff[3] = (uint8)(0x18);  //Extended command number
     sendBuff[6] = (uint8)(0x00);  //TimerClockDivisor = 0
-    sendBuff[7] = (uint8)(0x80);  //Updating: 0 Timers enabled, Counter0 and 
-                                  //Counter1 disabled 
+    sendBuff[7] = (uint8)(0x80);  //Updating: 0 Timers enabled, Counter0 and
+                                  //Counter1 disabled
 
     //Setting bytes 8 - 30 to zero since nothing is enabled
     for( i = 8; i < 30; i++ )
@@ -174,7 +174,7 @@ int timerCounter_example(HANDLE hDevice)
 
     return 0;
 
-writeError0: 
+writeError0:
     printf("Error : write failed\n");
     return -1;
 
