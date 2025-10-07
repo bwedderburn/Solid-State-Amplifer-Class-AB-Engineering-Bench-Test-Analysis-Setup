@@ -29,7 +29,7 @@ Number = float
 # Type aliases for dependency injection
 FyApplyFn = Callable[..., Any]
 ScopeMeasureFn = Callable[[Any, str], float]
-ScopeCaptureFn = Callable[..., tuple[Sequence[float], Sequence[float]]]
+ScopeCaptureFn = Callable[[Any, int | str], tuple[Sequence[float], Sequence[float]]]
 DspVrmsFn = Callable[[Sequence[float]], float]
 DspVppFn = Callable[[Sequence[float]], float]
 ThdFn = Callable[
@@ -171,7 +171,7 @@ def sweep_audio_kpis(
     dwell_s: Number,
     *,
     fy_apply: FyApplyFn,
-    scope_capture_calibrated: ScopeCaptureFn,
+    scope_capture_calibrated: Callable[[Any, int | str], tuple[Sequence[float], Sequence[float]]],
     dsp_vrms: DspVrmsFn,
     dsp_vpp: DspVppFn,
     dsp_thd_fft: (
@@ -251,7 +251,7 @@ def sweep_audio_kpis(
         # Capture
         try:
             src = "MATH" if use_math else scope_channel
-            t, v = scope_capture_calibrated(scope_resource, ch=src)
+            t, v = scope_capture_calibrated(scope_resource, src)
         except Exception as e:
             logger(f"Scope capture error @ {f} Hz: {e}")
             t = []

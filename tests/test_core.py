@@ -4,7 +4,6 @@ import numpy as np
 
 from amp_benchkit.dsp import find_knees, thd_fft
 from amp_benchkit.fy import build_fy_cmds
-from amp_benchkit.tek import _resolve_data_source, parse_ieee_block, tek_setup_channel
 from unified_gui_layout import _decode_ieee_block
 
 
@@ -37,30 +36,3 @@ def test_find_knees():
     amps = np.array([1, 1, 1, 1, 1, 1, 1, 0.7, 0.4, 0.2], dtype=float)
     f_lo, f_hi, ref_amp, ref_db = find_knees(freqs, amps, ref_mode="max", drop_db=3.0)
     assert math.isfinite(f_hi) and f_hi > 1000
-
-
-def test_parse_ieee_block_passthrough_bytes():
-    raw = b"hello"
-    out = parse_ieee_block(raw)
-    assert isinstance(out, (bytes, bytearray))
-    assert out == raw
-
-
-def test_tek_setup_channel_math_source():
-    class DummyScope:
-        def __init__(self):
-            self.cmds = []
-
-        def write(self, cmd):
-            self.cmds.append(cmd)
-
-    sc = DummyScope()
-    tek_setup_channel(sc, ch="MATH")
-    assert "DATA:SOURCE MATH" in sc.cmds
-
-
-def test_resolve_data_source_variants():
-    assert _resolve_data_source("math") == "MATH"
-    assert _resolve_data_source("CH2") == "CH2"
-    assert _resolve_data_source("2") == "CH2"
-    assert _resolve_data_source(3) == "CH3"

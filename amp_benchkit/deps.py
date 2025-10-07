@@ -7,54 +7,53 @@ in multiple places.
 
 from __future__ import annotations
 
-from typing import Any
-
 PYVISA_ERR = SERIAL_ERR = QT_ERR = U3_ERR = None  # populated on import
-QT_BINDING = None
+QT_BINDING = None  # type: ignore
 
-_pyvisa: Any | None
-_serial: Any | None
-_lp: Any | None
-_u3: Any | None
+# Optional dependency placeholders
+_pyvisa = None
+_serial = None
+_lp = None
+_u3 = None
 
 # ------------------ pyvisa ------------------
 try:  # pragma: no cover - environment dependent
-    import pyvisa as _pyvisa_module
+    import pyvisa as _pyvisa  # type: ignore
 except Exception as e:  # pragma: no cover
     PYVISA_ERR = e
-    _pyvisa = None
-else:
-    _pyvisa = _pyvisa_module
 
 # ------------------ pyserial ------------------
 try:  # pragma: no cover
-    import serial as _serial_module
-    import serial.tools.list_ports as _lp_module
+    import serial as _serial  # type: ignore
+    import serial.tools.list_ports as _lp  # type: ignore
 except Exception as e:  # pragma: no cover
     SERIAL_ERR = e
-    _serial = None
-    _lp = None
-else:
-    _serial = _serial_module
-    _lp = _lp_module
 
 # ------------------ LabJack u3 ------------------
 try:  # pragma: no cover
-    import u3 as _u3_module
+    # Suppress LabJackPython's stdout messages during import
+    import io
+    import sys
+
+    _original_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    try:
+        import u3 as _u3  # type: ignore
+
+        HAVE_U3 = True
+    finally:
+        sys.stdout = _original_stdout
 except Exception as e:  # pragma: no cover
     _u3 = None
     U3_ERR = e
     HAVE_U3 = False
-else:
-    _u3 = _u3_module
-    HAVE_U3 = True
 
 # ------------------ Qt bindings ------------------
 HAVE_QT = False
 try:  # pragma: no cover
-    from PySide6.QtCore import Qt, QTimer
-    from PySide6.QtGui import QFont
-    from PySide6.QtWidgets import (
+    from PySide6.QtCore import Qt, QTimer  # type: ignore
+    from PySide6.QtGui import QFont  # type: ignore
+    from PySide6.QtWidgets import (  # type: ignore
         QApplication,
         QCheckBox,
         QComboBox,
@@ -75,9 +74,9 @@ try:  # pragma: no cover
     HAVE_QT = True
 except Exception as e1:  # pragma: no cover
     try:
-        from PyQt5.QtCore import Qt, QTimer
-        from PyQt5.QtGui import QFont
-        from PyQt5.QtWidgets import (
+        from PyQt5.QtCore import Qt, QTimer  # type: ignore
+        from PyQt5.QtGui import QFont  # type: ignore
+        from PyQt5.QtWidgets import (  # type: ignore
             QApplication,
             QCheckBox,
             QComboBox,
@@ -117,7 +116,7 @@ except Exception as e1:  # pragma: no cover
             Qt,
         ) = (
             None,
-        ) * 15
+        ) * 15  # type: ignore
 
 HAVE_PYVISA = _pyvisa is not None
 HAVE_SERIAL = _serial is not None and _lp is not None
@@ -138,9 +137,9 @@ def fixed_font():  # pragma: no cover - trivial helper
     a minimal version here to keep imports lightweight and tests headless-safe.
     """
     try:
-        if HAVE_QT and "QFont" in globals():
-            f = QFont("Courier New")
-            f.setStyleHint(QFont.TypeWriter)
+        if HAVE_QT and "QFont" in globals():  # type: ignore
+            f = QFont("Courier New")  # type: ignore
+            f.setStyleHint(QFont.TypeWriter)  # type: ignore
             return f
     except Exception:
         pass

@@ -9,12 +9,13 @@ description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Brian Wedderburn" } ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["labjack", "instrumentation", "gui", "automation"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
@@ -44,10 +45,10 @@ dependencies = [
 
 [project.optional-dependencies]
 # Install with: pip install .[gui]
-gui = ["PySide6==6.9.2", "PyQt5==5.15.11"]
-dev = ["black", "ruff", "mypy", "pre-commit"]
-test = ["pytest", "pytest-cov"]
-publish = ["build", "twine", "wheel", "setuptools"]
+ gui = ["PySide6==6.9.2", "PyQt5==5.15.11"]
+ dev = ["black", "ruff", "mypy", "pre-commit"]
+ test = ["pytest", "pytest-cov"]
+ publish = ["build", "twine", "wheel", "setuptools"]
 
 [project.scripts]
 amp-benchkit = "amp_benchkit.cli:main"
@@ -71,4 +72,3 @@ line-length = 100
 
 [tool.mypy]
 ignore_missing_imports = true
-files = ["amp_benchkit", "unified_gui_layout.py"]

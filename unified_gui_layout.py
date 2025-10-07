@@ -15,24 +15,23 @@ import os
 import sys
 import time
 from contextlib import suppress
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 
-# Ensure matplotlib caches inside the repository so read-only homes don't noise up runs.
+# Ensure matplotlib can build its cache even when the user home dir is read-only.
 if "MPLCONFIGDIR" not in os.environ:
-    repo_root = os.path.dirname(os.path.abspath(__file__))
-    cache_dir = os.path.join(repo_root, ".mplconfig")
+    cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "matplotlib")
     try:
         os.makedirs(cache_dir, exist_ok=True)
     except Exception:
-        cache_dir = ""
+        cache_dir = os.path.join(os.getcwd(), ".matplotlib-cache")
+        try:
+            os.makedirs(cache_dir, exist_ok=True)
+        except Exception:
+            cache_dir = ""
     if cache_dir:
         os.environ["MPLCONFIGDIR"] = cache_dir
-    else:  # pragma: no cover - only if repo directory is unwritable
-        import tempfile
-
-        os.environ["MPLCONFIGDIR"] = tempfile.mkdtemp(prefix="mplconfig-")
 
 import matplotlib
 
@@ -88,15 +87,6 @@ with suppress(Exception):  # Qt symbol imports (available if HAVE_QT True)
 
 FY_PROTOCOLS = ["FY ASCII 9600", "Auto (115200/CRLF→9600/LF)"]
 
-
-def _require_u3() -> Any:
-    """Return the loaded LabJack module or raise if unavailable."""
-
-    if _u3 is None:
-        raise RuntimeError("LabJack U3 bindings unavailable")
-    return _u3
-
-
 # -----------------------------
 # Utility / status helpers
 # -----------------------------
@@ -148,10 +138,7 @@ class _FallbackBase:
         return
 
 
-if HAVE_QT and "QMainWindow" in globals() and QMainWindow is not None:
-    BaseGUI: type[Any] = cast(type[Any], QMainWindow)
-else:
-    BaseGUI = _FallbackBase
+BaseGUI: type[Any] = QMainWindow if HAVE_QT else _FallbackBase  # type: ignore[assignment]
 
 
 class UnifiedGUI(BaseGUI):
@@ -1564,3 +1551,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def _require_u3() -> Any:
+    """Return the loaded LabJack module or raise if unavailable."""
+
+    if _u3 is None:
+        raise RuntimeError("LabJack U3 bindings unavailable")
+    return _u3

@@ -48,10 +48,6 @@ Thumbs.db
 
 # Matplotlib / Qt runtime
 *.matplotlib
-.mplconfig/
-
-# Generated measurement artifacts
-results/
 
 # Jupyter
 .ipynb_checkpoints/
