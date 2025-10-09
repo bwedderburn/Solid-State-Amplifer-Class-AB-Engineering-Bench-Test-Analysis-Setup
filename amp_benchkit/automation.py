@@ -148,7 +148,12 @@ def sweep_scope_fixed(
                     scope_configure_math_subtract(scope_resource, math_order)
                 except Exception as e:
                     logger(f"MATH config error: {e}")
-            if use_ext and scope_set_trigger_ext and scope_arm_single and scope_wait_single_complete:
+            if (
+                use_ext
+                and scope_set_trigger_ext
+                and scope_arm_single
+                and scope_wait_single_complete
+            ):
                 try:
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
                     scope_arm_single(scope_resource)
@@ -166,9 +171,8 @@ def sweep_scope_fixed(
                 logger(f"Scope error @ {f} Hz: {e}")
                 val = float("nan")
             out.append((f, val))
-            logger(
-                f"{f:.3f} Hz → {metric_key} {val:.4f} ({'MATH' if use_math else f'CH{scope_channel}'})"
-            )
+            src_label = "MATH" if use_math else f"CH{scope_channel}"
+            logger(f"{f:.3f} Hz → {metric_key} {val:.4f} ({src_label})")
         finally:
             progress(i + 1, n)
     return out
