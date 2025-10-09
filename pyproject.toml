@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "amp-benchkit"
-version = "0.3.2"
+version = "0.3.6"
 description = "Unified GUI + LabJack tooling and installer helpers"
 authors = [ { name = "Brian Wedderburn" } ]
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 keywords = ["labjack", "instrumentation", "gui", "automation"]
 classifiers = [
   "Development Status :: 4 - Beta",
@@ -34,12 +34,12 @@ classifiers = [
 
 # Core runtime deps (mirrors requirements.txt)
 dependencies = [
-  "numpy==2.3.3",
-  "matplotlib==3.10.6",
-  "pyvisa==1.15.0",
-  "pyserial==3.5",
-  "LabJackPython==2.1.0",
-  # Leave GUI bindings as optional extras below
+"numpy==2.3.3",
+"matplotlib==3.10.6",
+"pyvisa==1.15.0",
+"pyserial==3.5",
+"LabJackPython==2.1.0",
+# Leave GUI bindings as optional extras below
 ]
 
 [project.optional-dependencies]

@@ -45,10 +45,30 @@ def _need_pyvisa():  # internal guard
         raise ImportError(f"pyvisa not available. {INSTALL_HINTS['pyvisa']}")
 
 
+def _resolve_source(ch) -> str:
+    """Normalize Tektronix DATA:SOURCE values."""
+    if isinstance(ch, str):
+        value = ch.strip().upper()
+        if not value:
+            return 'CH1'
+        if value in {'MATH', 'REF1', 'REF2', 'REF3', 'REF4'}:
+            return value
+        if value.startswith('CH') and value[2:].isdigit():
+            return f"CH{int(value[2:])}"
+        if value.isdigit():
+            return f"CH{int(value)}"
+        return 'CH1'
+    try:
+        num = int(ch)
+    except Exception:
+        return 'CH1'
+    return f"CH{num}"
+
 def tek_setup_channel(sc, ch=1):
     sc.write("HEADER OFF")
+    source = _resolve_source(ch)
     try:
-        sc.write(f"DATA:SOURCE CH{ch}")
+        sc.write(f"DATA:SOURCE {source}")
         sc.write("DATa:ENCdg RIBinary;WIDth 1")
         sc.write("DATA:START 1")
         sc.write("HORIZONTAL:RECORDLENGTH 10000")
@@ -215,6 +235,10 @@ def scope_configure_math_subtract(resource=TEK_RSRC_DEFAULT, order="CH1-CH2"):
 
 
 def scope_capture_calibrated(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
+    """Capture a calibrated waveform for the requested source.
+
+    Supports integer channels (1-4) or source names like 'MATH'.
+    """
     _need_pyvisa()
     import numpy as _np
 
@@ -224,7 +248,10 @@ def scope_capture_calibrated(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
     except Exception as e:
         raise TekError(f"Failed to open scope resource '{resource}': {e}") from e
     try:
-        sc.timeout = int(timeout_ms)
+        try:
+            sc.timeout = int(float(timeout_ms))
+        except Exception:
+            sc.timeout = 15000
         sc.chunk_size = max(getattr(sc, "chunk_size", 20480), 1048576)
         tek_setup_channel(sc, ch)
         ymult = float(sc.query("WFMPRE:YMULT?"))
@@ -250,12 +277,13 @@ def scope_screenshot(
     import matplotlib.pyplot as _plt
 
     os.makedirs(os.path.dirname(filename) or ".", exist_ok=True)
+    src_label = _resolve_source(ch)
     t, v = scope_capture_calibrated(resource, timeout_ms, ch=ch)
     _plt.figure()
     _plt.plot(t, v)
     _plt.xlabel("Time (s)")
     _plt.ylabel("Voltage (V)")
-    _plt.title(f"Scope CH{ch} Waveform")
+    _plt.title(f"Scope {src_label} Waveform")
     _plt.grid(True)
     _plt.savefig(filename, bbox_inches="tight")
     _plt.close()
