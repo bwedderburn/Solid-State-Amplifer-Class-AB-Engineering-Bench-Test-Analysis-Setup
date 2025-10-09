@@ -2,8 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
-    tags: [ 'v*' ]
+    branches: [ main ]
   pull_request:
   workflow_dispatch:
 
@@ -32,7 +31,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .[test,dev]
-          pip install mypy ruff
 
       - name: Run tests with coverage
         run: pytest -q --cov=amp_benchkit --cov-report=term-missing --cov-report=xml
@@ -65,15 +63,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Install build deps
         run: |
           sudo apt-get update -y
           sudo apt-get install -y build-essential libusb-1.0-0-dev
+
       - name: Build liblabjackusb
         run: |
           cd exodriver/liblabjackusb
           make
           sudo make install
+
       - name: Verify library placement
         run: |
           ls -l /usr/local/lib | grep -i labjack || true
