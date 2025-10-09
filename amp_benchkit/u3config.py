@@ -1,5 +1,16 @@
 """LabJack U3 configuration and digital I/O helpers.
 
+This module provides the canonical implementations for U3 I/O operations:
+- Analog input reading (:func:`u3_read_ain`, :func:`u3_read_multi`)
+- Digital line control (:func:`u3_set_line`, :func:`u3_set_dir`)
+- Pulse generation (:func:`u3_pulse_line`)
+- Device configuration (:func:`u3_autoconfigure_for_automation`)
+
+These functions use advanced LabJack APIs (getFeedback, BitStateWrite, etc.)
+with appropriate fallbacks for robustness.
+
+For low-level device opening, see :mod:`amp_benchkit.u3util`.
+
 Split out from unified_gui_layout for reuse and easier testing.
 """
 
