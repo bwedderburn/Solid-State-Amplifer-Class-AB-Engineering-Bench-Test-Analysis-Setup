@@ -1,6 +1,9 @@
-"""LabJack U3 helper utilities.
+"""LabJack U3 device connection utilities.
 
-Separates device opening and convenience wrappers from the monolithic GUI file.
+Provides low-level device opening and availability checking.
+For I/O operations (reading analog inputs, setting digital lines, etc.),
+use :mod:`amp_benchkit.u3config` instead.
+
 USB functionality depends on Exodriver / liblabjackusb. Fail gracefully when absent.
 """
 
