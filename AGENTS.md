@@ -1,17 +1,44 @@
-# AGENTS.md — amp-benchkit (v0.3.6)
+# Repository Guidelines
 
-**Purpose**  
+This blended guide pairs a concise contributor checklist with the historical Codex playbook used to orchestrate automation. Start with the quick guide for day-to-day development, and refer to the preserved playbook when running Codex CLI sessions or onboarding new collaborators.
+
+## Quick Contributor Guide
+### Project Structure & Module Organization
+Core Python package lives under `amp_benchkit/` for instrument drivers, automation flows, and shared GUI widgets; keep quick-launch scripts such as `unified_gui_layout.py` at the repo root for smoke checks. Place developer utilities in `scripts/`, persistent captures in `results/`, and documentation updates in `docs/` or `ROADMAP.md`. Mirror the package layout inside `tests/` to simplify discovery.
+
+### Build, Test, and Development Commands
+- `python3 -m venv .venv && source .venv/bin/activate` — create and enter the repo-local virtual environment.
+- `pip install -e .[dev,test,gui]` — install runtime dependencies along with linting, typing, and GUI extras.
+- `make deps` — bootstrap dependencies through the consolidated make target.
+- `pytest -q` — run the unit suite; export `AMPBENCHKIT_FAKE_HW=1` when hardware is offline.
+- `make gui` or `python unified_gui_layout.py gui` — launch the Qt interface for manual verification.
+
+### Coding Style & Naming Conventions
+Target Python 3.10+ with typed public APIs. Keep commits hook-clean by running `black` (configured for 100-character lines) and `ruff` through `pre-commit`. Use `snake_case` for functions and modules, `CamelCase` for Qt widgets and drivers, and uppercase constants for configuration keys. Document hardware assumptions inline when behavior deviates from lab defaults.
+
+### Testing Guidelines
+Name pytest modules `test_<module>.py`, store shared fixtures in `tests/fixtures/`, and skip hardware-dependent tests automatically when devices are absent. Exercise simulator paths with `AMPBENCHKIT_FAKE_HW=1`, maintain coverage across signal generation, instrument I/O, and GUI command paths, and keep golden CSV/JSON artifacts next to tests when validating capture pipelines.
+
+### Commit & Pull Request Guidelines
+Write imperative, present-tense commit subjects (for example, "Add scope simulator hooks"), keep bodies concise, and run `pre-commit run --all-files` plus `pytest -q` before pushing. Pull requests should link related issues, summarize user-facing changes, and attach screenshots or captured artifacts for GUI or plotting updates. Capture release-impacting notes in `CHANGELOG.md` inside the same PR.
+
+### Security & Configuration Tips
+Never commit device serial numbers or lab credentials. Override discovery via environment variables such as `FY_PORT`, `VISA_RESOURCE`, and `AMPBENCHKIT_SESSION_DIR` when scripting. Record new hardware setup steps in `EXODRIVER.md` or `SECURITY.md`, and surface missing dependencies (VISA backends, Exodriver) with actionable error messages.
+
+## AGENTS.md — amp-benchkit (v0.3.6)
+
+**Purpose**
 This file tells OpenAI Codex CLI how to work on this repository end‑to‑end: what the project is, which “agents” (roles) exist, what they’re allowed to do without asking, and the standard playbooks for running, testing, and releasing the bench kit.
 
-**Repository**: `bwedderburn/amp-benchkit`  
-**Local working dir**: `~/Documents/GitHub/amp-benchkit` (zsh shells: one for GUI tests, one for Codex CLI)  
-**Primary audience**: Codex CLI (v0.45.0 or later) operating as an assistant in your local shell.  
-**Hardware targets**: FY3200S/FY3224S signal generator (serial), Tektronix TDS2024B oscilloscope (USB/VISA), LabJack U3‑HV DAQ (USB; Exodriver).  
+**Repository**: `bwedderburn/amp-benchkit`
+**Local working dir**: `~/Documents/GitHub/amp-benchkit` (zsh shells: one for GUI tests, one for Codex CLI)
+**Primary audience**: Codex CLI (v0.45.0 or later) operating as an assistant in your local shell.
+**Hardware targets**: FY3200S/FY3224S signal generator (serial), Tektronix TDS2024B oscilloscope (USB/VISA), LabJack U3‑HV DAQ (USB; Exodriver).
 **Software stack**: Python 3.10+; PySide6/PyQt5, PyVISA, pyserial, LabJackPython, numpy, matplotlib; pre‑commit/black for dev.
 
 ---
 
-## 0) Getting Codex CLI ready in this repo
+### 0) Getting Codex CLI ready in this repo
 
 From `~/Documents/GitHub/amp-benchkit` run:
 
@@ -36,17 +63,17 @@ codex
 
 ---
 
-## 1) Project overview (what Codex should optimize for)
+### 1) Project overview (what Codex should optimize for)
 
 - A reliable, repeatable amplifier test bench that **automates**: configure generator → trigger/capture scope → read/log DAQ → save CSV/JSON/PNG → optional GUI control.
 - Tests beyond sine: crest‑factor‑controlled pink noise, tone‑bursts, multitone/IMD, small‑signal square checks.
-- Works **headless (CLI)** and with a **Qt GUI** on macOS.  
+- Works **headless (CLI)** and with a **Qt GUI** on macOS.
 - Clean developer UX: virtualenv, `requirements.txt` + `requirements-dev.txt`, `pre-commit`, `black`, simple `pytest` tests.
 - Safe hardware bring‑up: detect devices; degrade gracefully (skip tests) when hardware is missing.
 
 ---
 
-## 2) Directory & key files (evolving)
+### 2) Directory & key files (evolving)
 
 > This repo is evolving; Codex should auto‑discover modules and tests on each run. Common elements include:
 
@@ -67,7 +94,7 @@ docs/
 
 ---
 
-## 3) Environment setup & health checks
+### 3) Environment setup & health checks
 
 ### Python & dependencies
 ```
@@ -79,8 +106,8 @@ python -m pip install -r requirements-dev.txt  # dev only
 ```
 
 ### macOS (common issues)
-- **Qt not available** → `pip install PySide6` (already in requirements).  
-- **LabJack U3 Exodriver missing** → install `liblabjackusb` (macOS package or from LabJack).  
+- **Qt not available** → `pip install PySide6` (already in requirements).
+- **LabJack U3 Exodriver missing** → install `liblabjackusb` (macOS package or from LabJack).
 - **VISA** → Ensure a backend (NI-VISA or pyvisa‑py). For NI-VISA on macOS, install the official package; otherwise pyvisa‑py can do USBTMC for many Tek scopes.
 
 ### Optional “fake hardware” switch
@@ -91,9 +118,9 @@ export AMPBENCHKIT_FAKE_HW=1
 
 ---
 
-## 4) Agents (roles), goals, file scopes & done criteria
+### 4) Agents (roles), goals, file scopes & done criteria
 
-> Codex runs as a *team*. Each agent below is a hat Codex can wear. Codex can switch hats as needed.  
+> Codex runs as a *team*. Each agent below is a hat Codex can wear. Codex can switch hats as needed.
 > All agents must keep code formatted (`black`) and add/update tests when changing behavior.
 
 ### A) **Conductor / Orchestrator**
@@ -133,9 +160,9 @@ export AMPBENCHKIT_FAKE_HW=1
 
 ---
 
-## 5) Command approvals (what Codex may do without asking)
+### 5) Command approvals (what Codex may do without asking)
 
-> You control this via `/approvals`. Below are **recommended defaults** for this repo.  
+> You control this via `/approvals`. Below are **recommended defaults** for this repo.
 > If you want “full throttle,” switch to **Profile: bench‑full** (all checks = YES) then run `/approvals` and toggle accordingly.
 
 ### Profile: safe‑defaults (recommended when experimenting)
@@ -166,7 +193,7 @@ Toggle these to ✅ in `/approvals` when you explicitly want Codex to have full 
 
 ---
 
-## 6) Standard playbooks
+### 6) Standard playbooks
 
 ### A) Create/refresh local dev environment
 ```
@@ -217,7 +244,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 7) Quality gates (Codex must satisfy before saying “done”)
+### 7) Quality gates (Codex must satisfy before saying “done”)
 
 - All modified files pass `black` and `pre-commit`.
 - New/changed behavior is covered by at least one pytest.
@@ -228,7 +255,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 8) Known pitfalls & how Codex should react
+### 8) Known pitfalls & how Codex should react
 
 - **Exodriver not found** (LabJack U3): print a clear hint to install `liblabjackusb`; in tests, skip U3 tests unless `--with-u3` is set or device is detected.
 - **Qt missing**: advise `pip install PySide6`; GUI must handle absence gracefully.
@@ -237,7 +264,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 9) Configuration & environment variables (Codex may add more)
+### 9) Configuration & environment variables (Codex may add more)
 
 - `AMPBENCHKIT_FAKE_HW=1` → enable simulators for scope/gen/DAQ.
 - `AMPBENCHKIT_SESSION_DIR=...` → where to store captures/results.
@@ -247,7 +274,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 10) Style & conventions
+### 10) Style & conventions
 
 - Python ≥ 3.10, type hints encouraged.
 - Formatting: `black` with line length 100 (see `pyproject.toml`).
@@ -256,7 +283,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 11) Roadmap prompts Codex can use to grow the repo (future‑proofing)
+### 11) Roadmap prompts Codex can use to grow the repo (future‑proofing)
 
 - “Add scope screenshot saving (PNG) per test point and bundle CSV/JSON+PNG into a session folder.”
 - “Implement crest‑factor‑controlled pink noise playback and leveling routine.”
@@ -268,7 +295,7 @@ git push --set-upstream origin release/v0.3.7 --tags
 
 ---
 
-## 12) How Codex should ask for approval (when needed)
+### 12) How Codex should ask for approval (when needed)
 
 When an action is outside **safe‑defaults**, Codex should present:
 - The **exact command(s)** it intends to run (single code block).
@@ -285,37 +312,14 @@ brew install --cask ni-visa
 
 ---
 
-## 13) Session quickstart for you
+### 13) Session quickstart for you
 
-1. Open two zsh terminals in `~/Documents/GitHub/amp-benchkit`: one for GUI testing, one for Codex.  
-2. In the Codex terminal, run `codex` then `/init`, then `/approvals` and pick **safe‑defaults** or **bench‑full**.  
-3. Tell Codex what you want (e.g., “Write tests for `fy_3200_s_binary_gui.py` serial parser” or “Add a Scope screenshot feature and a `--save-png` flag”).  
-4. Use `/review` to inspect changes before committing.  
+1. Open two zsh terminals in `~/Documents/GitHub/amp-benchkit`: one for GUI testing, one for Codex.
+2. In the Codex terminal, run `codex` then `/init`, then `/approvals` and pick **safe‑defaults** or **bench‑full**.
+3. Tell Codex what you want (e.g., “Write tests for `fy_3200_s_binary_gui.py` serial parser” or “Add a Scope screenshot feature and a `--save-png` flag”).
+4. Use `/review` to inspect changes before committing.
 5. Run the GUI/CLI and tests from the other terminal as you iterate.
 
 ---
 
 _This AGENTS.md is intentionally future‑proof: Codex should extend roles, config, tests, and scripts as the project grows, and may propose a `src/` package layout once the codebase stabilizes._
-# Repository Guidelines
-
-## Project Structure & Module Organization
-The `amp_benchkit/` package holds instrument drivers, automation flows, and GUI helpers. Standalone launchers such as `unified_gui_layout.py` sit at the repo root for quick smoke checks. Use `scripts/` for maintenance utilities, `tests/` mirroring module namespaces, and `results/` for captured data. Update top-level docs (`README.md`, `ROADMAP.md`) whenever workflows change.
-
-## Build, Test, and Development Commands
-- `python3 -m venv .venv` then `source .venv/bin/activate` — create and enter a project-local virtualenv.
-- `pip install -e .[dev,test,gui]` or `make deps` — install runtime dependencies plus linting, typing, and GUI extras.
-- `pytest -q` or `make test` — execute the full automated test suite; add `--maxfail=1` when iterating.
-- `pre-commit run --all-files` — run formatting, lint, and static analysis hooks before committing.
-- `python unified_gui_layout.py gui` or `make gui` — launch the Qt interface for manual verification (use `selftest` for headless mode).
-
-## Coding Style & Naming Conventions
-Target Python 3.10+ with type hints on public APIs. `black` (line length 100) and `ruff` enforce formatting; run them through `pre-commit`. Prefer descriptive `snake_case` for functions and modules, `CamelCase` for classes, and uppercase constants. Keep docstrings brief and explain hardware assumptions inline when behavior deviates.
-
-## Testing Guidelines
-Write pytest tests in `tests/` using `test_<module>.py`. Mirror hardware dependencies with fakes—set `AMPBENCHKIT_FAKE_HW=1` to exercise simulator paths. Use `pytest --cov=amp_benchkit --cov-report=term-missing` before release, and store new CSV/JSON fixtures beside their tests (create a `tests/fixtures/` folder if helpful).
-
-## Commit & Pull Request Guidelines
-Keep commit subjects in imperative present tense (“Add scope simulator hooks”) as in current history. Squash fixups locally and ensure `pytest` stays green. Pull requests need a problem statement, solution summary, validation checklist (tests run, hardware exercised), and linked issues. Attach screenshots or captured artifacts for GUI or plotting changes.
-
-## Hardware & Configuration Tips
-Use `make install-exodriver` on macOS to enable LabJack support and confirm with `make check-usb`. Override discovery with `FY_PORT=/dev/tty.usbserial-*`, `VISA_RESOURCE=USB0::...::INSTR`, or `AMPBENCHKIT_SESSION_DIR=/tmp/session` when scripting. Run `make selftest` or `python unified_gui_layout.py selftest` before connecting physical hardware.

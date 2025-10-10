@@ -12,4 +12,3 @@
 ## Checks
 - `python3 -m pytest`
 - `python3 -m build --no-isolation`
-

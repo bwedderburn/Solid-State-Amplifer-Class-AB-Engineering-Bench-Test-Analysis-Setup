@@ -50,19 +50,20 @@ def _resolve_source(ch) -> str:
     if isinstance(ch, str):
         value = ch.strip().upper()
         if not value:
-            return 'CH1'
-        if value in {'MATH', 'REF1', 'REF2', 'REF3', 'REF4'}:
+            return "CH1"
+        if value in {"MATH", "REF1", "REF2", "REF3", "REF4"}:
             return value
-        if value.startswith('CH') and value[2:].isdigit():
+        if value.startswith("CH") and value[2:].isdigit():
             return f"CH{int(value[2:])}"
         if value.isdigit():
             return f"CH{int(value)}"
-        return 'CH1'
+        return "CH1"
     try:
         num = int(ch)
     except Exception:
-        return 'CH1'
+        return "CH1"
     return f"CH{num}"
+
 
 def tek_setup_channel(sc, ch=1):
     sc.write("HEADER OFF")

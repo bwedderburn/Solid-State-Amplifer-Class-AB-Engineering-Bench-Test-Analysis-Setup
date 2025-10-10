@@ -85,6 +85,7 @@ with suppress(Exception):  # Qt symbol imports (available if HAVE_QT True)
         QTimer,
     )
 
+
 def _require_u3() -> Any:
     """Return the loaded LabJack module or raise if unavailable."""
 
