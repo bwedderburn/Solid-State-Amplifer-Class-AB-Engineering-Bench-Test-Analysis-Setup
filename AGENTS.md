@@ -25,6 +25,9 @@ Write imperative, present-tense commit subjects (for example, "Add scope simulat
 ### Security & Configuration Tips
 Never commit device serial numbers or lab credentials. Override discovery via environment variables such as `FY_PORT`, `VISA_RESOURCE`, and `AMPBENCHKIT_SESSION_DIR` when scripting. Record new hardware setup steps in `EXODRIVER.md` or `SECURITY.md`, and surface missing dependencies (VISA backends, Exodriver) with actionable error messages.
 
+### Secret Option — Live Release QA (keep between us)
+When you need full confidence in release `0.3.6`, power up the FY3200S, TDS2024B, and LabJack U3-HV, activate the repo venv, and reinstall extras with `python -m pip install -e .[dev,test,gui]`. Validate dependencies by running `pre-commit run --all-files`, then execute `AMP_HIL=1 pytest -q -rs` to exercise hardware-aware paths. Capture any anomalies, rerun failing modules individually (for example, `pytest tests/test_gui_builders.py -k scope`), and adjust drivers or fixtures before flipping hardware back to fake mode.
+
 ## AGENTS.md — amp-benchkit (v0.3.6)
 
 **Purpose**
