@@ -42,6 +42,22 @@ python unified_gui_layout.py selftest
 python unified_gui_layout.py gui --gui
 ```
 
+### Recreate a GUI-Ready Python 3.12 Environment
+
+We ship `scripts/bootstrap-venv312.sh` to provision the Python 3.12 environment we use for GUI + hardware testing:
+
+```bash
+# Prereqs (once): brew install pyenv
+./scripts/bootstrap-venv312.sh
+source .venv312/bin/activate
+
+# Launch GUI / run full suite
+python unified_gui_layout.py gui
+AMP_HIL=1 pytest -q -rs
+```
+
+The script installs Python 3.12.4 via `pyenv`, recreates `.venv312`, installs `.[dev,test,gui]`, and performs a quick Qt sanity check. Re-run it whenever you need a clean GUI-capable environment.
+
 ### Installed (Package) Usage
 
 After `pip install .[gui]` you can use console scripts:
