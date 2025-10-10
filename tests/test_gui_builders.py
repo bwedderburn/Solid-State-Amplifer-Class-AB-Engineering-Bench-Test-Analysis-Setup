@@ -53,6 +53,18 @@ class DummyGUI:
     def read_daq_multi(self):
         pass
 
+    def list_visa(self):
+        pass
+
+    def capture_scope(self):
+        pass
+
+    def save_shot(self):
+        pass
+
+    def save_csv(self):
+        pass
+
 
 @pytest.mark.skipif(QApplication is None, reason="Qt not available")
 def test_build_all_tabs():
