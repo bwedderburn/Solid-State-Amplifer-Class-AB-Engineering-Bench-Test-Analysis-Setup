@@ -250,8 +250,12 @@ def sweep_audio_kpis(
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
                 if scope_arm_single:
                     scope_arm_single(scope_resource)
+                settle_s = 0.0
                 if pre_ms > 0:
-                    time.sleep(pre_ms / 1000.0)
+                    settle_s = max(settle_s, float(pre_ms) / 1000.0)
+                settle_s = max(settle_s, 3.0 / max(float(f), 1.0))
+                if settle_s > 0:
+                    time.sleep(settle_s)
                 if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
                     u3_pulse_line(pulse_line, pulse_ms, 1)
             except Exception as e:
