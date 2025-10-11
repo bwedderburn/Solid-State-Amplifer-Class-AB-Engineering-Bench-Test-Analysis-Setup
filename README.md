@@ -24,6 +24,17 @@ Unified GUI + LabJack instrumentation helper environment.
 - `scripts/install_exodriver_alpine.sh` – Idempotent installer for Exodriver (liblabjackusb) on Alpine (musl) or glibc.
 - `patches/exodriver-install-alpine.patch` – Patch capturing local enhancement to upstream `exodriver` install script (for reproducibility / PR prep).
 
+## Documentation
+
+The MkDocs site bundles setup recipes, hardware guides, and developer workflow notes:
+
+- Published docs: <https://bwedderburn.github.io/amp-benchkit/>
+- Build locally:
+  ```bash
+  pip install .[docs]
+  mkdocs serve  # open http://127.0.0.1:8000
+  ```
+
 ## Quick Start
 
 ```bash
