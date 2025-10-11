@@ -53,6 +53,7 @@ from amp_benchkit.deps import (
 )
 
 # Imported refactored helpers
+from amp_benchkit.diagnostics import collect_diagnostics
 from amp_benchkit.fy import FY_BAUD_EOLS, build_fy_cmds, fy_apply, fy_sweep
 from amp_benchkit.gui import build_generator_tab, build_scope_tab
 from amp_benchkit.logging import get_logger, setup_logging
@@ -1336,33 +1337,96 @@ class UnifiedGUI(BaseGUI):
         return build_diagnostics_tab(self)
 
     def run_diag(self):
-        out = ["Dependencies: " + dep_msg()]
-        if HAVE_SERIAL:
-            ps = list_ports()
-            out.append("Serial: " + (", ".join(p.device for p in ps) if ps else "(none)"))
-        else:
-            out.append(f"pyserial missing → {INSTALL_HINTS['pyserial']}")
-        if HAVE_PYVISA:
-            try:
-                res = _pyvisa.ResourceManager().list_resources()
-                out.append("VISA: " + (", ".join(res) if res else "(none)"))
-            except Exception as e:
-                out.append(f"VISA error: {e}")
-        else:
-            out.append(f"pyvisa missing → {INSTALL_HINTS['pyvisa']}")
-        if HAVE_U3:
-            try:
-                v = u3_read_ain(0)
-                out.append(f"U3 AIN0 read OK: {v:.4f} V")
-            except Exception as e:
-                out.append(f"U3 error: {e}")
-        else:
-            out.append(f"u3 missing → {INSTALL_HINTS['u3']}")
-        self._log(self.diag, "\n".join(out))
+        include_env = (
+            bool(self.diag_include_env.isChecked()) if hasattr(self, "diag_include_env") else True
+        )
+        include_deps = (
+            bool(self.diag_include_deps.isChecked())
+            if hasattr(self, "diag_include_deps")
+            else True
+        )
+        include_hw = (
+            bool(self.diag_include_hw.isChecked()) if hasattr(self, "diag_include_hw") else True
+        )
+        auto_clear = (
+            bool(self.diag_auto_clear.isChecked())
+            if hasattr(self, "diag_auto_clear")
+            else False
+        )
+        context: dict[str, str] = {}
+        for attr, label in [
+            ("port1", "Generator CH1 Port"),
+            ("port2", "Generator CH2 Port"),
+            ("auto_port", "Automation FY Port"),
+            ("scope_edit", "Scope Resource"),
+        ]:
+            widget = getattr(self, attr, None)
+            if widget is None:
+                continue
+            with suppress(Exception):
+                text = widget.text().strip()
+                if text:
+                    context[label] = text
+        context["FY auto-detect"] = find_fy_port() or ""
+        try:
+            diag_text = collect_diagnostics(
+                include_environment=include_env,
+                include_dependencies=include_deps,
+                include_connectivity=True,
+                include_hardware=include_hw,
+                context={k: v for k, v in context.items() if v},
+            )
+        except Exception as e:  # pragma: no cover - defensive
+            diag_text = f"Diagnostics collection failed: {e}"
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        header = f"=== Diagnostics @ {timestamp} ==="
+        snapshot = f"{header}\n{diag_text}"
+        if auto_clear and hasattr(self, "diag"):
+            self.clear_diag_log()
+        self._log(self.diag, snapshot)
+        self._last_diag_snapshot = snapshot
 
     @staticmethod
     def _log(w, t):
         w.append(t)
+
+    def clear_diag_log(self):
+        if hasattr(self, "diag") and self.diag is not None:
+            self.diag.clear()
+
+    def copy_diag_to_clipboard(self):
+        if not HAVE_QT or QApplication is None or not hasattr(self, "diag"):
+            return
+        try:
+            text = self.diag.toPlainText()
+            if text.strip():
+                QApplication.clipboard().setText(text)
+                self._log(self.diag, "[info] Diagnostics copied to clipboard.")
+        except Exception:
+            pass
+
+    def save_diag_snapshot(self):
+        text = getattr(self, "_last_diag_snapshot", None)
+        if not text and hasattr(self, "diag"):
+            try:
+                text = self.diag.toPlainText()
+            except Exception:
+                text = None
+        if not text or not text.strip():
+            return
+        ts = time.strftime("%Y%m%d-%H%M%S")
+        dest_dir = os.path.join("results", "diagnostics")
+        with suppress(Exception):
+            os.makedirs(dest_dir, exist_ok=True)
+        path = os.path.join(dest_dir, f"diagnostics_{ts}.txt")
+        try:
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text.strip() + "\n")
+            if hasattr(self, "diag"):
+                self._log(self.diag, f"[saved] {path}")
+        except Exception as e:
+            if hasattr(self, "diag"):
+                self._log(self.diag, f"[error] Failed to save diagnostics: {e}")
 
     # ---- Test Panel status/history helpers
     def _test_status(self, text: str, level: str = "error"):
@@ -1403,26 +1467,7 @@ def main():
     get_logger()
 
     if args.cmd == "diag":
-        print("Dependency status:", dep_msg())
-        if HAVE_SERIAL:
-            ps = list_ports()
-            print("Serial:", ", ".join(p.device for p in ps) if ps else "(none)")
-        else:
-            print("pyserial missing →", INSTALL_HINTS["pyserial"])
-        if HAVE_PYVISA:
-            try:
-                print("VISA:", ", ".join(_pyvisa.ResourceManager().list_resources()) or "(none)")
-            except Exception as e:
-                print("VISA error:", e)
-        else:
-            print("pyvisa missing →", INSTALL_HINTS["pyvisa"])
-        if HAVE_U3:
-            try:
-                print("U3 AIN0:", f"{u3_read_ain(0):.4f} V")
-            except Exception as e:
-                print("U3 error:", e)
-        else:
-            print("u3 missing →", INSTALL_HINTS["u3"])
+        print(collect_diagnostics())
         return
 
     if args.cmd == "selftest":

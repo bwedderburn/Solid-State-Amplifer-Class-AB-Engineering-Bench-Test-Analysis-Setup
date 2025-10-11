@@ -72,7 +72,7 @@ def build_fy_cmds(freq_hz, amp_vpp, off_v, wave, duty=None, ch=1):
 
 def fy_apply(
     freq_hz=1000,
-    amp_vpp=2.0,
+    amp_vpp=0.25,
     wave="Sine",
     off_v=0.0,
     duty=None,

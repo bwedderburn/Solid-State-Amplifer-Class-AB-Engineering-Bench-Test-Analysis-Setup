@@ -68,7 +68,7 @@ def build_automation_tab(gui: Any) -> object | None:
     gui.auto_step = QLineEdit("100")
     r.addWidget(gui.auto_step)
     r.addWidget(QLabel("Amp Vpp"))
-    gui.auto_amp = QLineEdit("2.0")
+    gui.auto_amp = QLineEdit("0.25")
     r.addWidget(gui.auto_amp)
     r.addWidget(QLabel("Dwell ms"))
     gui.auto_dwell = QLineEdit("500")
