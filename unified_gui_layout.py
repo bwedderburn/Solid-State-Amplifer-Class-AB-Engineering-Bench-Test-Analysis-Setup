@@ -65,6 +65,7 @@ from amp_benchkit.tek import (
     scope_configure_math_subtract,
     scope_screenshot,
     scope_set_trigger_ext,
+    scope_resume_run,
     scope_wait_single_complete,
     tek_capture_block,
 )
@@ -1058,6 +1059,7 @@ class UnifiedGUI(BaseGUI):
     def run_sweep_scope_fixed(self):
         from amp_benchkit.automation import build_freq_list, sweep_scope_fixed
 
+        rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
         try:
             ch = int(self.auto_ch.currentText())
             sch = int(self.auto_scope_ch.currentText())
@@ -1103,7 +1105,6 @@ class UnifiedGUI(BaseGUI):
                 )
             except Exception:
                 pre_ms = 5.0
-            rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
 
             # optional u3 auto config closure
             def _u3_autocfg():
@@ -1158,11 +1159,15 @@ class UnifiedGUI(BaseGUI):
             self._log(self.auto_log, f"Saved: {fn}")
         except Exception as e:
             self._log(self.auto_log, f"Sweep error: {e}")
+        finally:
+            with suppress(Exception):
+                scope_resume_run(rsrc or self.scope_res)
 
     def run_audio_kpis(self):
         """Sweep using FY + scope, compute Vrms/PkPk and THD, then report -dB knees if requested."""
         from amp_benchkit.automation import build_freq_list, sweep_audio_kpis
 
+        rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
         try:
             ch = int(self.auto_ch.currentText())
             sch = int(self.auto_scope_ch.currentText())
@@ -1218,7 +1223,6 @@ class UnifiedGUI(BaseGUI):
             )
             freqs = build_freq_list(start, stop, step)
             self._sweep_abort = False
-            rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
 
             def _u3_autocfg():
                 if hasattr(self, "auto_u3_autocfg") and self.auto_u3_autocfg.isChecked():
@@ -1337,6 +1341,9 @@ class UnifiedGUI(BaseGUI):
                     self._log(self.auto_log, f"Knee calc error: {e}")
         except Exception as e:
             self._log(self.auto_log, f"KPI sweep error: {e}")
+        finally:
+            with suppress(Exception):
+                scope_resume_run(rsrc or self.scope_res)
 
     # ---- Diagnostics
     def tab_diag(self):

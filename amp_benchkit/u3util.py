@@ -60,7 +60,16 @@ def open_u3_safely():
     if not have_u3():
         raise RuntimeError(f"LabJack U3 library unavailable: {U3_ERR}")
     with _suppress_libusb_noise():
-        return _u3.U3()
+        try:
+            return _u3.U3()
+        except Exception as exc:
+            # Retry using autoOpen=False + firstFound for stubborn devices.
+            try:
+                dev = _u3.U3(autoOpen=False)
+                dev.open(firstFound=True)
+                return dev
+            except Exception:
+                raise RuntimeError(f"LabJack U3 open failed: {exc}") from exc
 
 
 # ---- Wrappers used by extracted GUI tabs (mirroring legacy monolith helpers)

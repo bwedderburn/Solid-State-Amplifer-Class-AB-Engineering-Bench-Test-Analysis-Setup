@@ -34,6 +34,7 @@ __all__ = [
     "scope_wait_single_complete",
     "scope_configure_math_subtract",
     "scope_capture_calibrated",
+    "scope_resume_run",
     "scope_screenshot",
     "TekError",
     "TekTimeoutError",
@@ -208,6 +209,21 @@ def scope_wait_single_complete(resource=TEK_RSRC_DEFAULT, timeout_s=3.0, poll_ms
         with suppress(Exception):
             sc.close()
     return False
+
+
+def scope_resume_run(resource=TEK_RSRC_DEFAULT):
+    """Return the scope to continuous acquisition (RUN) mode."""
+    if not HAVE_PYVISA:
+        return
+    rm = _pyvisa.ResourceManager()
+    sc = rm.open_resource(resource)
+    try:
+        for cmd in ("ACQuire:STOPAfter RUNSTop", "ACQuire:STATE RUN"):
+            with suppress(Exception):
+                sc.write(cmd)
+    finally:
+        with suppress(Exception):
+            sc.close()
 
 
 def scope_configure_math_subtract(resource=TEK_RSRC_DEFAULT, order="CH1-CH2"):
