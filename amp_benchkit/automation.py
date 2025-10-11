@@ -254,22 +254,24 @@ def sweep_audio_kpis(
                 if pre_ms > 0:
                     settle_s = max(settle_s, float(pre_ms) / 1000.0)
                 settle_s = max(settle_s, 3.0 / max(float(f), 1.0))
-                if settle_s > 0:
-                    time.sleep(settle_s)
+                total_wait = max(float(dwell_s), settle_s)
+                if total_wait > 0:
+                    time.sleep(total_wait)
                 if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
                     u3_pulse_line(pulse_line, pulse_ms, 1)
             except Exception as e:
                 logger(f"U3/EXT trig error: {e}")
-            # Wait for capture or dwell
+            # Wait for capture completion (prefer triggered state, fallback to elapsed time)
             done = False
             if scope_wait_single_complete:
                 try:
-                    timeout = max(1.0, dwell_s * 4 + 1.0)
+                    timeout = max(1.0, total_wait + 1.0)
                     done = scope_wait_single_complete(scope_resource, timeout)
                 except Exception:
                     done = False
-            if not done and dwell_s > 0:
-                time.sleep(dwell_s or 0.2)
+            if not done and total_wait <= 0:
+                # ensure we give the scope a moment even when we skip completion checks
+                time.sleep(0.2)
             if use_math and scope_configure_math_subtract:
                 try:
                     scope_configure_math_subtract(scope_resource, math_order)
