@@ -246,24 +246,26 @@ def sweep_audio_kpis(
                 continue
             # EXT / U3 pulse orchestration
             try:
-                if use_ext and scope_set_trigger_ext and scope_arm_single:
+                if use_ext and scope_set_trigger_ext:
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
+                if scope_arm_single:
                     scope_arm_single(scope_resource)
-                    if pre_ms > 0:
-                        time.sleep(pre_ms / 1000.0)
+                if pre_ms > 0:
+                    time.sleep(pre_ms / 1000.0)
                 if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
                     u3_pulse_line(pulse_line, pulse_ms, 1)
             except Exception as e:
                 logger(f"U3/EXT trig error: {e}")
             # Wait for capture or dwell
             done = False
-            if use_ext and scope_wait_single_complete:
+            if scope_wait_single_complete:
                 try:
-                    done = scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
+                    timeout = max(1.0, dwell_s * 4 + 1.0)
+                    done = scope_wait_single_complete(scope_resource, timeout)
                 except Exception:
                     done = False
             if not done and dwell_s > 0:
-                time.sleep(dwell_s)
+                time.sleep(dwell_s or 0.2)
             if use_math and scope_configure_math_subtract:
                 try:
                     scope_configure_math_subtract(scope_resource, math_order)
