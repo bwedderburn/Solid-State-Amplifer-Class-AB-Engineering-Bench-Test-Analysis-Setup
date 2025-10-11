@@ -67,3 +67,6 @@ exodriver/*
 !exodriver/liblabjackusb
 !exodriver/examples/
 !exodriver/install/
+
+# Local results and captures
+results/
