@@ -10,6 +10,24 @@ starting with 0.x pre-release phases.
 
 _No changes yet._
 
+[0.3.7] - 2025-10-11
+--------------------
+
+**Added**
+
+- MkDocs documentation site with a dedicated GitHub Pages workflow and `docs` optional extra for local previews.
+- Richer diagnostics tooling: new `amp_benchkit.diagnostics` collector, UI toggles, and save/copy/clear actions that log snapshots under `results/diagnostics/`.
+
+**Changed**
+
+- Default FY generator amplitude (GUI, automation, and CLI fallback) now starts at 0.25 Vpp to avoid clipping during bring-up.
+- CLI `diag` subcommand and GUI diagnostics output both reuse the structured collector for consistent reporting.
+
+**Fixed**
+
+- Suppressed spurious `LIBUSB_ERROR_NOT_FOUND` warnings when opening LabJack U3 hardware.
+- Restored IEEE block passthrough behaviour so the self-test suite and raw captures handle non-`#` payloads correctly.
+
 [0.3.6] - 2025-10-07
 --------------------
 
