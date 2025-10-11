@@ -322,6 +322,10 @@ class UnifiedGUI(BaseGUI):
                 self._log(self.gen_log, "CH2 sweep not supported on FY3200S; nothing to stop.")
         except Exception as e:
             self._log(self.gen_log, f"Sweep stop error: {e}")
+        finally:
+            with suppress(Exception):
+                rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
+                scope_resume_run(rsrc or self.scope_res)
 
     def scope_measure(self, ch=1, typ="RMS"):
         if not HAVE_PYVISA:
@@ -467,6 +471,9 @@ class UnifiedGUI(BaseGUI):
         if t:
             t.stop()
         self._log(self.test_log, "Test Panel stopped")
+        with suppress(Exception):
+            rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
+            scope_resume_run(rsrc or self.scope_res)
 
     def tick_test_panel(self):
         # Apply current UI state to U3 once per second; read AINs
