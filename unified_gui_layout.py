@@ -120,7 +120,15 @@ def fixed_font():
 def _decode_ieee_block(raw: bytes) -> bytes:
     """Backward-compatible proxy around :func:`amp_benchkit.tek.parse_ieee_block`."""
 
-    return parse_ieee_block(raw)
+    parsed = parse_ieee_block(raw)
+    if hasattr(parsed, "size"):
+        if parsed.size:
+            return parsed.astype(np.uint8).tobytes()
+        # Non-IEEE payloads fall back to raw bytes to preserve legacy behaviour.
+        if raw[:1] != b"#":
+            return raw
+        return b""
+    return bytes(parsed)
 
 
 ## Removed local IEEE block decode and scope_capture; using imported helpers instead.
