@@ -7,6 +7,11 @@ in multiple places.
 
 from __future__ import annotations
 
+import io
+import os
+import sys
+from contextlib import contextmanager
+
 PYVISA_ERR = SERIAL_ERR = QT_ERR = U3_ERR = None  # populated on import
 QT_BINDING = None  # type: ignore
 
@@ -15,6 +20,37 @@ _pyvisa = None
 _serial = None
 _lp = None
 _u3 = None
+HAVE_U3 = False
+
+
+@contextmanager
+def _suppress_libusb_import_noise():
+    """Silence noisy libusb messages when LabJackPython probes for devices."""
+
+    saved_err_fd = None
+    err_fd = None
+    if os.name == "posix":
+        try:
+            err_fd = sys.stderr.fileno()
+            saved_err_fd = os.dup(err_fd)
+            with open(os.devnull, "w") as devnull:
+                os.dup2(devnull.fileno(), err_fd)
+        except (AttributeError, OSError, ValueError):
+            err_fd = None
+            saved_err_fd = None
+
+    original_stdout = sys.stdout
+    original_stderr = sys.stderr
+    sys.stdout = io.StringIO()
+    sys.stderr = io.StringIO()
+    try:
+        yield
+    finally:
+        sys.stdout = original_stdout
+        sys.stderr = original_stderr
+        if saved_err_fd is not None and err_fd is not None:
+            os.dup2(saved_err_fd, err_fd)
+            os.close(saved_err_fd)
 
 # ------------------ pyvisa ------------------
 try:  # pragma: no cover - environment dependent
@@ -31,18 +67,10 @@ except Exception as e:  # pragma: no cover
 
 # ------------------ LabJack u3 ------------------
 try:  # pragma: no cover
-    # Suppress LabJackPython's stdout messages during import
-    import io
-    import sys
-
-    _original_stdout = sys.stdout
-    sys.stdout = io.StringIO()
-    try:
+    with _suppress_libusb_import_noise():
         import u3 as _u3  # type: ignore
 
-        HAVE_U3 = True
-    finally:
-        sys.stdout = _original_stdout
+    HAVE_U3 = True
 except Exception as e:  # pragma: no cover
     _u3 = None
     U3_ERR = e
