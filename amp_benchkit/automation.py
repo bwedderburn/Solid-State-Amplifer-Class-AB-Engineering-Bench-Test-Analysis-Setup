@@ -130,36 +130,51 @@ def sweep_scope_fixed(
         if abort_flag():
             break
         try:
-            fy_apply(freq_hz=f, amp_vpp=amp_vpp, wave="Sine", off_v=0.0, duty=None, ch=channel)
-        except Exception as e:
-            logger(f"FY error @ {f} Hz: {e}")
-            continue
-        time.sleep(max(0.0, dwell_s))
-        if use_math and scope_configure_math_subtract:
             try:
-                scope_configure_math_subtract(scope_resource, math_order)
+                fy_apply(
+                    freq_hz=f,
+                    amp_vpp=amp_vpp,
+                    wave="Sine",
+                    off_v=0.0,
+                    duty=None,
+                    ch=channel,
+                )
             except Exception as e:
-                logger(f"MATH config error: {e}")
-        if use_ext and scope_set_trigger_ext and scope_arm_single and scope_wait_single_complete:
+                logger(f"FY error @ {f} Hz: {e}")
+                continue
+            time.sleep(max(0.0, dwell_s))
+            if use_math and scope_configure_math_subtract:
+                try:
+                    scope_configure_math_subtract(scope_resource, math_order)
+                except Exception as e:
+                    logger(f"MATH config error: {e}")
+            if (
+                use_ext
+                and scope_set_trigger_ext
+                and scope_arm_single
+                and scope_wait_single_complete
+            ):
+                try:
+                    scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
+                    scope_arm_single(scope_resource)
+                    if pre_ms > 0:
+                        time.sleep(pre_ms / 1000.0)
+                    scope_wait_single_complete(
+                        scope_resource, max(1.0, dwell_s * 2 + 0.5)
+                    )
+                except Exception as e:
+                    logger(f"EXT trig wait error: {e}")
             try:
-                scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
-                scope_arm_single(scope_resource)
-                if pre_ms > 0:
-                    time.sleep(pre_ms / 1000.0)
-                scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
+                src = "MATH" if use_math else scope_channel
+                val = scope_measure(src, metric_key)
             except Exception as e:
-                logger(f"EXT trig wait error: {e}")
-        try:
-            src = "MATH" if use_math else scope_channel
-            val = scope_measure(src, metric_key)
-        except Exception as e:
-            logger(f"Scope error @ {f} Hz: {e}")
-            val = float("nan")
-        out.append((f, val))
-        logger(
-            f"{f:.3f} Hz → {metric_key} {val:.4f} ({'MATH' if use_math else f'CH{scope_channel}'})"
-        )
-        progress(i + 1, n)
+                logger(f"Scope error @ {f} Hz: {e}")
+                val = float("nan")
+            out.append((f, val))
+            src_label = "MATH" if use_math else f"CH{scope_channel}"
+            logger(f"{f:.3f} Hz → {metric_key} {val:.4f} ({src_label})")
+        finally:
+            progress(i + 1, n)
     return out
 
 
@@ -219,64 +234,77 @@ def sweep_audio_kpis(
         if abort_flag():
             break
         try:
-            fy_apply(freq_hz=f, amp_vpp=amp_vpp, wave="Sine", off_v=0.0, duty=None, ch=channel)
-        except Exception as e:
-            logger(f"FY error @ {f} Hz: {e}")
-            continue
-        # EXT / U3 pulse orchestration
-        try:
-            if use_ext and scope_set_trigger_ext and scope_arm_single:
-                scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
-                scope_arm_single(scope_resource)
-                if pre_ms > 0:
-                    time.sleep(pre_ms / 1000.0)
-            if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
-                u3_pulse_line(pulse_line, pulse_ms, 1)
-        except Exception as e:
-            logger(f"U3/EXT trig error: {e}")
-        # Wait for capture or dwell
-        done = False
-        if use_ext and scope_wait_single_complete:
             try:
-                done = scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
-            except Exception:
-                done = False
-        if not done and dwell_s > 0:
-            time.sleep(dwell_s)
-        if use_math and scope_configure_math_subtract:
-            try:
-                scope_configure_math_subtract(scope_resource, math_order)
+                fy_apply(
+                    freq_hz=f,
+                    amp_vpp=amp_vpp,
+                    wave="Sine",
+                    off_v=0.0,
+                    duty=None,
+                    ch=channel,
+                )
             except Exception as e:
-                logger(f"MATH config error: {e}")
-        # Capture
-        try:
-            src = "MATH" if use_math else scope_channel
-            t, v = scope_capture_calibrated(scope_resource, ch=src)
-        except Exception as e:
-            logger(f"Scope capture error @ {f} Hz: {e}")
-            t = []
-            v = []
-        have_samples = False
-        try:
-            have_samples = len(v) > 0  # works for lists or numpy arrays
-        except Exception:
+                logger(f"FY error @ {f} Hz: {e}")
+                continue
+            # EXT / U3 pulse orchestration
+            try:
+                if use_ext and scope_set_trigger_ext and scope_arm_single:
+                    scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
+                    scope_arm_single(scope_resource)
+                    if pre_ms > 0:
+                        time.sleep(pre_ms / 1000.0)
+                if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
+                    u3_pulse_line(pulse_line, pulse_ms, 1)
+            except Exception as e:
+                logger(f"U3/EXT trig error: {e}")
+            # Wait for capture or dwell
+            done = False
+            if use_ext and scope_wait_single_complete:
+                try:
+                    done = scope_wait_single_complete(
+                        scope_resource, max(1.0, dwell_s * 2 + 0.5)
+                    )
+                except Exception:
+                    done = False
+            if not done and dwell_s > 0:
+                time.sleep(dwell_s)
+            if use_math and scope_configure_math_subtract:
+                try:
+                    scope_configure_math_subtract(scope_resource, math_order)
+                except Exception as e:
+                    logger(f"MATH config error: {e}")
+            # Capture
+            try:
+                src = "MATH" if use_math else scope_channel
+                t, v = scope_capture_calibrated(scope_resource, ch=src)
+            except Exception as e:
+                logger(f"Scope capture error @ {f} Hz: {e}")
+                t = []
+                v = []
             have_samples = False
-        vr = dsp_vrms(v) if have_samples else float("nan")
-        pp = dsp_vpp(v) if have_samples else float("nan")
-        thd_ratio = float("nan")
-        thd_percent = float("nan")
-        if do_thd and dsp_thd_fft and have_samples:
             try:
-                thd_ratio, f_est, _ = dsp_thd_fft(t, v, f)
-                thd_percent = float(thd_ratio * 100.0) if math.isfinite(thd_ratio) else float("nan")
-            except Exception as e:
-                logger(f"THD calc error @ {f} Hz: {e}")
-        rows.append((f, vr, pp, thd_ratio, thd_percent))
-        msg = f"{f:.3f} Hz → Vrms {vr:.4f} V, PkPk {pp:.4f} V"
-        if math.isfinite(thd_percent):
-            msg += f", THD {thd_percent:.3f}%"
-        logger(msg)
-        progress(i + 1, n)
+                have_samples = len(v) > 0  # works for lists or numpy arrays
+            except Exception:
+                have_samples = False
+            vr = dsp_vrms(v) if have_samples else float("nan")
+            pp = dsp_vpp(v) if have_samples else float("nan")
+            thd_ratio = float("nan")
+            thd_percent = float("nan")
+            if do_thd and dsp_thd_fft and have_samples:
+                try:
+                    thd_ratio, f_est, _ = dsp_thd_fft(t, v, f)
+                    thd_percent = (
+                        float(thd_ratio * 100.0) if math.isfinite(thd_ratio) else float("nan")
+                    )
+                except Exception as e:
+                    logger(f"THD calc error @ {f} Hz: {e}")
+            rows.append((f, vr, pp, thd_ratio, thd_percent))
+            msg = f"{f:.3f} Hz → Vrms {vr:.4f} V, PkPk {pp:.4f} V"
+            if math.isfinite(thd_percent):
+                msg += f", THD {thd_percent:.3f}%"
+            logger(msg)
+        finally:
+            progress(i + 1, n)
     knees = None
     if do_knees and dsp_find_knees and rows:
         try:
