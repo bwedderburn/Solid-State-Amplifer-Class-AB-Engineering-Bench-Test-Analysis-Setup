@@ -129,6 +129,11 @@ def sweep_scope_fixed(
         except Exception as e:
             logger(f"U3 auto-config warn: {e}")
     n = len(freqs)
+    original_scale = None
+    resource = scope_resource if scope_resource is not None else None
+    if resource is not None:
+        with suppress(Exception):
+            original_scale = scope_read_timebase(resource)
     for i, f in enumerate(freqs):
         if abort_flag():
             break
@@ -185,6 +190,9 @@ def sweep_scope_fixed(
             logger(f"{f:.3f} Hz → {metric_key} {val:.4f} ({src_label})")
         finally:
             progress(i + 1, n)
+    if original_scale is not None and resource is not None:
+        with suppress(Exception):
+            scope_configure_timebase(resource, original_scale)
     return out
 
 

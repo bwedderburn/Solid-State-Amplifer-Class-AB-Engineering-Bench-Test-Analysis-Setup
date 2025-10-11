@@ -35,6 +35,7 @@ __all__ = [
     "scope_configure_math_subtract",
     "scope_capture_calibrated",
     "scope_configure_timebase",
+    "scope_read_timebase",
     "scope_resume_run",
     "scope_screenshot",
     "TekError",
@@ -212,6 +213,22 @@ def scope_wait_single_complete(resource=TEK_RSRC_DEFAULT, timeout_s=3.0, poll_ms
     return False
 
 
+
+
+def scope_read_timebase(resource=TEK_RSRC_DEFAULT):
+    """Return current horizontal scale in seconds/div (None on failure)."""
+    if not HAVE_PYVISA:
+        return None
+    rm = _pyvisa.ResourceManager()
+    sc = rm.open_resource(resource)
+    try:
+        try:
+            return float(sc.query('HORizontal:MAIn:SCAle?'))
+        except Exception:
+            return None
+    finally:
+        with suppress(Exception):
+            sc.close()
 
 def scope_configure_timebase(resource=TEK_RSRC_DEFAULT, seconds_per_div=None):
     """Adjust horizontal scale (seconds per division)."""
