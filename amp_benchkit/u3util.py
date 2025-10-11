@@ -61,9 +61,9 @@ def open_u3_safely():
         raise RuntimeError(f"LabJack U3 library unavailable: {U3_ERR}")
     with _suppress_libusb_noise():
         try:
-            return _u3.U3()
+            return _u3.U3(firstFound=True)
         except Exception as exc:
-            # Retry using autoOpen=False + firstFound for stubborn devices.
+            # Retry using explicit two-step open in case autoOpen fails.
             try:
                 dev = _u3.U3(autoOpen=False)
                 dev.open(firstFound=True)

@@ -218,9 +218,8 @@ def scope_resume_run(resource=TEK_RSRC_DEFAULT):
     rm = _pyvisa.ResourceManager()
     sc = rm.open_resource(resource)
     try:
-        for cmd in ("ACQuire:STOPAfter RUNSTop", "ACQuire:STATE RUN"):
-            with suppress(Exception):
-                sc.write(cmd)
+        with suppress(Exception):
+            sc.write("ACQuire:STATE RUN")
     finally:
         with suppress(Exception):
             sc.close()
