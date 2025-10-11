@@ -1,0 +1,38 @@
+site_name: amp-benchkit
+site_description: Automation toolkit for amplifier bench testing (FY3200S, TDS2024B, LabJack U3-HV)
+site_url: https://bwedderburn.github.io/amp-benchkit/
+repo_url: https://github.com/bwedderburn/amp-benchkit
+repo_name: bwedderburn/amp-benchkit
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.indexes
+    - content.code.annotate
+    - navigation.top
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: teal
+nav:
+  - Overview: index.md
+  - Getting Started:
+      - Quickstart: getting-started.md
+      - Hardware Setup: hardware-setup.md
+  - Developer Guide:
+      - Development Workflow: development.md
+      - Testing Matrix: testing.md
+  - Reference:
+      - Configuration & Environment: configuration.md
+      - GUI Layout: gui-overview.md
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - codehilite
+  - toc:
+      permalink: true
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/bwedderburn/amp-benchkit
