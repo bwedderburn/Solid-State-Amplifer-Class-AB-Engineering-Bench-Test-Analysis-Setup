@@ -159,9 +159,7 @@ def sweep_scope_fixed(
                     scope_arm_single(scope_resource)
                     if pre_ms > 0:
                         time.sleep(pre_ms / 1000.0)
-                    scope_wait_single_complete(
-                        scope_resource, max(1.0, dwell_s * 2 + 0.5)
-                    )
+                    scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
                 except Exception as e:
                     logger(f"EXT trig wait error: {e}")
             try:
@@ -261,9 +259,7 @@ def sweep_audio_kpis(
             done = False
             if use_ext and scope_wait_single_complete:
                 try:
-                    done = scope_wait_single_complete(
-                        scope_resource, max(1.0, dwell_s * 2 + 0.5)
-                    )
+                    done = scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
                 except Exception:
                     done = False
             if not done and dwell_s > 0:
