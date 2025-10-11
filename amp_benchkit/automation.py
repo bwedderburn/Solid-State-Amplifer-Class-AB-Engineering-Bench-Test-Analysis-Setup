@@ -22,7 +22,10 @@ from __future__ import annotations
 import math
 import time
 from collections.abc import Callable, Sequence
+from contextlib import suppress
 from typing import Any
+
+from amp_benchkit.tek import scope_configure_timebase
 
 Number = float
 
@@ -129,6 +132,7 @@ def sweep_scope_fixed(
     for i, f in enumerate(freqs):
         if abort_flag():
             break
+        settle_s = 0.0
         try:
             try:
                 fy_apply(
@@ -142,26 +146,34 @@ def sweep_scope_fixed(
             except Exception as e:
                 logger(f"FY error @ {f} Hz: {e}")
                 continue
-            time.sleep(max(0.0, dwell_s))
+            window_s = 0.0
+            if dwell_s > 0:
+                window_s = max(window_s, float(dwell_s))
+            if f > 0:
+                window_s = max(window_s, 2.5 / float(f))
+            if window_s <= 0:
+                window_s = 2.5 / max(float(f), 1.0)
+            if scope_resource is not None:
+                scope_configure_timebase(scope_resource, max(2e-9, min(window_s / 10.0, 5.0)))
+            settle_s = window_s
+            if pre_ms > 0:
+                settle_s = max(settle_s, float(pre_ms) / 1000.0)
             if use_math and scope_configure_math_subtract:
                 try:
                     scope_configure_math_subtract(scope_resource, math_order)
                 except Exception as e:
                     logger(f"MATH config error: {e}")
-            if (
-                use_ext
-                and scope_set_trigger_ext
-                and scope_arm_single
-                and scope_wait_single_complete
-            ):
-                try:
-                    scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
+            if scope_arm_single:
+                with suppress(Exception):
                     scope_arm_single(scope_resource)
-                    if pre_ms > 0:
-                        time.sleep(pre_ms / 1000.0)
-                    scope_wait_single_complete(scope_resource, max(1.0, dwell_s * 2 + 0.5))
-                except Exception as e:
-                    logger(f"EXT trig wait error: {e}")
+            if use_ext and scope_set_trigger_ext:
+                with suppress(Exception):
+                    scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
+            if settle_s > 0:
+                time.sleep(settle_s)
+            if scope_wait_single_complete:
+                with suppress(Exception):
+                    scope_wait_single_complete(scope_resource, max(1.0, settle_s + 1.0))
             try:
                 src = "MATH" if use_math else scope_channel
                 val = scope_measure(src, metric_key)
@@ -231,6 +243,7 @@ def sweep_audio_kpis(
     for i, f in enumerate(freqs):
         if abort_flag():
             break
+        settle_s = 0.0
         try:
             try:
                 fy_apply(
@@ -250,27 +263,34 @@ def sweep_audio_kpis(
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
                 if scope_arm_single:
                     scope_arm_single(scope_resource)
-                settle_s = 0.0
+                # Configure timebase so the capture window spans at least two cycles or dwell duration
+                window_s = 0.0
+                if dwell_s > 0:
+                    window_s = max(window_s, float(dwell_s))
+                if f > 0:
+                    window_s = max(window_s, 2.5 / float(f))
+                if window_s <= 0:
+                    window_s = 2.5 / max(float(f), 1.0)
+                if scope_resource is not None:
+                    scope_configure_timebase(scope_resource, max(2e-9, min(window_s / 10.0, 5.0)))
+                settle_s = window_s
                 if pre_ms > 0:
                     settle_s = max(settle_s, float(pre_ms) / 1000.0)
-                settle_s = max(settle_s, 3.0 / max(float(f), 1.0))
-                total_wait = max(float(dwell_s), settle_s)
-                if total_wait > 0:
-                    time.sleep(total_wait)
+                if settle_s > 0:
+                    time.sleep(settle_s)
                 if u3_pulse_line and pulse_line and pulse_line != "None" and pulse_ms > 0.0:
                     u3_pulse_line(pulse_line, pulse_ms, 1)
             except Exception as e:
                 logger(f"U3/EXT trig error: {e}")
-            # Wait for capture completion (prefer triggered state, fallback to elapsed time)
+            # Wait for capture completion
             done = False
             if scope_wait_single_complete:
                 try:
-                    timeout = max(1.0, total_wait + 1.0)
+                    timeout = max(1.0, settle_s + 1.0)
                     done = scope_wait_single_complete(scope_resource, timeout)
                 except Exception:
                     done = False
-            if not done and total_wait <= 0:
-                # ensure we give the scope a moment even when we skip completion checks
+            if not done and settle_s <= 0:
                 time.sleep(0.2)
             if use_math and scope_configure_math_subtract:
                 try:

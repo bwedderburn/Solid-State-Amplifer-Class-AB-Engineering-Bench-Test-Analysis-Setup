@@ -65,6 +65,7 @@ from amp_benchkit.tek import (
     scope_configure_math_subtract,
     scope_screenshot,
     scope_set_trigger_ext,
+    scope_configure_timebase,
     scope_resume_run,
     scope_wait_single_complete,
     tek_capture_block,
