@@ -83,6 +83,9 @@ amp-benchkit config-reset      # reset config to defaults
 # Generate frequency sweep (headless list output)
 amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
 
+# Headless THD sweep using Tek math (requires hardware)
+amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
+
 ```
 
 ### Sweep CLI (Headless Frequency Lists)
@@ -133,7 +136,20 @@ for f in $(amp-benchkit sweep --start 20 --stop 20000 --points 25 --mode log); d
 done
 ```
 
-Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) and direct KPI sweep command.
+### THD Sweep CLI (Tek MATH)
+
+Attach CH1/CH2 to the DUT input/output, enable the scope’s `MATH = CH1-CH2`, and provide VISA/FY connection details via flags or environment variables (`VISA_RESOURCE`, `FY_PORT`). When using the pure Python backend on macOS, also set `PYUSB_LIBRARY` to the `libusb-1.0.dylib` shipped with `libusb-package`, or run with `sudo` if USBTMC access is blocked.
+
+```bash
+PYUSB_LIBRARY="$PWD/.venv/lib/python3.13/site-packages/libusb_package/libusb-1.0.dylib" \
+FY_PORT=/dev/cu.usbserial-XXXX \
+VISA_RESOURCE=USB0::0x0699::0x036A::SERIAL::INSTR \
+amp-benchkit thd-math-sweep --amp-vpp 0.5 --dwell 0.3
+```
+
+Results land in `results/thd_sweep.csv` by default and the console prints THD% per point (20 Hz–20 kHz, log-spaced).
+
+Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) for the frequency list helper.
 
 > Note: Direct invocation via `python unified_gui_layout.py ...` still works but is considered a legacy path. Prefer the installed console scripts (`amp-benchkit`, `amp-benchkit-gui`) for forward compatibility; future releases may relocate the legacy file.
 ```

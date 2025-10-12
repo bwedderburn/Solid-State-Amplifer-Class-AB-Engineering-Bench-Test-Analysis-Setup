@@ -15,6 +15,7 @@ import os
 import sys
 import time
 from contextlib import suppress
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -55,6 +56,7 @@ from amp_benchkit.diagnostics import collect_diagnostics
 from amp_benchkit.fy import FY_BAUD_EOLS, build_fy_cmds, fy_apply, fy_sweep
 from amp_benchkit.gui import build_generator_tab, build_scope_tab
 from amp_benchkit.logging import get_logger, setup_logging
+from amp_benchkit.sweeps import format_thd_rows, thd_math_sweep
 from amp_benchkit.tek import (
     TEK_RSRC_DEFAULT,
     parse_ieee_block,
@@ -1476,6 +1478,61 @@ def main():
     sub.add_parser("selftest")
     sub.add_parser("config-dump")
     sub.add_parser("config-reset")
+    sp_thd = sub.add_parser(
+        "thd-math-sweep",
+        help="Headless THD sweep using the scope math channel",
+    )
+    sp_thd.add_argument(
+        "--visa-resource",
+        default=os.environ.get("VISA_RESOURCE", TEK_RSRC_DEFAULT),
+        help="Tektronix VISA resource string.",
+    )
+    sp_thd.add_argument(
+        "--fy-port",
+        default=os.environ.get("FY_PORT"),
+        help="FY3200S serial port (auto-detect if omitted).",
+    )
+    sp_thd.add_argument(
+        "--amp-vpp",
+        type=float,
+        default=float(os.environ.get("AMP_VPP", "0.5")),
+        help="Generator amplitude (Vpp).",
+    )
+    sp_thd.add_argument(
+        "--start",
+        type=float,
+        default=20.0,
+        help="Sweep start frequency (Hz).",
+    )
+    sp_thd.add_argument(
+        "--stop",
+        type=float,
+        default=20000.0,
+        help="Sweep stop frequency (Hz).",
+    )
+    sp_thd.add_argument(
+        "--points",
+        type=int,
+        default=61,
+        help="Number of logarithmic sweep points.",
+    )
+    sp_thd.add_argument(
+        "--dwell",
+        type=float,
+        default=0.15,
+        help="Dwell time per frequency in seconds (increase for LF stability).",
+    )
+    sp_thd.add_argument(
+        "--math-order",
+        default="CH1-CH2",
+        help="Math subtraction order (e.g. CH1-CH2).",
+    )
+    sp_thd.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results/thd_sweep.csv"),
+        help="Optional CSV destination (set to '-' to disable saving).",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1485,6 +1542,29 @@ def main():
 
     setup_logging(verbose=getattr(args, "verbose", False))
     get_logger()
+
+    if args.cmd == "thd-math-sweep":
+        try:
+            output = None if str(args.output) == "-" else args.output
+            rows, out_path = thd_math_sweep(
+                visa_resource=args.visa_resource,
+                fy_port=args.fy_port,
+                amp_vpp=args.amp_vpp,
+                start_hz=args.start,
+                stop_hz=args.stop,
+                points=args.points,
+                dwell_s=args.dwell,
+                math_order=args.math_order,
+                output=output,
+            )
+        except Exception as exc:  # pragma: no cover - hardware path
+            print("THD sweep error:", exc, file=sys.stderr)
+            return
+        if out_path:
+            print("Saved:", out_path)
+        for line in format_thd_rows(rows):
+            print(line)
+        return
 
     if args.cmd == "diag":
         print(collect_diagnostics())
