@@ -6,32 +6,24 @@ repos:
         args: ["--maxkb=500"]
       - id: check-merge-conflict
       - id: end-of-file-fixer
-        exclude: ^AGENTS\.md$
       - id: trailing-whitespace
-        exclude: ^AGENTS\.md$
       - id: mixed-line-ending
-        exclude: ^AGENTS\.md$
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.13.2
     hooks:
       - id: ruff
         args: ["--fix"]
-
   - repo: https://github.com/psf/black
     rev: 25.9.0
     hooks:
       - id: black
         language_version: python3
-
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.18.2
     hooks:
       - id: mypy
         additional_dependencies: []
         args: ["--ignore-missing-imports", "--no-warn-unused-ignores"]
-
-  # Local hooks (all together)
   - repo: local
     hooks:
       - id: forbid-virtualenv-commits
@@ -48,7 +40,6 @@ repos:
                 exit 1
               fi
               exit 0
-
       - id: forbid-large-binaries
         name: Forbid >5MB binary blobs (except patches)
         entry: bash
@@ -69,20 +60,12 @@ repos:
               done < <(git diff --cached --name-only)
               exit "$status"
 
-      # Protect AGENTS.md: require [agents] in the commit message if it's staged
+# --- Protect AGENTS.md from accidental edits (add [agents] in commit message to bypass) ---
+  - repo: local
+    hooks:
       - id: block-agents-md-changes
         name: Block unintended AGENTS.md edits
         language: system
-        pass_filenames: true
-        stages: [commit-msg]
-        entry: bash
-        args:
-          - -c
-          - |
-              if git diff --cached --name-only | grep -qx "AGENTS.md"; then
-                if ! grep -q "\[agents\]" "$1"; then
-                  echo "AGENTS.md changed. Include [agents] in the commit message to allow."
-                  exit 1
-                fi
-              fi
-              exit 0
+        pass_filenames: false
+        stages: [commit]
+        entry: bash -c 'git diff --cached --name-only | grep -qx "AGENTS.md" && ! git log -1 --pretty=%B | grep -q "\\[agents\\]" && echo "AGENTS.md changed. Include [agents] in commit message to allow." && exit 1 || exit 0'
