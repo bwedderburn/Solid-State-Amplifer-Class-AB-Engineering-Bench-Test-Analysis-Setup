@@ -42,12 +42,10 @@ from amp_benchkit import dsp as _dsp
 from amp_benchkit.deps import (
     HAVE_PYVISA,
     HAVE_QT,
-    HAVE_SERIAL,
     HAVE_U3,
     INSTALL_HINTS,
     _pyvisa,
     _u3,
-    dep_msg,
     find_fy_port,
     list_ports,
 )
@@ -63,11 +61,9 @@ from amp_benchkit.tek import (
     scope_arm_single,
     scope_capture_calibrated,
     scope_configure_math_subtract,
+    scope_resume_run,
     scope_screenshot,
     scope_set_trigger_ext,
-    scope_configure_timebase,
-    scope_read_timebase,
-    scope_resume_run,
     scope_wait_single_complete,
     tek_capture_block,
 )
@@ -326,7 +322,11 @@ class UnifiedGUI(BaseGUI):
             self._log(self.gen_log, f"Sweep stop error: {e}")
         finally:
             with suppress(Exception):
-                rsrc = self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
+                rsrc = (
+                    self.scope_edit.text().strip()
+                    if hasattr(self, "scope_edit")
+                    else self.scope_res
+                )
                 scope_resume_run(rsrc or self.scope_res)
 
     def scope_measure(self, ch=1, typ="RMS"):
@@ -1365,17 +1365,13 @@ class UnifiedGUI(BaseGUI):
             bool(self.diag_include_env.isChecked()) if hasattr(self, "diag_include_env") else True
         )
         include_deps = (
-            bool(self.diag_include_deps.isChecked())
-            if hasattr(self, "diag_include_deps")
-            else True
+            bool(self.diag_include_deps.isChecked()) if hasattr(self, "diag_include_deps") else True
         )
         include_hw = (
             bool(self.diag_include_hw.isChecked()) if hasattr(self, "diag_include_hw") else True
         )
         auto_clear = (
-            bool(self.diag_auto_clear.isChecked())
-            if hasattr(self, "diag_auto_clear")
-            else False
+            bool(self.diag_auto_clear.isChecked()) if hasattr(self, "diag_auto_clear") else False
         )
         context: dict[str, str] = {}
         for attr, label in [

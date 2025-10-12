@@ -52,6 +52,7 @@ def _suppress_libusb_import_noise():
             os.dup2(saved_err_fd, err_fd)
             os.close(saved_err_fd)
 
+
 # ------------------ pyvisa ------------------
 try:  # pragma: no cover - environment dependent
     import pyvisa as _pyvisa  # type: ignore
