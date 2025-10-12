@@ -132,8 +132,10 @@ def sweep_scope_fixed(
     original_scale = None
     resource = scope_resource if scope_resource is not None else None
     if resource is not None:
-        with suppress(Exception):
+        try:
             original_scale = scope_read_timebase(resource)
+        except Exception:
+            original_scale = None
     for i, f in enumerate(freqs):
         if abort_flag():
             break
