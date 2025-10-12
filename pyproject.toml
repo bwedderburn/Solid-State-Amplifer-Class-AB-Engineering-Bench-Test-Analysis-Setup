@@ -60,6 +60,7 @@ py-modules = ["unified_gui_layout"]
 
 [project.urls]
 Homepage = "https://github.com/bwedderburn/amp-benchkit"
+Documentation = "https://bwedderburn.github.io/amp-benchkit/"
 Repository = "https://github.com/bwedderburn/amp-benchkit"
 Issues = "https://github.com/bwedderburn/amp-benchkit/issues"
 Changelog = "https://github.com/bwedderburn/amp-benchkit/blob/main/CHANGELOG.md"
