@@ -85,6 +85,7 @@ amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
 
 # Headless THD sweep using Tek math (requires hardware)
 amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
+# add --math to capture CH1-CH2 differential instead of a single channel
 
 ```
 
@@ -144,10 +145,11 @@ Attach CH1/CH2 to the DUT input/output, enable the scope’s `MATH = CH1-CH2`, a
 PYUSB_LIBRARY="$PWD/.venv/lib/python3.13/site-packages/libusb_package/libusb-1.0.dylib" \
 FY_PORT=/dev/cu.usbserial-XXXX \
 VISA_RESOURCE=USB0::0x0699::0x036A::SERIAL::INSTR \
-amp-benchkit thd-math-sweep --amp-vpp 0.5 --dwell 0.3
+amp-benchkit thd-math-sweep --amp-vpp 0.5 --dwell 0.3 --channel 1
 ```
 
 Results land in `results/thd_sweep.csv` by default and the console prints THD% per point (20 Hz–20 kHz, log-spaced).
+Pass `--math --math-order CH1-CH2` to re-enable differential capture with the scope’s MATH trace.
 
 Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) for the frequency list helper.
 

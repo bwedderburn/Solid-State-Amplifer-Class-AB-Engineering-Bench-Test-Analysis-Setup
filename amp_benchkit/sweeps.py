@@ -19,19 +19,21 @@ from .tek import (
 )
 
 
-def thd_math_sweep(
+def thd_sweep(
     *,
     visa_resource: str,
     fy_port: str | None,
     amp_vpp: float = 0.5,
+    scope_channel: int = 1,
     start_hz: float = 20.0,
     stop_hz: float = 20000.0,
     points: int = 61,
     dwell_s: float = 0.15,
+    use_math: bool = False,
     math_order: str = "CH1-CH2",
     output: Path | None = None,
 ) -> tuple[list[tuple[float, float, float, float]], Path | None]:
-    """Run a THD sweep using the scope math channel (CH1-CH2).
+    """Run a THD sweep capturing either a single scope channel or the math trace.
 
     Returns the raw rows and optional CSV output path if ``output`` was provided.
     """
@@ -44,24 +46,28 @@ def thd_math_sweep(
 
     freqs = build_freq_points(start=start_hz, stop=stop_hz, points=points, mode="log")
 
+    def _capture(_resource, ch):
+        target = math_order if use_math else ch
+        return scope_capture_calibrated(visa_resource, timeout_ms=15000, ch=target)
+
     result = sweep_audio_kpis(
         freqs,
         channel=1,
-        scope_channel=1,
+        scope_channel=scope_channel,
         amp_vpp=amp_vpp,
         dwell_s=dwell_s,
         fy_apply=lambda **kw: fy_apply(port=fy_port, proto="FY ASCII 9600", **kw),
-        scope_capture_calibrated=lambda res, ch: scope_capture_calibrated(
-            visa_resource, timeout_ms=15000, ch=ch
-        ),
+        scope_capture_calibrated=_capture,
         dsp_vrms=vrms,
         dsp_vpp=vpp,
         dsp_thd_fft=lambda t, v, f0: thd_fft(t, v, f0=f0, nharm=10, window="hann"),
         do_thd=True,
-        use_math=True,
+        use_math=use_math,
         math_order=math_order,
-        scope_configure_math_subtract=lambda res, order: scope_configure_math_subtract(
-            visa_resource, order
+        scope_configure_math_subtract=(
+            (lambda res, order: scope_configure_math_subtract(visa_resource, order))
+            if use_math
+            else None
         ),
         scope_arm_single=lambda res: scope_arm_single(visa_resource),
         scope_wait_single_complete=lambda res, timeout_s: scope_wait_single_complete(

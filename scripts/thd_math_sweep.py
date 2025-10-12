@@ -1,11 +1,11 @@
-"""Headless THD sweep using MATH (CH1-CH2) on Tektronix TDS2024B.
+"""Headless THD sweep with Tektronix TDS2024B (single-ended or math).
 
 This script mirrors the manual heredoc used earlier and saves a CSV
 with Vrms, Vpp, and THD% across a 20 Hz to 20 kHz logarithmic sweep.
 It assumes:
   - FY3200S generator connected over serial (FY_PORT env var or auto-detect).
   - Tektronix scope reachable via VISA resource (VISA_RESOURCE env var).
-  - Channels CH1/CH2 wired to amplifier input/output, MATH = CH1-CH2.
+  - CH1 monitors the DUT output by default. Use ``--math`` for CH1-CH2 subtraction.
 
 Example usage (macOS with pyvisa-py and libusb-package):
     PYUSB_LIBRARY=\"/path/to/libusb_package/libusb-1.0.dylib\" \\
@@ -30,11 +30,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from amp_benchkit.sweeps import format_thd_rows, thd_math_sweep  # noqa: E402
+from amp_benchkit.sweeps import format_thd_rows, thd_sweep  # noqa: E402
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Sweep THD using Tektronix MATH (CH1-CH2).")
+    ap = argparse.ArgumentParser(
+        description="Sweep THD using Tektronix scope capture (single-ended or math)."
+    )
     ap.add_argument(
         "--visa-resource",
         default=os.environ.get("VISA_RESOURCE", "USB0::0x0699::0x036A::C100563::INSTR"),
@@ -81,6 +83,22 @@ def main() -> int:
         default=Path("results/thd_sweep.csv"),
         help="Destination CSV path.",
     )
+    ap.add_argument(
+        "--channel",
+        type=int,
+        default=1,
+        help="Scope channel to capture (ignored when --math is set).",
+    )
+    ap.add_argument(
+        "--math",
+        action="store_true",
+        help="Capture the scope MATH trace instead of a single channel.",
+    )
+    ap.add_argument(
+        "--math-order",
+        default="CH1-CH2",
+        help="MATH subtraction order (used only when --math is set).",
+    )
     args = ap.parse_args()
 
     if args.points < 2:
@@ -90,14 +108,17 @@ def main() -> int:
     if not math.isfinite(args.dwell) or args.dwell < 0:
         raise ValueError("dwell must be >= 0")
 
-    rows, out_path = thd_math_sweep(
+    rows, out_path = thd_sweep(
         visa_resource=args.visa_resource,
         fy_port=args.fy_port,
         amp_vpp=args.amp_vpp,
+        scope_channel=args.channel,
         start_hz=args.start_hz,
         stop_hz=args.stop_hz,
         points=args.points,
         dwell_s=args.dwell,
+        use_math=args.math,
+        math_order=args.math_order,
         output=args.output,
     )
     if out_path:

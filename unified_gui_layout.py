@@ -56,7 +56,7 @@ from amp_benchkit.diagnostics import collect_diagnostics
 from amp_benchkit.fy import FY_BAUD_EOLS, build_fy_cmds, fy_apply, fy_sweep
 from amp_benchkit.gui import build_generator_tab, build_scope_tab
 from amp_benchkit.logging import get_logger, setup_logging
-from amp_benchkit.sweeps import format_thd_rows, thd_math_sweep
+from amp_benchkit.sweeps import format_thd_rows, thd_sweep
 from amp_benchkit.tek import (
     TEK_RSRC_DEFAULT,
     parse_ieee_block,
@@ -1523,6 +1523,17 @@ def main():
         help="Dwell time per frequency in seconds (increase for LF stability).",
     )
     sp_thd.add_argument(
+        "--channel",
+        type=int,
+        default=1,
+        help="Scope channel to capture (ignored when --math is used).",
+    )
+    sp_thd.add_argument(
+        "--math",
+        action="store_true",
+        help="Capture the scope MATH trace instead of a single channel.",
+    )
+    sp_thd.add_argument(
         "--math-order",
         default="CH1-CH2",
         help="Math subtraction order (e.g. CH1-CH2).",
@@ -1546,14 +1557,16 @@ def main():
     if args.cmd == "thd-math-sweep":
         try:
             output = None if str(args.output) == "-" else args.output
-            rows, out_path = thd_math_sweep(
+            rows, out_path = thd_sweep(
                 visa_resource=args.visa_resource,
                 fy_port=args.fy_port,
                 amp_vpp=args.amp_vpp,
+                scope_channel=args.channel,
                 start_hz=args.start,
                 stop_hz=args.stop,
                 points=args.points,
                 dwell_s=args.dwell,
+                use_math=args.math,
                 math_order=args.math_order,
                 output=output,
             )
