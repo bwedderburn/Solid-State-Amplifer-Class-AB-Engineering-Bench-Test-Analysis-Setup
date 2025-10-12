@@ -373,3 +373,6 @@ pip install git+https://github.com/bwedderburn/amp-benchkit@v0.2.0
 - Add a simple REST or WebSocket bridge for remote automation control.
 - Extend Makefile with `format` / `lint` targets (black, ruff, mypy).
 - Optional plugin architecture for new instrument tabs.
+
+## Contributing
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, style, tests, and PR guidelines.
