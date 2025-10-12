@@ -116,14 +116,14 @@ def _connectivity_section() -> tuple[str, list[str]]:
     lines.extend(f"  {entry}" for entry in (serial_lines or ["(none)"]))
 
     visa_lines: list[str] = []
-   if HAVE_PYVISA and _pyvisa is not None:
-    try:
-        rm = _pyvisa.ResourceManager()
-        visa_lines = list(rm.list_resources())
-    except Exception as exc:
-        visa_lines = [f"VISA error: {exc}"]
-else:
-    visa_lines = ["pyvisa is not available"]
+    if HAVE_PYVISA and _pyvisa is not None:
+        try:
+            rm = _pyvisa.ResourceManager()
+            visa_lines = list(rm.list_resources())
+        except Exception as exc:
+            visa_lines = [f"VISA error: {exc}"]
+    else:
+        visa_lines = []
     lines.append("VISA resources:")
     lines.extend(f"  {entry}" for entry in (visa_lines or ["(none)"]))
 
