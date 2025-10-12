@@ -59,3 +59,13 @@ repos:
                 fi
               done < <(git diff --cached --name-only)
               exit "$status"
+
+# --- Protect AGENTS.md from accidental edits (add [agents] in commit message to bypass) ---
+  - repo: local
+    hooks:
+      - id: block-agents-md-changes
+        name: Block unintended AGENTS.md edits
+        language: system
+        pass_filenames: false
+        stages: [commit]
+        entry: bash -c 'git diff --cached --name-only | grep -qx "AGENTS.md" && ! git log -1 --pretty=%B | grep -q "\\[agents\\]" && echo "AGENTS.md changed. Include [agents] in commit message to allow." && exit 1 || exit 0'
