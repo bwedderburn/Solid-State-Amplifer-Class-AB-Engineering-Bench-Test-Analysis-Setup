@@ -25,7 +25,7 @@ from collections.abc import Callable, Sequence
 from contextlib import suppress
 from typing import Any
 
-from amp_benchkit.tek import scope_configure_timebase
+from amp_benchkit.tek import scope_configure_timebase, scope_read_timebase
 
 Number = float
 
