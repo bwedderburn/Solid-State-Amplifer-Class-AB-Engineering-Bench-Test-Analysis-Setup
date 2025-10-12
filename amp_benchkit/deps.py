@@ -52,6 +52,7 @@ def _suppress_libusb_import_noise():
             os.dup2(saved_err_fd, err_fd)
             os.close(saved_err_fd)
 
+
 # ------------------ pyvisa ------------------
 try:  # pragma: no cover - environment dependent
     import pyvisa as _pyvisa  # type: ignore
@@ -79,7 +80,7 @@ except Exception as e:  # pragma: no cover
 # ------------------ Qt bindings ------------------
 HAVE_QT = False
 try:  # pragma: no cover
-    from PySide6.QtCore import Qt, QTimer  # type: ignore
+    from PySide6.QtCore import QLibraryInfo, Qt, QTimer  # type: ignore
     from PySide6.QtGui import QFont  # type: ignore
     from PySide6.QtWidgets import (  # type: ignore
         QApplication,
@@ -100,9 +101,17 @@ try:  # pragma: no cover
 
     QT_BINDING = "PySide6"
     HAVE_QT = True
+    try:
+        plugin_path = QLibraryInfo.location(QLibraryInfo.LibraryPath.PluginsPath)
+        if plugin_path:
+            os.environ.setdefault(
+                "QT_QPA_PLATFORM_PLUGIN_PATH", os.path.join(plugin_path, "platforms")
+            )
+    except Exception:
+        pass
 except Exception as e1:  # pragma: no cover
     try:
-        from PyQt5.QtCore import Qt, QTimer  # type: ignore
+        from PyQt5.QtCore import QLibraryInfo, Qt, QTimer  # type: ignore
         from PyQt5.QtGui import QFont  # type: ignore
         from PyQt5.QtWidgets import (  # type: ignore
             QApplication,
@@ -123,6 +132,14 @@ except Exception as e1:  # pragma: no cover
 
         QT_BINDING = "PyQt5"
         HAVE_QT = True
+        try:
+            plugin_path = QLibraryInfo.location(QLibraryInfo.PluginsPath)
+            if plugin_path:
+                os.environ.setdefault(
+                    "QT_QPA_PLATFORM_PLUGIN_PATH", os.path.join(plugin_path, "platforms")
+                )
+        except Exception:
+            pass
     except Exception as e2:  # pragma: no cover
         QT_ERR = (e1, e2)
         # wipe widget symbols so importing * from here can't accidentally use them

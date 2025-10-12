@@ -11,8 +11,9 @@ import datetime as _dt
 import os
 import platform
 import sys
+from collections.abc import Iterable
 from contextlib import suppress
-from typing import Any, Iterable
+from typing import Any
 
 from . import __version__
 from .deps import (
@@ -22,7 +23,6 @@ from .deps import (
     HAVE_U3,
     INSTALL_HINTS,
     QT_BINDING,
-    _lp,
     _pyvisa,
     _serial,
     _u3,
