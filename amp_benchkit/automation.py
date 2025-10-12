@@ -151,16 +151,12 @@ def sweep_scope_fixed(
             except Exception as e:
                 logger(f"FY error @ {f} Hz: {e}")
                 continue
-            window_s = 0.0
+            capture_window = 2.5 / max(float(f), 1.0)
+            if resource is not None:
+                scope_configure_timebase(resource, max(2e-9, min(capture_window / 10.0, 5.0)))
+            settle_s = capture_window
             if dwell_s > 0:
-                window_s = max(window_s, float(dwell_s))
-            if f > 0:
-                window_s = max(window_s, 2.5 / float(f))
-            if window_s <= 0:
-                window_s = 2.5 / max(float(f), 1.0)
-            if scope_resource is not None:
-                scope_configure_timebase(scope_resource, max(2e-9, min(window_s / 10.0, 5.0)))
-            settle_s = window_s
+                settle_s = max(settle_s, float(dwell_s))
             if pre_ms > 0:
                 settle_s = max(settle_s, float(pre_ms) / 1000.0)
             if use_math and scope_configure_math_subtract:
@@ -248,6 +244,11 @@ def sweep_audio_kpis(
             logger(f"U3 auto-config warn: {e}")
     n = len(freqs)
     rows = []
+    resource = scope_resource if scope_resource is not None else None
+    original_scale = None
+    if resource is not None:
+        with suppress(Exception):
+            original_scale = scope_read_timebase(resource)
     for i, f in enumerate(freqs):
         if abort_flag():
             break
@@ -271,17 +272,12 @@ def sweep_audio_kpis(
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
                 if scope_arm_single:
                     scope_arm_single(scope_resource)
-                # Configure timebase so the capture window spans at least two cycles or dwell duration
-                window_s = 0.0
-                if dwell_s > 0:
-                    window_s = max(window_s, float(dwell_s))
-                if f > 0:
-                    window_s = max(window_s, 2.5 / float(f))
-                if window_s <= 0:
-                    window_s = 2.5 / max(float(f), 1.0)
+                capture_window = 2.5 / max(float(f), 1.0)
                 if scope_resource is not None:
-                    scope_configure_timebase(scope_resource, max(2e-9, min(window_s / 10.0, 5.0)))
-                settle_s = window_s
+                    scope_configure_timebase(scope_resource, max(2e-9, min(capture_window / 10.0, 5.0)))
+                settle_s = capture_window
+                if dwell_s > 0:
+                    settle_s = max(settle_s, float(dwell_s))
                 if pre_ms > 0:
                     settle_s = max(settle_s, float(pre_ms) / 1000.0)
                 if settle_s > 0:
@@ -357,4 +353,7 @@ def sweep_audio_kpis(
             )
         except Exception as e:
             logger(f"Knee calc error: {e}")
+    if original_scale is not None and resource is not None:
+        with suppress(Exception):
+            scope_configure_timebase(resource, original_scale)
     return {"rows": rows, "knees": knees}
