@@ -149,7 +149,20 @@ amp-benchkit thd-math-sweep --amp-vpp 0.5 --dwell 0.3 --channel 1
 ```
 
 Results land in `results/thd_sweep.csv` by default and the console prints THD% per point (20 Hz–20 kHz, log-spaced).
-Pass `--math --math-order CH1-CH2` to re-enable differential capture with the scope’s MATH trace.
+Pass `--math --math-order CH1-CH2` to re-enable differential capture with the scope's MATH trace.
+
+#### One-off waveform capture
+
+For deeper analysis, capture a single snapshot to CSV:
+
+```bash
+python scripts/capture_waveform.py 1000 \
+  --amp-vpp 0.5 --dwell 0.3 --channel 1 \
+  --visa-resource USB0::0x0699::0x036A::SERIAL::INSTR \
+  --fy-port /dev/cu.usbserial-XXXX
+```
+
+Add `--math` to grab the MATH trace instead of a single channel. The script saves `results/waveform_<freq>.csv` and prints Vrms/Vpp/THD estimates for the captured waveform.
 
 Future enhancements (planned): optional JSON/CSV output (`--format json|csv`) for the frequency list helper.
 
