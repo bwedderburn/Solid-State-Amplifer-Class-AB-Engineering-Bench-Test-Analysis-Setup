@@ -123,7 +123,7 @@ def _connectivity_section() -> tuple[str, list[str]]:
     except Exception as exc:
         visa_lines = [f"VISA error: {exc}"]
 else:
-    visa_lines = []
+    visa_lines = ["pyvisa is not available"]
     lines.append("VISA resources:")
     lines.extend(f"  {entry}" for entry in (visa_lines or ["(none)"]))
 
