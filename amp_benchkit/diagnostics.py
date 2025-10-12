@@ -11,8 +11,9 @@ import datetime as _dt
 import os
 import platform
 import sys
+from collections.abc import Iterable
 from contextlib import suppress
-from typing import Any, Iterable
+from typing import Any
 
 from . import __version__
 from .deps import (
@@ -22,7 +23,6 @@ from .deps import (
     HAVE_U3,
     INSTALL_HINTS,
     QT_BINDING,
-    _lp,
     _pyvisa,
     _serial,
     _u3,
@@ -116,14 +116,14 @@ def _connectivity_section() -> tuple[str, list[str]]:
     lines.extend(f"  {entry}" for entry in (serial_lines or ["(none)"]))
 
     visa_lines: list[str] = []
-   if HAVE_PYVISA and _pyvisa is not None:
-    try:
-        rm = _pyvisa.ResourceManager()
-        visa_lines = list(rm.list_resources())
-    except Exception as exc:
-        visa_lines = [f"VISA error: {exc}"]
-else:
-    visa_lines = ["pyvisa is not available"]
+    if HAVE_PYVISA and _pyvisa is not None:
+        try:
+            rm = _pyvisa.ResourceManager()
+            visa_lines = list(rm.list_resources())
+        except Exception as exc:
+            visa_lines = [f"VISA error: {exc}"]
+    else:
+        visa_lines = ["pyvisa is not available"]
     lines.append("VISA resources:")
     lines.extend(f"  {entry}" for entry in (visa_lines or ["(none)"]))
 

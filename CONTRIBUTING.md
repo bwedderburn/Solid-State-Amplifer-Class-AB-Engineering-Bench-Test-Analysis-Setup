@@ -6,6 +6,7 @@
 ## Build, Test, and Development Commands
 - `python3 -m venv .venv && source .venv/bin/activate` — create an isolated environment.
 - `pip install -r requirements.txt && pip install -r requirements-dev.txt || true` — install runtime and optional tooling dependencies.
+- `pip install pre-commit && pre-commit install` — install hook tooling and register the git hook.
 - `pre-commit run --all-files --show-diff-on-failure` — enforce formatting, linting, and type checks.
 - `pytest -q` — execute the fake-hardware test suite; add `-m hardware` only when instruments are attached.
 - `python unified_gui_layout.py selftest` — run the CLI smoke test to validate the current stack.

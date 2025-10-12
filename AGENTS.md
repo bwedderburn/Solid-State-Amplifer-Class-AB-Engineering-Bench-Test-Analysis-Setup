@@ -1,7 +1,7 @@
 # AGENTS.md — amp-benchkit
 
-**Repository**: `bwedderburn/amp-benchkit`  
-**Working dir**: `~/Documents/GitHub/amp-benchkit`  
+**Repository**: `bwedderburn/amp-benchkit`
+**Working dir**: `~/Documents/GitHub/amp-benchkit`
 **Primary tool**: OpenAI Codex CLI (≥ 0.46.0) — this file guides Codex behavior, permissions, and playbooks.
 
 ## 0) What this project is

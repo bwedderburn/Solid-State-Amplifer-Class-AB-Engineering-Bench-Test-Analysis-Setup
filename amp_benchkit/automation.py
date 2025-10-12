@@ -276,7 +276,10 @@ def sweep_audio_kpis(
                     scope_arm_single(scope_resource)
                 capture_window = 2.5 / max(float(f), 1.0)
                 if scope_resource is not None:
-                    scope_configure_timebase(scope_resource, max(2e-9, min(capture_window / 10.0, 5.0)))
+                    scope_configure_timebase(
+                        scope_resource,
+                        max(2e-9, min(capture_window / 10.0, 5.0)),
+                    )
                 settle_s = capture_window
                 if dwell_s > 0:
                     settle_s = max(settle_s, float(dwell_s))

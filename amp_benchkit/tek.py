@@ -213,8 +213,6 @@ def scope_wait_single_complete(resource=TEK_RSRC_DEFAULT, timeout_s=3.0, poll_ms
     return False
 
 
-
-
 def scope_read_timebase(resource=TEK_RSRC_DEFAULT):
     """Return current horizontal scale in seconds/div (None on failure)."""
     if not HAVE_PYVISA:
@@ -223,12 +221,13 @@ def scope_read_timebase(resource=TEK_RSRC_DEFAULT):
     sc = rm.open_resource(resource)
     try:
         try:
-            return float(sc.query('HORizontal:MAIn:SCAle?'))
+            return float(sc.query("HORizontal:MAIn:SCAle?"))
         except Exception:
             return None
     finally:
         with suppress(Exception):
             sc.close()
+
 
 def scope_configure_timebase(resource=TEK_RSRC_DEFAULT, seconds_per_div=None):
     """Adjust horizontal scale (seconds per division)."""
@@ -243,6 +242,7 @@ def scope_configure_timebase(resource=TEK_RSRC_DEFAULT, seconds_per_div=None):
     finally:
         with suppress(Exception):
             sc.close()
+
 
 def scope_resume_run(resource=TEK_RSRC_DEFAULT):
     """Return the scope to continuous acquisition (RUN) mode."""
