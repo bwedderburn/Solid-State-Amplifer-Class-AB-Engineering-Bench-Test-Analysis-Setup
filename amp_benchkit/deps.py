@@ -102,7 +102,11 @@ try:  # pragma: no cover
     QT_BINDING = "PySide6"
     HAVE_QT = True
     try:
-        plugin_path = QLibraryInfo.location(QLibraryInfo.LibraryPath.PluginsPath)
+        try:
+            # Qt 6.5+ prefers path()
+            plugin_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)  # type: ignore[attr-defined]
+        except AttributeError:  # pragma: no cover - backward compatibility
+            plugin_path = QLibraryInfo.location(QLibraryInfo.LibraryPath.PluginsPath)
         if plugin_path:
             os.environ.setdefault(
                 "QT_QPA_PLATFORM_PLUGIN_PATH", os.path.join(plugin_path, "platforms")
