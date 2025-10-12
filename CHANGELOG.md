@@ -8,7 +8,9 @@ starting with 0.x pre-release phases.
 [Unreleased]
 ------------
 
-_No changes yet._
+**Changed**
+
+- Added `Documentation` URL to PyPI package metadata in `pyproject.toml` pointing to the published GitHub Pages site.
 
 [0.3.7] - 2025-10-11
 --------------------
