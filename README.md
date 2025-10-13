@@ -154,6 +154,34 @@ Use `--keep-spikes` to disable filtering or tune the heuristics via `--filter-wi
 After each sweep the generator is returned to 1 kHz and the scope timebase to 100 µs/div for quick follow-up checks.
 Pass `--math --math-order CH1-CH2` to re-enable differential capture with the scope's MATH trace.
 
+#### Batch THD sweeps (multiple levels)
+
+Automate the common “low/mid/high” check with the batch helper:
+
+```bash
+python scripts/batch_thd_sweep.py \
+  --amplitudes 0.5,2,6,14,20 \
+  --dwell 0.5
+```
+
+This produces a timestamped directory (e.g. `results/thd_batch_20251012-2018/`) containing:
+
+* `thd_<amp>Vpp_<timestamp>.csv` for each amplitude.
+* `summary.csv` with min/max/mean/median THD and the number of spikes replaced at each level.
+
+All CLI options from `thd-math-sweep` are available (filter tuning, math capture, resource overrides).
+
+#### Plot the results
+
+Overlay one or more sweep CSVs with the plotting helper:
+
+```bash
+python scripts/plot_thd_sweep.py results/thd_batch_*/thd_*Vpp_*.csv \
+  --output results/thd_plot.png --title "THD vs Frequency"
+```
+
+Labels default to the filename stem; provide `--labels` if you want custom legend text. The x‑axis is logarithmic so octave spacing is preserved.
+
 #### One-off waveform capture
 
 For deeper analysis, capture a single snapshot to CSV:
