@@ -76,7 +76,8 @@ def capture_waveform(
     rms = vrms(v)
     peak = vpp(v)
     thd_ratio, f_est, _ = thd_fft(t, v, f0=freq_hz, nharm=10, window="hann")
-    thd_row = format_thd_rows([(freq_hz, rms, peak, thd_ratio * 100.0)])[0]
+    thd_percent = thd_ratio * 100.0
+    thd_row = format_thd_rows([(f_est, rms, peak, thd_percent)])[0]
     print(f"Captured {len(v)} samples @ {freq_hz} Hz")
     thd_pct = thd_ratio * 100.0
     print(f"Vrms {rms:.4f} V, Vpp {peak:.4f} V")
