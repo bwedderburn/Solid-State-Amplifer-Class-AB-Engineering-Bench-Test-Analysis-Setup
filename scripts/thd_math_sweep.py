@@ -99,6 +99,29 @@ def main() -> int:
         default="CH1-CH2",
         help="MATH subtraction order (used only when --math is set).",
     )
+    ap.add_argument(
+        "--keep-spikes",
+        action="store_true",
+        help="Disable automatic suppression of recurring THD spikes.",
+    )
+    ap.add_argument(
+        "--filter-window",
+        type=int,
+        default=2,
+        help="Neighbor window size for spike detection (default: 2).",
+    )
+    ap.add_argument(
+        "--filter-factor",
+        type=float,
+        default=2.0,
+        help="Spike threshold factor relative to local median (default: 2.0).",
+    )
+    ap.add_argument(
+        "--filter-min",
+        type=float,
+        default=2.0,
+        help="Minimum THD%% required before a spike may be filtered (default: 2.0).",
+    )
     args = ap.parse_args()
 
     if args.points < 2:
@@ -108,7 +131,7 @@ def main() -> int:
     if not math.isfinite(args.dwell) or args.dwell < 0:
         raise ValueError("dwell must be >= 0")
 
-    rows, out_path = thd_sweep(
+    rows, out_path, suppressed = thd_sweep(
         visa_resource=args.visa_resource,
         fy_port=args.fy_port,
         amp_vpp=args.amp_vpp,
@@ -120,11 +143,19 @@ def main() -> int:
         use_math=args.math,
         math_order=args.math_order,
         output=args.output,
+        filter_spikes=not args.keep_spikes,
+        filter_window=args.filter_window,
+        filter_factor=args.filter_factor,
+        filter_min_percent=args.filter_min,
     )
     if out_path:
         print("Saved:", out_path)
     for line in format_thd_rows(rows):
         print(line)
+    if suppressed and not args.keep_spikes:
+        print("Filtered spikes:")
+        for freq, original, baseline in suppressed:
+            print(f"  {freq:8.2f} Hz → {original:6.3f}% (replaced with {baseline:6.3f}%)")
     return 0
 
 

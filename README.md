@@ -149,6 +149,9 @@ amp-benchkit thd-math-sweep --amp-vpp 0.5 --dwell 0.3 --channel 1
 ```
 
 Results land in `results/thd_sweep.csv` by default and the console prints THD% per point (20 Hz–20 kHz, log-spaced).
+Recurring 6 % spikes from the Tek math channel are suppressed automatically (window=2, factor=2.0, min=2.0 %).
+Use `--keep-spikes` to disable filtering or tune the heuristics via `--filter-window`, `--filter-factor`, and `--filter-min`.
+After each sweep the generator is returned to 1 kHz and the scope timebase to 100 µs/div for quick follow-up checks.
 Pass `--math --math-order CH1-CH2` to re-enable differential capture with the scope's MATH trace.
 
 #### One-off waveform capture

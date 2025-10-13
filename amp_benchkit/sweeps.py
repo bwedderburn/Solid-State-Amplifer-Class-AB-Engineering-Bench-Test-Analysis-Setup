@@ -7,6 +7,7 @@ import math
 from collections.abc import Iterable
 from contextlib import suppress
 from pathlib import Path
+from statistics import median
 
 from .automation import build_freq_points, sweep_audio_kpis
 from .dsp import thd_fft, vpp, vrms
@@ -19,6 +20,35 @@ from .tek import (
     scope_resume_run,
     scope_wait_single_complete,
 )
+
+
+def _filter_spikes(
+    rows: list[tuple[float, float, float, float]],
+    *,
+    window: int,
+    factor: float,
+    min_percent: float,
+):
+    suppressed: list[tuple[float, float, float]] = []
+    filtered: list[tuple[float, float, float, float]] = []
+    total = len(rows)
+    for idx, (freq, vr, pk, thd_percent) in enumerate(rows):
+        neighbors = [
+            rows[j][3]
+            for j in range(max(0, idx - window), min(total, idx + window + 1))
+            if j != idx and math.isfinite(rows[j][3])
+        ]
+        if not neighbors or not math.isfinite(thd_percent):
+            filtered.append((freq, vr, pk, thd_percent))
+            continue
+        baseline = median(neighbors)
+        threshold = max(min_percent, baseline * factor)
+        if thd_percent > threshold:
+            suppressed.append((freq, thd_percent, baseline))
+            filtered.append((freq, vr, pk, float(baseline)))
+        else:
+            filtered.append((freq, vr, pk, thd_percent))
+    return filtered, suppressed
 
 
 def thd_sweep(
@@ -36,10 +66,20 @@ def thd_sweep(
     output: Path | None = None,
     post_freq_hz: float = 1000.0,
     post_seconds_per_div: float | None = 1e-4,
-) -> tuple[list[tuple[float, float, float, float]], Path | None]:
+    filter_spikes: bool = True,
+    filter_window: int = 2,
+    filter_factor: float = 2.0,
+    filter_min_percent: float = 2.0,
+) -> tuple[
+    list[tuple[float, float, float, float]],
+    Path | None,
+    list[tuple[float, float, float]],
+]:
     """Run a THD sweep capturing either a single scope channel or the math trace.
 
-    Returns the raw rows and optional CSV output path if ``output`` was provided.
+    Returns the processed rows, optional CSV path, and a list describing any
+    spike suppressions ``[(freq_hz, original_thd, replacement_thd), ...]`` when
+    filtering is enabled.
     """
     if points < 2:
         raise ValueError("points must be >= 2")
@@ -84,6 +124,15 @@ def thd_sweep(
         (freq, vr, pk, thd_percent) for freq, vr, pk, _thd_ratio, thd_percent in result["rows"]
     ]
 
+    suppressed: list[tuple[float, float, float]] = []
+    if filter_spikes and rows:
+        rows, suppressed = _filter_spikes(
+            rows,
+            window=filter_window,
+            factor=filter_factor,
+            min_percent=filter_min_percent,
+        )
+
     out_path: Path | None = None
     if output:
         out_path = Path(output)
@@ -109,7 +158,7 @@ def thd_sweep(
     if post_seconds_per_div is not None:
         with suppress(Exception):  # pragma: no cover - hardware-specific
             scope_configure_timebase(visa_resource, post_seconds_per_div)
-    return rows, out_path
+    return rows, out_path, suppressed
 
 
 def format_thd_rows(rows: Iterable[tuple[float, float, float, float]]) -> list[str]:

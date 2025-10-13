@@ -1544,6 +1544,29 @@ def main():
         default=Path("results/thd_sweep.csv"),
         help="Optional CSV destination (set to '-' to disable saving).",
     )
+    sp_thd.add_argument(
+        "--keep-spikes",
+        action="store_true",
+        help="Disable automatic spike suppression in THD results.",
+    )
+    sp_thd.add_argument(
+        "--filter-window",
+        type=int,
+        default=2,
+        help="Neighbor window for spike detection (default: 2).",
+    )
+    sp_thd.add_argument(
+        "--filter-factor",
+        type=float,
+        default=2.0,
+        help="Spike threshold factor relative to median (default: 2.0).",
+    )
+    sp_thd.add_argument(
+        "--filter-min",
+        type=float,
+        default=2.0,
+        help="Minimum THD%% before considering a spike (default: 2.0).",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1557,7 +1580,7 @@ def main():
     if args.cmd == "thd-math-sweep":
         try:
             output = None if str(args.output) == "-" else args.output
-            rows, out_path = thd_sweep(
+            rows, out_path, suppressed = thd_sweep(
                 visa_resource=args.visa_resource,
                 fy_port=args.fy_port,
                 amp_vpp=args.amp_vpp,
@@ -1569,6 +1592,10 @@ def main():
                 use_math=args.math,
                 math_order=args.math_order,
                 output=output,
+                filter_spikes=not args.keep_spikes,
+                filter_window=args.filter_window,
+                filter_factor=args.filter_factor,
+                filter_min_percent=args.filter_min,
             )
         except Exception as exc:  # pragma: no cover - hardware path
             print("THD sweep error:", exc, file=sys.stderr)
@@ -1577,6 +1604,10 @@ def main():
             print("Saved:", out_path)
         for line in format_thd_rows(rows):
             print(line)
+        if suppressed and not args.keep_spikes:
+            print("Filtered spikes:")
+            for freq, original, baseline in suppressed:
+                print(f"  {freq:8.2f} Hz → {original:6.3f}% (replaced with {baseline:6.3f}%)")
         return
 
     if args.cmd == "diag":
