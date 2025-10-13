@@ -1174,6 +1174,66 @@ class UnifiedGUI(BaseGUI):
             with suppress(Exception):
                 scope_resume_run(rsrc or self.scope_res)
 
+    def run_live_thd_sweep(self):
+        """Execute the THD math sweep using current GUI parameters."""
+        from amp_benchkit.sweeps import format_thd_rows, thd_sweep
+
+        try:
+            start = float(self.live_thd_start.text() or 20.0)
+            stop = float(self.live_thd_stop.text() or 20000.0)
+            points = int(self.live_thd_points.value())
+            amp_vpp = float(self.live_thd_amp.text() or 0.5)
+            dwell_s = max(0.0, float(self.live_thd_dwell.text() or 0.5))
+            scope_channel = int(self.live_thd_scope.currentText())
+            use_math = bool(self.live_thd_use_math.isChecked())
+            math_order = self.live_thd_math_order.currentText()
+            filter_spikes = not self.live_thd_keep_spikes.isChecked()
+            filter_window = int(self.live_thd_filter_window.value())
+            filter_factor = float(self.live_thd_filter_factor.text() or 2.0)
+            filter_min = float(self.live_thd_filter_min.text() or 2.0)
+            output_path = self.live_thd_output.text().strip() or "results/thd_sweep.csv"
+            os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
+            port = self.auto_port.text().strip() if hasattr(self, "auto_port") else ""
+            if not port:
+                port = find_fy_port()
+            resource = (
+                self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
+            )
+            self.auto_prog.setValue(0)
+            rows, out_path, suppressed = thd_sweep(
+                visa_resource=resource or self.scope_res,
+                fy_port=port,
+                amp_vpp=amp_vpp,
+                scope_channel=scope_channel,
+                start_hz=start,
+                stop_hz=stop,
+                points=points,
+                dwell_s=dwell_s,
+                use_math=use_math,
+                math_order=math_order,
+                output=output_path,
+                filter_spikes=filter_spikes,
+                filter_window=filter_window,
+                filter_factor=filter_factor,
+                filter_min_percent=filter_min,
+            )
+            self.auto_prog.setValue(100)
+            if out_path:
+                self._log(self.auto_log, f"Saved: {out_path}")
+            for line in format_thd_rows(rows):
+                self._log(self.auto_log, line)
+            if suppressed and filter_spikes:
+                self._log(self.auto_log, "Filtered spikes:")
+                for freq, original, baseline in suppressed:
+                    self._log(
+                        self.auto_log,
+                        f"  {freq:8.2f} Hz → {original:6.3f}% (replaced with {baseline:6.3f}%)",
+                    )
+        except Exception as exc:  # pragma: no cover - hardware path
+            self._log(self.auto_log, f"THD sweep error: {exc}")
+        finally:
+            self.auto_prog.setValue(0)
+
     def run_audio_kpis(self):
         """Sweep using FY + scope, compute Vrms/PkPk and THD, then report -dB knees if requested."""
         from amp_benchkit.automation import build_freq_list, sweep_audio_kpis

@@ -19,6 +19,7 @@ def build_automation_tab(gui: Any) -> object | None:
     QWidget = qt.QWidget
     QVBoxLayout = qt.QVBoxLayout
     QHBoxLayout = qt.QHBoxLayout
+    QGroupBox = qt.QGroupBox
     QLabel = qt.QLabel
     QComboBox = qt.QComboBox
     QLineEdit = qt.QLineEdit
@@ -141,6 +142,79 @@ def build_automation_tab(gui: Any) -> object | None:
     gui.auto_math_order.addItems(["CH1-CH2", "CH2-CH1"])
     r5.addWidget(gui.auto_math_order)
     L.addLayout(r5)
+
+    # Live testing group
+    live_box = QGroupBox("Live Testing Functions")
+    live_layout = QVBoxLayout(live_box)
+
+    row = QHBoxLayout()
+    row.addWidget(QLabel("Start Hz"))
+    gui.live_thd_start = QLineEdit("20")
+    gui.live_thd_start.setMaximumWidth(100)
+    row.addWidget(gui.live_thd_start)
+    row.addWidget(QLabel("Stop Hz"))
+    gui.live_thd_stop = QLineEdit("20000")
+    gui.live_thd_stop.setMaximumWidth(100)
+    row.addWidget(gui.live_thd_stop)
+    row.addWidget(QLabel("Points"))
+    gui.live_thd_points = qt.QSpinBox()
+    gui.live_thd_points.setRange(3, 999)
+    gui.live_thd_points.setValue(61)
+    row.addWidget(gui.live_thd_points)
+    live_layout.addLayout(row)
+
+    row = QHBoxLayout()
+    row.addWidget(QLabel("Amp Vpp"))
+    gui.live_thd_amp = QLineEdit("0.5")
+    gui.live_thd_amp.setMaximumWidth(80)
+    row.addWidget(gui.live_thd_amp)
+    row.addWidget(QLabel("Dwell s"))
+    gui.live_thd_dwell = QLineEdit("0.5")
+    gui.live_thd_dwell.setMaximumWidth(80)
+    row.addWidget(gui.live_thd_dwell)
+    row.addWidget(QLabel("Scope CH"))
+    gui.live_thd_scope = QComboBox()
+    gui.live_thd_scope.addItems(["1", "2", "3", "4"])
+    row.addWidget(gui.live_thd_scope)
+    row.addWidget(QLabel("Math order"))
+    gui.live_thd_math_order = QComboBox()
+    gui.live_thd_math_order.addItems(["CH1-CH2", "CH2-CH1"])
+    row.addWidget(gui.live_thd_math_order)
+    gui.live_thd_use_math = QCheckBox("Use MATH")
+    row.addWidget(gui.live_thd_use_math)
+    live_layout.addLayout(row)
+
+    row = QHBoxLayout()
+    gui.live_thd_keep_spikes = QCheckBox("Keep raw spikes")
+    row.addWidget(gui.live_thd_keep_spikes)
+    row.addWidget(QLabel("Filter window"))
+    gui.live_thd_filter_window = qt.QSpinBox()
+    gui.live_thd_filter_window.setRange(1, 10)
+    gui.live_thd_filter_window.setValue(2)
+    row.addWidget(gui.live_thd_filter_window)
+    row.addWidget(QLabel("Factor"))
+    gui.live_thd_filter_factor = QLineEdit("2.0")
+    gui.live_thd_filter_factor.setMaximumWidth(80)
+    row.addWidget(gui.live_thd_filter_factor)
+    row.addWidget(QLabel("Min %"))
+    gui.live_thd_filter_min = QLineEdit("2.0")
+    gui.live_thd_filter_min.setMaximumWidth(80)
+    row.addWidget(gui.live_thd_filter_min)
+    live_layout.addLayout(row)
+
+    row = QHBoxLayout()
+    row.addWidget(QLabel("Output"))
+    gui.live_thd_output = QLineEdit("results/thd_sweep.csv")
+    row.addWidget(gui.live_thd_output)
+    live_layout.addLayout(row)
+
+    row = QHBoxLayout()
+    gui.live_thd_run = QPushButton("Run THD Sweep")
+    gui.live_thd_run.clicked.connect(gui.run_live_thd_sweep)
+    row.addWidget(gui.live_thd_run)
+    live_layout.addLayout(row)
+
+    L.addWidget(live_box)
     # Action buttons
     r = QHBoxLayout()
     b = QPushButton("Run Sweep")
