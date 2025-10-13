@@ -5,6 +5,7 @@ from __future__ import annotations
 import csv
 import math
 from collections.abc import Iterable
+from contextlib import suppress
 from pathlib import Path
 
 from .automation import build_freq_points, sweep_audio_kpis
@@ -14,6 +15,7 @@ from .tek import (
     scope_arm_single,
     scope_capture_calibrated,
     scope_configure_math_subtract,
+    scope_configure_timebase,
     scope_resume_run,
     scope_wait_single_complete,
 )
@@ -32,6 +34,8 @@ def thd_sweep(
     use_math: bool = False,
     math_order: str = "CH1-CH2",
     output: Path | None = None,
+    post_freq_hz: float = 1000.0,
+    post_seconds_per_div: float | None = 1e-4,
 ) -> tuple[list[tuple[float, float, float, float]], Path | None]:
     """Run a THD sweep capturing either a single scope channel or the math trace.
 
@@ -90,6 +94,21 @@ def thd_sweep(
             writer.writerows(rows)
 
     scope_resume_run(visa_resource)
+    # Restore predictable idle state (1 kHz tone, fast timebase) for quick follow-up work.
+    with suppress(Exception):  # pragma: no cover - hardware-specific
+        fy_apply(
+            port=fy_port,
+            proto="FY ASCII 9600",
+            freq_hz=post_freq_hz,
+            amp_vpp=amp_vpp,
+            wave="Sine",
+            off_v=0.0,
+            duty=None,
+            ch=1,
+        )
+    if post_seconds_per_div is not None:
+        with suppress(Exception):  # pragma: no cover - hardware-specific
+            scope_configure_timebase(visa_resource, post_seconds_per_div)
     return rows, out_path
 
 
