@@ -13,7 +13,7 @@ import sys
 from contextlib import contextmanager
 
 PYVISA_ERR = SERIAL_ERR = QT_ERR = U3_ERR = None  # populated on import
-QT_BINDING = None  # type: ignore
+QT_BINDING = None
 
 # Optional dependency placeholders
 _pyvisa = None
@@ -69,7 +69,7 @@ except Exception as e:  # pragma: no cover
 # ------------------ LabJack u3 ------------------
 try:  # pragma: no cover
     with _suppress_libusb_import_noise():
-        import u3 as _u3  # type: ignore
+        import u3 as _u3  # type: ignore[import-untyped,no-redef]
 
     HAVE_U3 = True
 except Exception as e:  # pragma: no cover
@@ -80,9 +80,9 @@ except Exception as e:  # pragma: no cover
 # ------------------ Qt bindings ------------------
 HAVE_QT = False
 try:  # pragma: no cover
-    from PySide6.QtCore import QLibraryInfo, Qt, QTimer  # type: ignore
-    from PySide6.QtGui import QFont  # type: ignore
-    from PySide6.QtWidgets import (  # type: ignore
+    from PySide6.QtCore import QLibraryInfo, Qt, QTimer
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import (
         QApplication,
         QCheckBox,
         QComboBox,
@@ -104,9 +104,9 @@ try:  # pragma: no cover
     try:
         try:
             # Qt 6.5+ prefers path()
-            plugin_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)  # type: ignore[attr-defined]
+            plugin_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath)  # type: ignore[attr-defined,union-attr]
         except AttributeError:  # pragma: no cover - backward compatibility
-            plugin_path = QLibraryInfo.location(QLibraryInfo.LibraryPath.PluginsPath)
+            plugin_path = QLibraryInfo.location(QLibraryInfo.LibraryPath.PluginsPath)  # type: ignore[attr-defined]
         if plugin_path:
             os.environ.setdefault(
                 "QT_QPA_PLATFORM_PLUGIN_PATH", os.path.join(plugin_path, "platforms")
@@ -115,9 +115,9 @@ try:  # pragma: no cover
         pass
 except Exception as e1:  # pragma: no cover
     try:
-        from PyQt5.QtCore import QLibraryInfo, Qt, QTimer  # type: ignore
-        from PyQt5.QtGui import QFont  # type: ignore
-        from PyQt5.QtWidgets import (  # type: ignore
+        from PyQt5.QtCore import QLibraryInfo, Qt, QTimer
+        from PyQt5.QtGui import QFont
+        from PyQt5.QtWidgets import (
             QApplication,
             QCheckBox,
             QComboBox,
@@ -137,7 +137,7 @@ except Exception as e1:  # pragma: no cover
         QT_BINDING = "PyQt5"
         HAVE_QT = True
         try:
-            plugin_path = QLibraryInfo.location(QLibraryInfo.PluginsPath)
+            plugin_path = QLibraryInfo.location(QLibraryInfo.PluginsPath)  # type: ignore[attr-defined]
             if plugin_path:
                 os.environ.setdefault(
                     "QT_QPA_PLATFORM_PLUGIN_PATH", os.path.join(plugin_path, "platforms")
@@ -148,24 +148,22 @@ except Exception as e1:  # pragma: no cover
         QT_ERR = (e1, e2)
         # wipe widget symbols so importing * from here can't accidentally use them
         (
-            QApplication,
-            QMainWindow,
-            QWidget,
-            QTabWidget,
-            QVBoxLayout,
-            QHBoxLayout,
-            QLabel,
-            QLineEdit,
-            QComboBox,
-            QPushButton,
-            QTextEdit,
-            QProgressBar,
-            QCheckBox,
-            QSpinBox,
-            Qt,
-        ) = (
-            None,
-        ) * 15  # type: ignore
+            QApplication,  # type: ignore[assignment,misc]
+            QMainWindow,  # type: ignore[assignment,misc]
+            QWidget,  # type: ignore[assignment,misc]
+            QTabWidget,  # type: ignore[assignment,misc]
+            QVBoxLayout,  # type: ignore[assignment,misc]
+            QHBoxLayout,  # type: ignore[assignment,misc]
+            QLabel,  # type: ignore[assignment,misc]
+            QLineEdit,  # type: ignore[assignment,misc]
+            QComboBox,  # type: ignore[assignment,misc]
+            QPushButton,  # type: ignore[assignment,misc]
+            QTextEdit,  # type: ignore[assignment,misc]
+            QProgressBar,  # type: ignore[assignment,misc]
+            QCheckBox,  # type: ignore[assignment,misc]
+            QSpinBox,  # type: ignore[assignment,misc]
+            Qt,  # type: ignore[assignment,misc]
+        ) = (None,) * 15
 
 HAVE_PYVISA = _pyvisa is not None
 HAVE_SERIAL = _serial is not None and _lp is not None
@@ -186,9 +184,9 @@ def fixed_font():  # pragma: no cover - trivial helper
     a minimal version here to keep imports lightweight and tests headless-safe.
     """
     try:
-        if HAVE_QT and "QFont" in globals():  # type: ignore
-            f = QFont("Courier New")  # type: ignore
-            f.setStyleHint(QFont.TypeWriter)  # type: ignore
+        if HAVE_QT and "QFont" in globals():
+            f = QFont("Courier New")  # type: ignore[misc]
+            f.setStyleHint(QFont.TypeWriter)  # type: ignore[misc,attr-defined]
             return f
     except Exception:
         pass

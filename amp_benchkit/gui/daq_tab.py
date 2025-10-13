@@ -13,7 +13,7 @@ from typing import Any
 # headless test environments (no libEGL) can still import this module. The
 # actual Qt classes are imported inside the builder. Reuse helpers lazily to
 # avoid pulling heavy dependencies when the GUI is not in use.
-from ..deps import fixed_font  # type: ignore
+from ..deps import fixed_font
 from ._qt import require_qt
 
 
