@@ -25,6 +25,7 @@ from amp_benchkit.tek import (  # noqa: E402
     scope_arm_single,
     scope_capture_calibrated,
     scope_configure_math_subtract,
+    scope_configure_timebase,
     scope_resume_run,
     scope_wait_single_complete,
 )
@@ -41,6 +42,7 @@ def capture_waveform(
     use_math: bool,
     math_order: str,
     output: Path,
+    seconds_per_div: float | None,
 ) -> Path:
     fy_apply(
         port=fy_port,
@@ -55,6 +57,8 @@ def capture_waveform(
 
     if use_math:
         scope_configure_math_subtract(visa_resource, math_order)
+    if seconds_per_div:
+        scope_configure_timebase(visa_resource, seconds_per_div)
 
     scope_arm_single(visa_resource)
     time.sleep(max(dwell_s, 0.1))
@@ -126,6 +130,12 @@ def main() -> int:
         help="Math subtraction order (used only with --math).",
     )
     ap.add_argument(
+        "--seconds-per-div",
+        type=float,
+        default=None,
+        help="Override scope horizontal scale (seconds/div). Set to capture multiple cycles.",
+    )
+    ap.add_argument(
         "--output",
         type=Path,
         default=None,
@@ -147,6 +157,7 @@ def main() -> int:
         use_math=args.math,
         math_order=args.math_order,
         output=out_path,
+        seconds_per_div=args.seconds_per_div,
     )
     return 0
 
