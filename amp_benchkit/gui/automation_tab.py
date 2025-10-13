@@ -208,6 +208,10 @@ def build_automation_tab(gui: Any) -> object | None:
     row.addWidget(gui.live_thd_output)
     live_layout.addLayout(row)
 
+    gui.live_thd_summary = QTextEdit()
+    gui.live_thd_summary.setReadOnly(True)
+    live_layout.addWidget(gui.live_thd_summary)
+
     row = QHBoxLayout()
     gui.live_thd_run = QPushButton("Run THD Sweep")
     gui.live_thd_run.clicked.connect(gui.run_live_thd_sweep)

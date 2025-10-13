@@ -11,6 +11,7 @@ Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftest
 """
 
 import argparse
+import math
 import os
 import sys
 import time
@@ -1191,7 +1192,16 @@ class UnifiedGUI(BaseGUI):
             filter_window = int(self.live_thd_filter_window.value())
             filter_factor = float(self.live_thd_filter_factor.text() or 2.0)
             filter_min = float(self.live_thd_filter_min.text() or 2.0)
-            output_path = self.live_thd_output.text().strip() or "results/thd_sweep.csv"
+            output_template = self.live_thd_output.text().strip() or "results/thd_sweep.csv"
+            if "%" not in output_template:
+                timestamp = time.strftime("%m-%d-%Y_%H_%M")
+                if output_template.endswith(".csv"):
+                    prefix = output_template[:-4]
+                    output_path = f"{prefix}_{timestamp}.csv"
+                else:
+                    output_path = f"{output_template}_{timestamp}.csv"
+            else:
+                output_path = time.strftime(output_template)
             os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
             port = self.auto_port.text().strip() if hasattr(self, "auto_port") else ""
             if not port:
@@ -1229,6 +1239,27 @@ class UnifiedGUI(BaseGUI):
                         self.auto_log,
                         f"  {freq:8.2f} Hz → {original:6.3f}% (replaced with {baseline:6.3f}%)",
                     )
+
+            # Summary metrics
+            finite = [thd for _, _, _, thd in rows if math.isfinite(thd)]
+            summary_lines = []
+            if finite:
+                mean_val = sum(finite) / len(finite)
+                median_val = sorted(finite)[len(finite) // 2]
+                summary_lines.append(f"THD stats: min {min(finite):.3f}% / max {max(finite):.3f}%")
+                summary_lines.append(f"Mean {mean_val:.3f}% / median {median_val:.3f}%")
+            if suppressed and filter_spikes:
+                summary_lines.append(
+                    f"Spikes suppressed: {len(suppressed)} (window={filter_window}, "
+                    f"factor={filter_factor}, min={filter_min:.2f}%)"
+                )
+                for freq, original, baseline in suppressed:
+                    summary_lines.append(f"  {freq:8.2f} Hz → {original:6.3f}% → {baseline:6.3f}%")
+            if summary_lines:
+                text = "\n".join(summary_lines)
+                if hasattr(self, "live_thd_summary"):
+                    self.live_thd_summary.setPlainText(text)
+                self._log(self.auto_log, text)
         except Exception as exc:  # pragma: no cover - hardware path
             self._log(self.auto_log, f"THD sweep error: {exc}")
         finally:
