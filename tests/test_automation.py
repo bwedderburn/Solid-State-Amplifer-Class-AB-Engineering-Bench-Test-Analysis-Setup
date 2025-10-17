@@ -153,3 +153,24 @@ def test_sweep_audio_kpis_calls_progress_on_fy_error():
     assert attempted == freqs
     assert progress_calls == [(1, 3), (2, 3), (3, 3)]
     assert [row[0] for row in rows] == [100, 300]
+
+
+def test_sweep_scope_fixed_applies_calibration():
+    def fake_fy_apply(**kw):
+        pass
+
+    def fake_measure(src, metric):
+        return 1.0
+
+    out = sweep_scope_fixed(
+        freqs=[100],
+        channel=1,
+        scope_channel=1,
+        amp_vpp=1.0,
+        dwell_s=0.0,
+        metric="RMS",
+        fy_apply=fake_fy_apply,
+        scope_measure=fake_measure,
+        amplitude_calibration=lambda freq, val: val / 2,
+    )
+    assert out[0][1] == 0.5

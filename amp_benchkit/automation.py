@@ -113,6 +113,7 @@ def sweep_scope_fixed(
     pre_ms: float = 5.0,
     cycles_per_capture: float = 6.0,
     scope_resource: Any = None,
+    amplitude_calibration: Callable[[float, float], float] | None = None,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
@@ -185,6 +186,10 @@ def sweep_scope_fixed(
             except Exception as e:
                 logger(f"Scope error @ {f} Hz: {e}")
                 val = float("nan")
+            else:
+                if amplitude_calibration and metric_key in ("RMS", "PK2PK") and math.isfinite(val):
+                    with suppress(Exception):
+                        val = amplitude_calibration(f, val)
             out.append((f, val))
             src_label = "MATH" if use_math else f"CH{scope_channel}"
             logger(f"{f:.3f} Hz → {metric_key} {val:.4f} ({src_label})")
@@ -235,6 +240,7 @@ def sweep_audio_kpis(
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
     u3_autoconfig: Callable[[], Any] | None = None,
+    amplitude_calibration: Callable[[float, float], float] | None = None,
 ) -> dict[str, Any]:
     """Perform audio KPI sweep.
 
@@ -325,6 +331,13 @@ def sweep_audio_kpis(
                 have_samples = False
             vr = dsp_vrms(v) if have_samples else float("nan")
             pp = dsp_vpp(v) if have_samples else float("nan")
+            if amplitude_calibration:
+                if math.isfinite(vr):
+                    with suppress(Exception):
+                        vr = amplitude_calibration(f, vr)
+                if math.isfinite(pp):
+                    with suppress(Exception):
+                        pp = amplitude_calibration(f, pp)
             thd_ratio = float("nan")
             thd_percent = float("nan")
             if do_thd and dsp_thd_fft and have_samples:

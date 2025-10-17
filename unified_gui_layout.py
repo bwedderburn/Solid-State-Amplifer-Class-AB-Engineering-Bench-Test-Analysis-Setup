@@ -41,6 +41,7 @@ matplotlib.use("Agg")
 
 # Import extracted dependency detection & helpers
 from amp_benchkit import dsp as _dsp
+from amp_benchkit.calibration import load_calibration_curve
 from amp_benchkit.deps import (
     HAVE_PYVISA,
     HAVE_QT,
@@ -1233,6 +1234,14 @@ class UnifiedGUI(BaseGUI):
                     )
                     self.u3_autoconfig_runtime(base=base, pulse_line="None", persist=False)
 
+            amplitude_calibration = None
+            if getattr(self, "auto_apply_cal", None) and self.auto_apply_cal.isChecked():
+                try:
+                    curve = load_calibration_curve()
+                    amplitude_calibration = curve.apply
+                    self._log(self.auto_log, "Gold calibration enabled")
+                except Exception as exc:  # pragma: no cover - defensive
+                    self._log(self.auto_log, f"Calibration load error: {exc}")
             out = sweep_scope_fixed(
                 freqs,
                 channel=ch,
@@ -1266,6 +1275,7 @@ class UnifiedGUI(BaseGUI):
                 ),
                 abort_flag=lambda: getattr(self, "_sweep_abort", False),
                 u3_autoconfig=_u3_autocfg,
+                amplitude_calibration=amplitude_calibration,
             )
             os.makedirs("results", exist_ok=True)
             fn = os.path.join("results", "sweep_scope.csv")
@@ -1315,6 +1325,13 @@ class UnifiedGUI(BaseGUI):
                 self.scope_edit.text().strip() if hasattr(self, "scope_edit") else self.scope_res
             )
             self.auto_prog.setValue(0)
+            calibration_curve = None
+            if getattr(self, "live_thd_apply_cal", None) and self.live_thd_apply_cal.isChecked():
+                try:
+                    calibration_curve = load_calibration_curve()
+                    self._log(self.auto_log, "Gold calibration enabled for THD sweep")
+                except Exception as exc:
+                    self._log(self.auto_log, f"Calibration load error: {exc}")
             rows, out_path, suppressed = thd_sweep(
                 visa_resource=resource or self.scope_res,
                 fy_port=port,
@@ -1331,6 +1348,7 @@ class UnifiedGUI(BaseGUI):
                 filter_window=filter_window,
                 filter_factor=filter_factor,
                 filter_min_percent=filter_min,
+                calibration_curve=calibration_curve,
             )
             self.auto_prog.setValue(100)
             if out_path:
@@ -1440,6 +1458,15 @@ class UnifiedGUI(BaseGUI):
                     )
                     self.u3_autoconfig_runtime(base=base, pulse_line=pulse_line, persist=False)
 
+            amplitude_calibration = None
+            if getattr(self, "auto_apply_cal", None) and self.auto_apply_cal.isChecked():
+                try:
+                    curve = load_calibration_curve()
+                    amplitude_calibration = curve.apply
+                    self._log(self.auto_log, "Gold calibration enabled for KPI sweep")
+                except Exception as exc:
+                    self._log(self.auto_log, f"Calibration load error: {exc}")
+
             res = sweep_audio_kpis(
                 freqs,
                 channel=ch,
@@ -1514,6 +1541,7 @@ class UnifiedGUI(BaseGUI):
                 ),
                 abort_flag=lambda: getattr(self, "_sweep_abort", False),
                 u3_autoconfig=_u3_autocfg,
+                amplitude_calibration=amplitude_calibration,
             )
             rows = res["rows"]
             os.makedirs("results", exist_ok=True)
@@ -1763,6 +1791,11 @@ def main():
         default=2.0,
         help="Minimum THD%% before considering a spike (default: 2.0).",
     )
+    sp_thd.add_argument(
+        "--apply-gold-calibration",
+        action="store_true",
+        help="Apply the packaged gold calibration curve to amplitude metrics.",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1776,6 +1809,12 @@ def main():
     if args.cmd == "thd-math-sweep":
         try:
             output = None if str(args.output) == "-" else args.output
+            calibration_curve = None
+            if getattr(args, "apply_gold_calibration", False):
+                try:
+                    calibration_curve = load_calibration_curve()
+                except Exception as exc:
+                    print(f"Calibration load error: {exc}", file=sys.stderr)
             rows, out_path, suppressed = thd_sweep(
                 visa_resource=args.visa_resource,
                 fy_port=args.fy_port,
@@ -1792,6 +1831,7 @@ def main():
                 filter_window=args.filter_window,
                 filter_factor=args.filter_factor,
                 filter_min_percent=args.filter_min,
+                calibration_curve=calibration_curve,
             )
         except Exception as exc:  # pragma: no cover - hardware path
             print("THD sweep error:", exc, file=sys.stderr)

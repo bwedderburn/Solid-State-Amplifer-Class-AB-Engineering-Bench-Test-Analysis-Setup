@@ -10,6 +10,7 @@ from pathlib import Path
 from statistics import median
 
 from .automation import build_freq_points, sweep_audio_kpis
+from .calibration import CalibrationCurve
 from .dsp import thd_fft, vpp, vrms
 from .fy import fy_apply
 from .tek import (
@@ -70,6 +71,7 @@ def thd_sweep(
     filter_window: int = 2,
     filter_factor: float = 2.0,
     filter_min_percent: float = 2.0,
+    calibration_curve: CalibrationCurve | None = None,
 ) -> tuple[
     list[tuple[float, float, float, float]],
     Path | None,
@@ -93,6 +95,8 @@ def thd_sweep(
     def _capture(_resource, ch):
         target = math_order if use_math else ch
         return scope_capture_calibrated(visa_resource, timeout_ms=15000, ch=target)
+
+    amplitude_calibration = calibration_curve.apply if calibration_curve else None
 
     result = sweep_audio_kpis(
         freqs,
@@ -119,11 +123,21 @@ def thd_sweep(
             visa_resource, timeout_s=timeout_s
         ),
         scope_resource=visa_resource,
+        amplitude_calibration=amplitude_calibration,
     )
 
-    rows: list[tuple[float, float, float, float]] = [
-        (freq, vr, pk, thd_percent) for freq, vr, pk, _thd_ratio, thd_percent in result["rows"]
-    ]
+    rows: list[tuple[float, float, float, float]] = []
+    corrected_full_rows: list[tuple[float, float, float, float, float]] = []
+    for freq, vr, pk, thd_ratio, thd_percent in result["rows"]:
+        if calibration_curve:
+            if math.isfinite(vr):
+                vr = calibration_curve.apply(freq, vr)
+            if math.isfinite(pk):
+                pk = calibration_curve.apply(freq, pk)
+        rows.append((freq, vr, pk, thd_percent))
+        corrected_full_rows.append((freq, vr, pk, thd_ratio, thd_percent))
+    if calibration_curve:
+        result["rows"] = corrected_full_rows
 
     suppressed: list[tuple[float, float, float]] = []
     if filter_spikes and rows:

@@ -141,6 +141,8 @@ def build_automation_tab(gui: Any) -> object | None:
     gui.auto_math_order = QComboBox()
     gui.auto_math_order.addItems(["CH1-CH2", "CH2-CH1"])
     r5.addWidget(gui.auto_math_order)
+    gui.auto_apply_cal = QCheckBox("Apply Gold Calibration")
+    r5.addWidget(gui.auto_apply_cal)
     L.addLayout(r5)
 
     # Live testing group
@@ -216,6 +218,8 @@ def build_automation_tab(gui: Any) -> object | None:
     gui.live_thd_run = QPushButton("Run THD Sweep")
     gui.live_thd_run.clicked.connect(gui.run_live_thd_sweep)
     row.addWidget(gui.live_thd_run)
+    gui.live_thd_apply_cal = QCheckBox("Apply Gold Calibration")
+    row.addWidget(gui.live_thd_apply_cal)
     live_layout.addLayout(row)
 
     L.addWidget(live_box)
