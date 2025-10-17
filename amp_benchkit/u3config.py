@@ -64,11 +64,17 @@ def u3_read_ain(ch: int = 0, *, resolution_index: int | None = None) -> float:
         raise ValueError("AIN channel must be between 0 and 15")
     d = u3_open()
     try:
-        kwargs: dict[str, int] = {}
         ri = _clamp_resolution(resolution_index)
-        if ri is not None:
+        kwargs: dict[str, int] = {}
+        use_resolution = ri is not None
+        if use_resolution and ri is not None:
             kwargs["ResolutionIndex"] = ri
-        return float(d.getAIN(ch, **kwargs))
+        try:
+            return float(d.getAIN(ch, **kwargs))
+        except TypeError as exc:
+            if use_resolution and "ResolutionIndex" in str(exc):
+                return float(d.getAIN(ch))
+            raise
     finally:
         with suppress(Exception):
             d.close()
@@ -101,12 +107,25 @@ def u3_read_multi(
     d = u3_open()
     vals = []
     try:
-        kwargs: dict[str, int] = {}
         ri = _clamp_resolution(resolution_index)
-        if ri is not None:
+        supports_resolution = ri is not None
+        kwargs: dict[str, int] = {}
+        if supports_resolution and ri is not None:
             kwargs["ResolutionIndex"] = ri
         for _ in range(max(1, int(samples))):
-            row = [float(d.getAIN(c, **kwargs)) for c in chs]
+            row = []
+            for c in chs:
+                try:
+                    if supports_resolution:
+                        row.append(float(d.getAIN(c, **kwargs)))
+                    else:
+                        row.append(float(d.getAIN(c)))
+                except TypeError as exc:
+                    if supports_resolution and "ResolutionIndex" in str(exc):
+                        supports_resolution = False
+                        row.append(float(d.getAIN(c)))
+                    else:
+                        raise
             vals.append(row)
             if delay_s > 0:
                 time.sleep(delay_s)
