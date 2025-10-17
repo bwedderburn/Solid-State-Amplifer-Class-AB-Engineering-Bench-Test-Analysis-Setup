@@ -108,6 +108,7 @@ def thd_sweep(
         do_thd=True,
         use_math=use_math,
         math_order=math_order,
+        cycles_per_capture=10.0,
         scope_configure_math_subtract=(
             (lambda res, order: scope_configure_math_subtract(visa_resource, order))
             if use_math

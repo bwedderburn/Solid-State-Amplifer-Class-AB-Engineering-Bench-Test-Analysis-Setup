@@ -40,36 +40,48 @@ def thd_fft(t, v, f0=None, nharm=10, window="hann"):
     if dt <= 0:
         span = t[-1] - t[0]
         dt = span / (n - 1) if span > 0 else 1e-6
-    if window == "hann":
-        w = np.hanning(n)
-    elif window == "hamming":
-        w = np.hamming(n)
-    else:
-        w = np.ones(n)
-    v_win = v * w
-    Y = np.fft.rfft(v_win)
-    f = np.fft.rfftfreq(n, d=dt)
-    mag = np.abs(Y)
+    v_centered = v - np.mean(v)
     if f0 is None or f0 <= 0:
-        idx = int(np.argmax(mag[1:])) + 1
+        if window == "hann":
+            w = np.hanning(n)
+        elif window == "hamming":
+            w = np.hamming(n)
+        else:
+            w = np.ones(n)
+        spectrum = np.fft.rfft(v_centered * w)
+        freqs = np.fft.rfftfreq(n, d=dt)
+        idx = int(np.argmax(np.abs(spectrum[1:])) + 1)
+        f_est = float(freqs[idx])
     else:
-        idx = int(np.argmin(np.abs(f - float(f0))))
-        if idx <= 0:
-            idx = int(np.argmax(mag[1:])) + 1
-    fund_amp = float(mag[idx])
-    if fund_amp <= 0:
-        return float("nan"), float(f[idx]), 0.0
-    s2 = 0.0
-    for k in range(2, max(2, int(nharm)) + 1):
-        target = k * f[idx]
-        if target > f[-1]:
-            break
-        hk = int(np.argmin(np.abs(f - target)))
-        if hk <= 0 or hk >= mag.size:
-            continue
-        s2 += float(mag[hk]) ** 2
-    thd = float(np.sqrt(s2) / fund_amp)
-    return thd, float(f[idx]), fund_amp
+        f_est = float(f0)
+
+    omega = 2.0 * np.pi * f_est
+    basis = np.column_stack([np.sin(omega * t), np.cos(omega * t), np.ones_like(t)])
+    coeffs, *_ = np.linalg.lstsq(basis, v, rcond=None)
+    sin_c, cos_c, offset = coeffs
+    amp_peak = float(np.hypot(sin_c, cos_c))
+    if not np.isfinite(amp_peak) or amp_peak <= 0:
+        return float("nan"), f_est, float("nan")
+
+    fundamental = sin_c * np.sin(omega * t) + cos_c * np.cos(omega * t) + offset
+    residual = v - fundamental
+    residual -= np.mean(residual)
+
+    fundamental_rms = amp_peak / np.sqrt(2.0)
+    harmonic_energy = 0.0
+    max_harm = max(2, int(nharm))
+    for k in range(2, max_harm + 1):
+        omega_k = omega * k
+        basis_k = np.column_stack([np.sin(omega_k * t), np.cos(omega_k * t)])
+        coeffs_k, *_ = np.linalg.lstsq(basis_k, residual, rcond=None)
+        amp_k = np.hypot(coeffs_k[0], coeffs_k[1])
+        harmonic_energy += (amp_k / np.sqrt(2.0)) ** 2
+        residual -= coeffs_k[0] * np.sin(omega_k * t) + coeffs_k[1] * np.cos(omega_k * t)
+
+    thd_ratio = (
+        float(np.sqrt(harmonic_energy) / fundamental_rms) if fundamental_rms > 0 else float("nan")
+    )
+    return thd_ratio, f_est, amp_peak
 
 
 def find_knees(freqs, amps, ref_mode="max", ref_hz=1000.0, drop_db=3.0):

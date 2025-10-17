@@ -111,6 +111,7 @@ def sweep_scope_fixed(
     ext_slope: str = "Rise",
     ext_level: float | None = None,
     pre_ms: float = 5.0,
+    cycles_per_capture: float = 6.0,
     scope_resource: Any = None,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
@@ -136,6 +137,7 @@ def sweep_scope_fixed(
             original_scale = scope_read_timebase(resource)
         except Exception:
             original_scale = None
+    cycles_per_capture = max(1.0, float(cycles_per_capture))
     for i, f in enumerate(freqs):
         if abort_flag():
             break
@@ -153,7 +155,7 @@ def sweep_scope_fixed(
             except Exception as e:
                 logger(f"FY error @ {f} Hz: {e}")
                 continue
-            capture_window = 2.5 / max(float(f), 1.0)
+            capture_window = cycles_per_capture / max(float(f), 1.0)
             if resource is not None:
                 scope_configure_timebase(resource, max(2e-9, min(capture_window / 10.0, 5.0)))
             settle_s = capture_window
@@ -220,6 +222,7 @@ def sweep_audio_kpis(
     ext_slope: str = "Rise",
     ext_level: float | None = None,
     pre_ms: float = 5.0,
+    cycles_per_capture: float = 6.0,
     pulse_line: str = "None",
     pulse_ms: float = 0.0,
     u3_pulse_line: Callable[[str, float, int], Any] | None = None,
@@ -251,6 +254,7 @@ def sweep_audio_kpis(
     if resource is not None:
         with suppress(Exception):
             original_scale = scope_read_timebase(resource)
+    cycles_per_capture = max(1.0, float(cycles_per_capture))
     for i, f in enumerate(freqs):
         if abort_flag():
             break
@@ -274,7 +278,7 @@ def sweep_audio_kpis(
                     scope_set_trigger_ext(scope_resource, ext_slope, ext_level)
                 if scope_arm_single:
                     scope_arm_single(scope_resource)
-                capture_window = 2.5 / max(float(f), 1.0)
+                capture_window = cycles_per_capture / max(float(f), 1.0)
                 if scope_resource is not None:
                     scope_configure_timebase(
                         scope_resource,

@@ -18,7 +18,7 @@ def test_thd_fft_basic():
     sig = np.sin(2 * np.pi * f0 * t) + 0.05 * np.sin(2 * np.pi * 2 * f0 * t)
     thd, f_est, fund = thd_fft(t, sig, f0=f0, nharm=5)
     assert abs(f_est - f0) < f0 * 0.02
-    assert 0.03 < thd < 0.08  # rough bounds around 0.05
+    assert 0.045 < thd < 0.055  # tighter bounds around 5% THD
 
 
 def test_find_knees():
