@@ -156,8 +156,10 @@ def test_sweep_audio_kpis_calls_progress_on_fy_error():
 
 
 def test_sweep_scope_fixed_applies_calibration():
+    amps = []
+
     def fake_fy_apply(**kw):
-        pass
+        amps.append(kw["amp_vpp"])
 
     def fake_measure(src, metric):
         return 1.0
@@ -172,5 +174,36 @@ def test_sweep_scope_fixed_applies_calibration():
         fy_apply=fake_fy_apply,
         scope_measure=fake_measure,
         amplitude_calibration=lambda freq, val: val / 2,
+        amp_vpp_strategy=lambda freq: 0.5,
     )
     assert out[0][1] == 0.5
+    assert amps == [0.5]
+
+
+def test_sweep_audio_kpis_uses_amp_strategy_and_calibration():
+    amps = []
+
+    def fake_fy_apply(**kw):
+        amps.append(kw["amp_vpp"])
+
+    def fake_capture(resrc, ch):
+        return [0.0, 0.001], [0.0, 1.0]
+
+    res = sweep_audio_kpis(
+        freqs=[100],
+        channel=1,
+        scope_channel=1,
+        amp_vpp=1.0,
+        dwell_s=0.0,
+        fy_apply=fake_fy_apply,
+        scope_capture_calibrated=fake_capture,
+        dsp_vrms=lambda v: 2.0,
+        dsp_vpp=lambda v: 4.0,
+        progress=lambda i, n: None,
+        amplitude_calibration=lambda freq, val: val / 2,
+        amp_vpp_strategy=lambda freq: 0.5,
+    )
+    row = res["rows"][0]
+    assert abs(row[1] - 1.0) < 1e-9
+    assert abs(row[2] - 2.0) < 1e-9
+    assert amps == [0.5]

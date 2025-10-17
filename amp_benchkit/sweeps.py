@@ -57,6 +57,7 @@ def thd_sweep(
     visa_resource: str,
     fy_port: str | None,
     amp_vpp: float = 0.5,
+    calibrate_to_vpp: float | None = None,
     scope_channel: int = 1,
     start_hz: float = 20.0,
     stop_hz: float = 20000.0,
@@ -96,13 +97,30 @@ def thd_sweep(
         target = math_order if use_math else ch
         return scope_capture_calibrated(visa_resource, timeout_ms=15000, ch=target)
 
+    if calibrate_to_vpp is not None and calibration_curve is None:
+        raise ValueError("calibrate_to_vpp requires calibration_curve")
+
     amplitude_calibration = calibration_curve.apply if calibration_curve else None
+
+    amp_vpp_strategy = None
+    if calibrate_to_vpp is not None and calibration_curve is not None:
+        target = float(calibrate_to_vpp)
+
+        def _amp_strategy(freq: float) -> float:
+            ratio = calibration_curve.ratio_at(freq)
+            if ratio <= 0:
+                return target
+            return target / ratio
+
+        amp_vpp_strategy = _amp_strategy
+
+    sweep_amp = float(calibrate_to_vpp) if calibrate_to_vpp is not None else amp_vpp
 
     result = sweep_audio_kpis(
         freqs,
         channel=1,
         scope_channel=scope_channel,
-        amp_vpp=amp_vpp,
+        amp_vpp=sweep_amp,
         dwell_s=dwell_s,
         fy_apply=lambda **kw: fy_apply(port=fy_port, proto="FY ASCII 9600", **kw),
         scope_capture_calibrated=_capture,
@@ -124,6 +142,7 @@ def thd_sweep(
         ),
         scope_resource=visa_resource,
         amplitude_calibration=amplitude_calibration,
+        amp_vpp_strategy=amp_vpp_strategy,
     )
 
     rows: list[tuple[float, float, float, float]] = []

@@ -113,6 +113,7 @@ def sweep_scope_fixed(
     pre_ms: float = 5.0,
     cycles_per_capture: float = 6.0,
     scope_resource: Any = None,
+    amp_vpp_strategy: Callable[[float], float] | None = None,
     amplitude_calibration: Callable[[float, float], float] | None = None,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
@@ -144,10 +145,13 @@ def sweep_scope_fixed(
             break
         settle_s = 0.0
         try:
+            amp_to_set = (
+                float(amp_vpp_strategy(f)) if amp_vpp_strategy is not None else float(amp_vpp)
+            )
             try:
                 fy_apply(
                     freq_hz=f,
-                    amp_vpp=amp_vpp,
+                    amp_vpp=amp_to_set,
                     wave="Sine",
                     off_v=0.0,
                     duty=None,
@@ -240,6 +244,7 @@ def sweep_audio_kpis(
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
     u3_autoconfig: Callable[[], Any] | None = None,
+    amp_vpp_strategy: Callable[[float], float] | None = None,
     amplitude_calibration: Callable[[float, float], float] | None = None,
 ) -> dict[str, Any]:
     """Perform audio KPI sweep.
@@ -266,10 +271,13 @@ def sweep_audio_kpis(
             break
         settle_s = 0.0
         try:
+            amp_to_set = (
+                float(amp_vpp_strategy(f)) if amp_vpp_strategy is not None else float(amp_vpp)
+            )
             try:
                 fy_apply(
                     freq_hz=f,
-                    amp_vpp=amp_vpp,
+                    amp_vpp=amp_to_set,
                     wave="Sine",
                     off_v=0.0,
                     duty=None,

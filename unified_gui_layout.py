@@ -1235,11 +1235,41 @@ class UnifiedGUI(BaseGUI):
                     self.u3_autoconfig_runtime(base=base, pulse_line="None", persist=False)
 
             amplitude_calibration = None
+            amp_strategy = None
             if getattr(self, "auto_apply_cal", None) and self.auto_apply_cal.isChecked():
                 try:
                     curve = load_calibration_curve()
                     amplitude_calibration = curve.apply
                     self._log(self.auto_log, "Gold calibration enabled")
+                    target_widget = getattr(self, "auto_cal_target", None)
+                    if target_widget is not None:
+                        text = target_widget.text().strip()
+                        if text:
+                            try:
+                                target_vpp = float(text)
+
+                                def _strategy(
+                                    freq: float,
+                                    *,
+                                    _curve=curve,
+                                    _target=target_vpp,
+                                    _fallback=amp,
+                                ):
+                                    try:
+                                        ratio = _curve.ratio_at(freq)
+                                        if ratio <= 0:
+                                            return _fallback
+                                        return _target / ratio
+                                    except Exception:
+                                        return _fallback
+
+                                amp_strategy = _strategy
+                                self._log(
+                                    self.auto_log,
+                                    f"Generator adjusted for target {target_vpp:.3f} Vpp",
+                                )
+                            except Exception as exc:
+                                self._log(self.auto_log, f"Bad cal target: {exc}")
                 except Exception as exc:  # pragma: no cover - defensive
                     self._log(self.auto_log, f"Calibration load error: {exc}")
             out = sweep_scope_fixed(
@@ -1275,6 +1305,7 @@ class UnifiedGUI(BaseGUI):
                 ),
                 abort_flag=lambda: getattr(self, "_sweep_abort", False),
                 u3_autoconfig=_u3_autocfg,
+                amp_vpp_strategy=amp_strategy,
                 amplitude_calibration=amplitude_calibration,
             )
             os.makedirs("results", exist_ok=True)
@@ -1332,6 +1363,21 @@ class UnifiedGUI(BaseGUI):
                     self._log(self.auto_log, "Gold calibration enabled for THD sweep")
                 except Exception as exc:
                     self._log(self.auto_log, f"Calibration load error: {exc}")
+            cal_target = None
+            target_widget = getattr(self, "live_cal_target", None)
+            if target_widget is not None:
+                text = target_widget.text().strip()
+                if text:
+                    try:
+                        cal_target = float(text)
+                        if calibration_curve is None:
+                            calibration_curve = load_calibration_curve()
+                            self._log(
+                                self.auto_log,
+                                "Gold calibration auto-enabled for cal target",
+                            )
+                    except Exception as exc:
+                        self._log(self.auto_log, f"Bad cal target: {exc}")
             rows, out_path, suppressed = thd_sweep(
                 visa_resource=resource or self.scope_res,
                 fy_port=port,
@@ -1349,6 +1395,7 @@ class UnifiedGUI(BaseGUI):
                 filter_factor=filter_factor,
                 filter_min_percent=filter_min,
                 calibration_curve=calibration_curve,
+                calibrate_to_vpp=cal_target,
             )
             self.auto_prog.setValue(100)
             if out_path:
@@ -1459,11 +1506,41 @@ class UnifiedGUI(BaseGUI):
                     self.u3_autoconfig_runtime(base=base, pulse_line=pulse_line, persist=False)
 
             amplitude_calibration = None
+            amp_strategy = None
             if getattr(self, "auto_apply_cal", None) and self.auto_apply_cal.isChecked():
                 try:
                     curve = load_calibration_curve()
                     amplitude_calibration = curve.apply
                     self._log(self.auto_log, "Gold calibration enabled for KPI sweep")
+                    target_widget = getattr(self, "auto_cal_target", None)
+                    if target_widget is not None:
+                        text = target_widget.text().strip()
+                        if text:
+                            try:
+                                target_vpp = float(text)
+
+                                def _strategy(
+                                    freq: float,
+                                    *,
+                                    _curve=curve,
+                                    _target=target_vpp,
+                                    _fallback=amp,
+                                ):
+                                    try:
+                                        ratio = _curve.ratio_at(freq)
+                                        if ratio <= 0:
+                                            return _fallback
+                                        return _target / ratio
+                                    except Exception:
+                                        return _fallback
+
+                                amp_strategy = _strategy
+                                self._log(
+                                    self.auto_log,
+                                    f"Generator adjusted for target {target_vpp:.3f} Vpp",
+                                )
+                            except Exception as exc:
+                                self._log(self.auto_log, f"Bad cal target: {exc}")
                 except Exception as exc:
                     self._log(self.auto_log, f"Calibration load error: {exc}")
 
@@ -1541,6 +1618,7 @@ class UnifiedGUI(BaseGUI):
                 ),
                 abort_flag=lambda: getattr(self, "_sweep_abort", False),
                 u3_autoconfig=_u3_autocfg,
+                amp_vpp_strategy=amp_strategy,
                 amplitude_calibration=amplitude_calibration,
             )
             rows = res["rows"]
@@ -1796,6 +1874,12 @@ def main():
         action="store_true",
         help="Apply the packaged gold calibration curve to amplitude metrics.",
     )
+    sp_thd.add_argument(
+        "--cal-target-vpp",
+        type=float,
+        default=None,
+        help="Target DUT amplitude when calibration is applied.",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1810,15 +1894,17 @@ def main():
         try:
             output = None if str(args.output) == "-" else args.output
             calibration_curve = None
-            if getattr(args, "apply_gold_calibration", False):
+            if getattr(args, "apply_gold_calibration", False) or args.cal_target_vpp is not None:
                 try:
                     calibration_curve = load_calibration_curve()
                 except Exception as exc:
                     print(f"Calibration load error: {exc}", file=sys.stderr)
+            cal_target = args.cal_target_vpp if calibration_curve else None
+            sweep_amp = cal_target if cal_target is not None else args.amp_vpp
             rows, out_path, suppressed = thd_sweep(
                 visa_resource=args.visa_resource,
                 fy_port=args.fy_port,
-                amp_vpp=args.amp_vpp,
+                amp_vpp=sweep_amp,
                 scope_channel=args.channel,
                 start_hz=args.start,
                 stop_hz=args.stop,
@@ -1832,6 +1918,7 @@ def main():
                 filter_factor=args.filter_factor,
                 filter_min_percent=args.filter_min,
                 calibration_curve=calibration_curve,
+                calibrate_to_vpp=cal_target,
             )
         except Exception as exc:  # pragma: no cover - hardware path
             print("THD sweep error:", exc, file=sys.stderr)
