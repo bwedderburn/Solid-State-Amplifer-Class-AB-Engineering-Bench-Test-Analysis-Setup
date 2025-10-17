@@ -22,6 +22,7 @@ def require_qt():  # pragma: no cover - thin import wrapper
         from PySide6.QtWidgets import (
             QCheckBox,
             QComboBox,
+            QGridLayout,
             QGroupBox,
             QHBoxLayout,
             QLabel,
@@ -42,6 +43,7 @@ def require_qt():  # pragma: no cover - thin import wrapper
             from PyQt5.QtWidgets import (
                 QCheckBox,
                 QComboBox,
+                QGridLayout,
                 QGroupBox,
                 QHBoxLayout,
                 QLabel,
@@ -62,6 +64,7 @@ def require_qt():  # pragma: no cover - thin import wrapper
         QWidget=QWidget,
         QVBoxLayout=QVBoxLayout,
         QHBoxLayout=QHBoxLayout,
+        QGridLayout=QGridLayout,
         QGroupBox=QGroupBox,
         QLabel=QLabel,
         QComboBox=QComboBox,
