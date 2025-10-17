@@ -40,27 +40,73 @@ def _u3_mod():
     return getattr(_deps, "_u3", None)
 
 
-def u3_read_ain(ch=0):
+def _clamp_resolution(resolution_index: int | None) -> int | None:
+    if resolution_index is None:
+        return None
+    try:
+        ri = int(resolution_index)
+    except Exception:
+        return None
+    # Datasheet: valid 0-8 (amplified via firmware; newer adds 9-12). Clamp to 0-12 to be safe.
+    return max(0, min(12, ri))
+
+
+def u3_read_ain(ch: int = 0, *, resolution_index: int | None = None) -> float:
+    """Read a single analog channel (AIN0–AIN15).
+
+    The LabJack U3 datasheet (Rev 1.30 hardware) exposes up to 16 analog channels
+    mapped across FIO0–FIO7 and EIO0–EIO7. Older helper limited the range to 0–3,
+    which prevented access to HV-only inputs such as AIN14 (temperature sense).
+    """
+
     ch = int(ch)
-    if ch < 0 or ch > 3:
-        raise ValueError("Only AIN0–AIN3 are supported")
+    if ch < 0 or ch > 15:
+        raise ValueError("AIN channel must be between 0 and 15")
     d = u3_open()
     try:
-        return d.getAIN(ch)
+        kwargs: dict[str, int] = {}
+        ri = _clamp_resolution(resolution_index)
+        if ri is not None:
+            kwargs["ResolutionIndex"] = ri
+        return float(d.getAIN(ch, **kwargs))
     finally:
         with suppress(Exception):
             d.close()
 
 
-def u3_read_multi(ch_list, samples=1, delay_s=0.0):
-    chs = [int(c) for c in ch_list if 0 <= int(c) <= 3]
+def u3_read_multi(
+    ch_list,
+    samples: int = 1,
+    delay_s: float = 0.0,
+    *,
+    resolution_index: int | None = None,
+):
+    """Read multiple analog channels sequentially.
+
+    Parameters
+    ----------
+    ch_list : iterable
+        Collection of AIN indices (0–15). Invalid entries are ignored.
+    samples : int
+        Number of rows to capture. Each row contains len(ch_list_valid) readings.
+    delay_s : float
+        Optional delay between samples (seconds).
+    resolution_index : int | None
+        Optional LabJack resolution index (clamped to 0–12 per datasheet guidance).
+    """
+
+    chs = [int(c) for c in ch_list if 0 <= int(c) <= 15]
     if not chs:
         chs = [0]
     d = u3_open()
     vals = []
     try:
+        kwargs: dict[str, int] = {}
+        ri = _clamp_resolution(resolution_index)
+        if ri is not None:
+            kwargs["ResolutionIndex"] = ri
         for _ in range(max(1, int(samples))):
-            row = [d.getAIN(c) for c in chs]
+            row = [float(d.getAIN(c, **kwargs)) for c in chs]
             vals.append(row)
             if delay_s > 0:
                 time.sleep(delay_s)

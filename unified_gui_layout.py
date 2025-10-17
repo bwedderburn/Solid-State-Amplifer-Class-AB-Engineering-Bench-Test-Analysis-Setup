@@ -17,7 +17,7 @@ import sys
 import time
 from contextlib import suppress
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 
@@ -87,6 +87,11 @@ with suppress(Exception):  # Qt symbol imports (available if HAVE_QT True)
         QTabWidget,
         QTimer,
     )
+
+
+class _U3Caps(TypedDict):
+    hardware_version: float | None
+    is_hv: bool
 
 
 def _require_u3() -> Any:
@@ -171,6 +176,7 @@ class UnifiedGUI(BaseGUI):
         self.scope_res = TEK_RSRC_DEFAULT
         os.makedirs("results", exist_ok=True)
         self._test_hist: list[str] | None = None
+        self._cached_u3_caps: _U3Caps | None = None
         tabs = QTabWidget()
         self.setCentralWidget(tabs)
         tabs.addTab(self.tab_gen(), "Generator")
@@ -203,6 +209,69 @@ class UnifiedGUI(BaseGUI):
         ed = self.port1 if ch == 1 else self.port2
         txt = ed.text().strip() if ed and hasattr(ed, "text") else ""
         return txt or find_fy_port()
+
+    def _u3_capabilities(self) -> _U3Caps:
+        """Return cached U3 capability info (hardware version, HV flag)."""
+
+        if self._cached_u3_caps is not None:
+            return self._cached_u3_caps
+
+        caps: _U3Caps = {"hardware_version": None, "is_hv": False}
+        if not HAVE_U3:
+            self._cached_u3_caps = caps
+            return caps
+
+        def _coerce_hw(value: Any) -> float | None:
+            if isinstance(value, (int, float)):
+                return float(value)
+            if isinstance(value, str):
+                try:
+                    return float(value.strip())
+                except ValueError:
+                    return None
+            return None
+
+        d = None
+        try:
+            d = u3_open()
+            info: dict[str, Any] = {}
+            with suppress(Exception):
+                info = d.configU3()
+
+            hw_val: float | None = None
+            for candidate in (
+                info.get("HardwareVersion"),
+                getattr(d, "hardwareVersion", None),
+            ):
+                coerced = _coerce_hw(candidate)
+                if coerced is not None:
+                    hw_val = coerced
+                    break
+            caps["hardware_version"] = hw_val
+
+            hv_raw: Any = info.get("HV")
+            if hv_raw is None and "ProductID" in info:
+                hv_raw = info.get("ProductID") == 3
+            if hv_raw is None:
+                hv_raw = getattr(d, "isHV", None)
+            if hv_raw is None:
+                dev_name = info.get("DeviceName")
+                if isinstance(dev_name, str):
+                    hv_raw = "HV" in dev_name.upper()
+            if isinstance(hv_raw, str):
+                hv_bool = hv_raw.strip().upper() in {"1", "TRUE", "YES", "HV"}
+            else:
+                hv_bool = bool(hv_raw)
+            caps["is_hv"] = hv_bool
+        except Exception:
+            # Detection is best-effort; leave defaults when probing fails.
+            pass
+        finally:
+            with suppress(Exception):
+                if d:
+                    d.close()
+        self._cached_u3_caps = caps
+        return caps
 
     def apply_gen_side(self, side):
         try:
@@ -423,7 +492,8 @@ class UnifiedGUI(BaseGUI):
             return
         chs = self._selected_channels() or [0]
         try:
-            vals = u3_read_multi(chs, samples=1)
+            res_idx = self.daq_res.value() if hasattr(self, "daq_res") else None
+            vals = u3_read_multi(chs, samples=1, resolution_index=res_idx)
             self._log(
                 self.daq_log, " | ".join(f"AIN{c}:{vals[0][i]:.4f} V" for i, c in enumerate(chs))
             )
@@ -438,7 +508,8 @@ class UnifiedGUI(BaseGUI):
         ns = self.daq_nsamp.value()
         delay = self.daq_delay.value() / 1000.0
         try:
-            vals = u3_read_multi(chs, samples=ns, delay_s=delay)
+            res_idx = self.daq_res.value() if hasattr(self, "daq_res") else None
+            vals = u3_read_multi(chs, samples=ns, delay_s=delay, resolution_index=res_idx)
             for k, row in enumerate(vals):
                 line = f"[{k + 1}/{ns}] " + " | ".join(
                     f"AIN{c}:{row[i]:.4f} V" for i, c in enumerate(chs)
@@ -557,9 +628,23 @@ class UnifiedGUI(BaseGUI):
             self._test_status(str(e), "error")
         # AIN readings
         try:
-            for i in range(4):
-                v = u3_read_ain(i)
-                self.test_ain_lbls[i].setText(f"{v:.4f}")
+            res_idx = self.daq_res.value() if hasattr(self, "daq_res") else None
+            fio_checks = getattr(self, "ai_checks_fio", getattr(self, "ai_checks", []))
+            eio_checks = getattr(self, "ai_checks_eio", [])
+            caps = self._u3_capabilities()
+            for i, lbl in enumerate(getattr(self, "test_ain_lbls", [])):
+                if i < 8:
+                    is_analog = i < len(fio_checks) and fio_checks[i].isChecked()
+                    if caps["is_hv"] and i < 4:
+                        is_analog = True
+                else:
+                    idx = i - 8
+                    is_analog = idx < len(eio_checks) and eio_checks[idx].isChecked()
+                if not is_analog:
+                    lbl.setText("—")
+                    continue
+                v = u3_read_ain(i, resolution_index=res_idx)
+                lbl.setText(f"{v:.4f}")
         except Exception as e:
             self._log(self.test_log, f"AIN read warn: {e}")
             self._test_status(str(e), "error")
@@ -824,10 +909,15 @@ class UnifiedGUI(BaseGUI):
             self._log(self.cfg_log, f"u3 missing → {INSTALL_HINTS['u3']}")
             return
         try:
+            caps = self._u3_capabilities()
+            hw_float = caps["hardware_version"]
             lj = _require_u3()
             d = u3_open()
             # Analog inputs / directions + Counters
-            fio_an = self._mask_from_checks(self.ai_checks)
+            fio_checks = getattr(self, "ai_checks_fio", getattr(self, "ai_checks", []))
+            eio_checks = getattr(self, "ai_checks_eio", [])
+            fio_an = self._mask_from_checks(fio_checks)
+            eio_an = self._mask_from_checks(eio_checks) if eio_checks else 0
             fio_dir = self._mask_from_checks(self.fio_dir_box)
             eio_dir = self._mask_from_checks(self.eio_dir_box)
             cio_dir = self._mask_from_checks(self.cio_dir_box)
@@ -835,6 +925,7 @@ class UnifiedGUI(BaseGUI):
             with suppress(Exception):
                 d.configU3(
                     FIOAnalog=fio_an,
+                    EIOAnalog=eio_an,
                     FIODirection=fio_dir,
                     EIODirection=eio_dir,
                     CIODirection=cio_dir,
@@ -867,13 +958,17 @@ class UnifiedGUI(BaseGUI):
             else:
                 base = 4
             with suppress(Exception):
+                timer_offset = self.t_pin.value() if hasattr(self, "t_pin") else 0
+                if hw_float is not None and hw_float >= 1.30 and timer_offset < 4:
+                    timer_offset = 4
                 d.configTimerClock(TimerClockBase=base, TimerClockDivisor=self.t_div.value())
                 d.configIO(
                     NumberOfTimersEnabled=self.t_num.value(),
-                    TimerCounterPinOffset=self.t_pin.value(),
+                    TimerCounterPinOffset=timer_offset,
                     EnableCounter0=self.counter0.isChecked(),
                     EnableCounter1=self.counter1.isChecked(),
                     FIOAnalog=fio_an,
+                    EIOAnalog=eio_an,
                 )
             # Apply digital state writes
             try:
@@ -936,6 +1031,8 @@ class UnifiedGUI(BaseGUI):
         if not HAVE_U3:
             return
         d = None
+        caps = self._u3_capabilities()
+        hw_float = caps["hardware_version"]
         try:
             d = u3_open()
             # Optional factory base
@@ -943,7 +1040,10 @@ class UnifiedGUI(BaseGUI):
                 with suppress(Exception):
                     d.setToFactoryDefaults()
             # Collect masks from current UI
-            fio_an = self._mask_from_checks(self.ai_checks) if hasattr(self, "ai_checks") else 0x0F
+            fio_checks = getattr(self, "ai_checks_fio", getattr(self, "ai_checks", []))
+            eio_checks = getattr(self, "ai_checks_eio", [])
+            fio_an = self._mask_from_checks(fio_checks) if fio_checks else 0x0F
+            eio_an = self._mask_from_checks(eio_checks) if eio_checks else 0
             fio_dir = (
                 self._mask_from_checks(self.fio_dir_box) if hasattr(self, "fio_dir_box") else 0
             )
@@ -966,6 +1066,7 @@ class UnifiedGUI(BaseGUI):
             with suppress(Exception):
                 d.configU3(
                     FIOAnalog=fio_an,
+                    EIOAnalog=eio_an,
                     FIODirection=fio_dir,
                     EIODirection=eio_dir,
                     CIODirection=cio_dir,
@@ -1006,13 +1107,17 @@ class UnifiedGUI(BaseGUI):
                     base_clk = 750
                 else:
                     base_clk = 4
+                timer_offset = self.t_pin.value() if hasattr(self, "t_pin") else 0
+                if hw_float is not None and hw_float >= 1.30 and timer_offset < 4:
+                    timer_offset = 4
                 d.configTimerClock(TimerClockBase=base_clk, TimerClockDivisor=self.t_div.value())
                 d.configIO(
                     NumberOfTimersEnabled=self.t_num.value(),
-                    TimerCounterPinOffset=self.t_pin.value(),
+                    TimerCounterPinOffset=timer_offset,
                     EnableCounter0=self.counter0.isChecked(),
                     EnableCounter1=self.counter1.isChecked(),
                     FIOAnalog=fio_an,
+                    EIOAnalog=eio_an,
                 )
             # Watchdog if enabled in UI
             with suppress(Exception):

@@ -25,6 +25,7 @@ def build_daq_tab(gui: Any) -> object | None:
     QTabWidget = qt.QTabWidget
     QVBoxLayout = qt.QVBoxLayout
     QHBoxLayout = qt.QHBoxLayout
+    QGridLayout = qt.QGridLayout
     QLabel = qt.QLabel
     QCheckBox = qt.QCheckBox
     QSpinBox = qt.QSpinBox
@@ -64,14 +65,34 @@ def build_daq_tab(gui: Any) -> object | None:
     gui.daq_rw = QWidget()
     L = QVBoxLayout(gui.daq_rw)
 
-    hdr = QHBoxLayout()
-    hdr.addWidget(QLabel("Channels:"))
+    # Detect U3 capabilities (hardware rev / HV) if gui exposes helper.
+    caps_fn = getattr(gui, "_u3_capabilities", None)
+    caps = caps_fn() if callable(caps_fn) else {}
+
+    def _to_float(val):
+        try:
+            return float(val)
+        except Exception:
+            return None
+
+    hw_version = _to_float(caps.get("hardware_version"))
+    hw_is_130 = hw_version is not None and hw_version >= 1.30 - 1e-6
+    is_hv = bool(caps.get("is_hv"))
+
+    chan_wrap = QVBoxLayout()
+    chan_wrap.addWidget(QLabel("Channels (AIN0–AIN15):"))
+    chan_grid = QGridLayout()
     gui.chan_boxes = []
-    for i in range(4):
-        cb = QCheckBox(f"AIN{i}")
+    for idx in range(16):
+        cb = QCheckBox(f"AIN{idx}")
+        if idx < 4:
+            cb.setChecked(True)
+            if is_hv:
+                cb.setToolTip("AIN0–AIN3 fixed analog on U3-HV (datasheet §2.5)")
         gui.chan_boxes.append(cb)
-        hdr.addWidget(cb)
-    L.addLayout(hdr)
+        chan_grid.addWidget(cb, idx // 8, idx % 8)
+    chan_wrap.addLayout(chan_grid)
+    L.addLayout(chan_wrap)
 
     rr = QHBoxLayout()
     rr.addWidget(QLabel("Samples:"))
@@ -111,13 +132,29 @@ def build_daq_tab(gui: Any) -> object | None:
     C = QVBoxLayout(gui.daq_cw)
 
     # Analog Input checkbox row
-    ai = QHBoxLayout()
-    gui.ai_checks = [QCheckBox(f"AIN{i}") for i in range(4)]
-    for cb in gui.ai_checks:
-        cb.setChecked(True)
-        ai.addWidget(cb)
-    C.addWidget(QLabel("Analog Input (checked = Analog)"))
-    C.addLayout(ai)
+    C.addWidget(QLabel("FIO Analog Inputs (checked = Analog mode)"))
+    fio_ai = QGridLayout()
+    gui.ai_checks_fio = []
+    for idx in range(8):
+        cb = QCheckBox(f"AIN{idx}")
+        default = idx < 4
+        cb.setChecked(default)
+        if is_hv and idx < 4:
+            cb.setEnabled(False)
+            cb.setToolTip("Fixed analog on U3-HV (AIN0–AIN3)")
+        gui.ai_checks_fio.append(cb)
+        fio_ai.addWidget(cb, idx // 4, idx % 4)
+    C.addLayout(fio_ai)
+    gui.ai_checks = gui.ai_checks_fio  # backward compatibility
+
+    C.addWidget(QLabel("EIO Analog Inputs (checked = Analog mode)"))
+    eio_ai = QGridLayout()
+    gui.ai_checks_eio = []
+    for idx in range(8):
+        cb = QCheckBox(f"AIN{8 + idx}")
+        gui.ai_checks_eio.append(cb)
+        eio_ai.addWidget(cb, idx // 4, idx % 4)
+    C.addLayout(eio_ai)
 
     def grid_dio(lbl: str, count: int):
         box = QVBoxLayout()
@@ -153,7 +190,12 @@ def build_daq_tab(gui: Any) -> object | None:
     # Timers/Counters
     tc = QHBoxLayout()
     gui.t_pin = QSpinBox()
-    gui.t_pin.setRange(0, 16)
+    if hw_is_130:
+        gui.t_pin.setRange(4, 8)
+        gui.t_pin.setValue(max(4, gui.t_pin.value()))
+        gui.t_pin.setToolTip("Hardware 1.30+: timers/counters start at FIO4 (datasheet §5.2)")
+    else:
+        gui.t_pin.setRange(0, 16)
     gui.t_num = QSpinBox()
     gui.t_num.setRange(0, 6)
     gui.t_clkbase = QComboBox()
@@ -250,18 +292,22 @@ def build_daq_tab(gui: Any) -> object | None:
     T = QVBoxLayout(gui.daq_test)
     T.addWidget(QLabel("U3 Test Panel (runtime, non-persistent). Writes/reads ~1 Hz."))
 
-    ain_row = QHBoxLayout()
+    ain_row = QVBoxLayout()
     ain_row.addWidget(QLabel("AIN readings:"))
+    ain_grid = QGridLayout()
     gui.test_ain_lbls = []
-    for i in range(4):
-        col = QVBoxLayout()
-        col.addWidget(QLabel(f"AIN{i}"))
+    for idx in range(16):
+        label = QLabel(f"AIN{idx}")
+        label.setAlignment(Qt.AlignHCenter)
+        row = (idx // 8) * 2
+        col = idx % 8
+        ain_grid.addWidget(label, row, col)
         lbl = QLineEdit("—")
         lbl.setReadOnly(True)
-        lbl.setMaximumWidth(100)
+        lbl.setMaximumWidth(90)
         gui.test_ain_lbls.append(lbl)
-        col.addWidget(lbl)
-        ain_row.addLayout(col)
+        ain_grid.addWidget(lbl, row + 1, col)
+    ain_row.addLayout(ain_grid)
     T.addLayout(ain_row)
 
     def grid_test(lbl: str, count: int):
