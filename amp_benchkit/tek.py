@@ -37,6 +37,8 @@ __all__ = [
     "scope_configure_timebase",
     "scope_read_timebase",
     "scope_resume_run",
+    "scope_read_vertical_scale",
+    "scope_set_vertical_scale",
     "scope_screenshot",
     "TekError",
     "TekTimeoutError",
@@ -254,6 +256,40 @@ def scope_resume_run(resource=TEK_RSRC_DEFAULT):
         for cmd in ("ACQuire:STOPAfter RUNSTop", "ACQuire:STATE RUN"):
             with suppress(Exception):
                 sc.write(cmd)
+    finally:
+        with suppress(Exception):
+            sc.close()
+
+
+def scope_read_vertical_scale(resource=TEK_RSRC_DEFAULT, ch=1):
+    """Return current vertical scale (V/div) for the requested channel."""
+    if not HAVE_PYVISA:
+        return None
+    rm = _pyvisa.ResourceManager()
+    sc = rm.open_resource(resource)
+    try:
+        src = _resolve_source(ch)
+        if src == "MATH":
+            return float(sc.query("MATH:VERTICAL:SCALE?"))
+        return float(sc.query(f"{src}:SCALE?"))
+    except Exception:
+        return None
+    finally:
+        with suppress(Exception):
+            sc.close()
+
+
+def scope_set_vertical_scale(resource=TEK_RSRC_DEFAULT, ch=1, volts_per_div=1.0):
+    """Set vertical scale (V/div) for the requested channel."""
+    if not HAVE_PYVISA:
+        return
+    rm = _pyvisa.ResourceManager()
+    sc = rm.open_resource(resource)
+    try:
+        src = _resolve_source(ch)
+        value = max(1e-6, float(volts_per_div))
+        cmd = "MATH:VERTICAL:SCALE" if src == "MATH" else f"{src}:SCALE"
+        sc.write(f"{cmd} {value}")
     finally:
         with suppress(Exception):
             sc.close()

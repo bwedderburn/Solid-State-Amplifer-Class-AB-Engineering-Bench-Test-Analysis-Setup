@@ -122,6 +122,32 @@ def main() -> int:
         default=2.0,
         help="Minimum THD%% required before a spike may be filtered (default: 2.0).",
     )
+    ap.add_argument(
+        "--scope-auto-scale",
+        default=None,
+        help=(
+            "Auto vertical scale map (e.g. CH1=12,CH3=1). "
+            "Values represent expected Vpp gain relative to generator amplitude."
+        ),
+    )
+    ap.add_argument(
+        "--scope-auto-scale-margin",
+        type=float,
+        default=1.25,
+        help="Headroom multiplier when computing auto scope V/div (default: 1.25).",
+    )
+    ap.add_argument(
+        "--scope-auto-scale-min",
+        type=float,
+        default=1e-3,
+        help="Minimum V/div when auto scaling (default: 1e-3).",
+    )
+    ap.add_argument(
+        "--scope-auto-scale-divs",
+        type=float,
+        default=8.0,
+        help="Vertical divisions assumed when auto scaling (default: 8).",
+    )
     args = ap.parse_args()
 
     if args.points < 2:
@@ -130,6 +156,27 @@ def main() -> int:
         raise ValueError("amp_vpp must be > 0")
     if not math.isfinite(args.dwell) or args.dwell < 0:
         raise ValueError("dwell must be >= 0")
+
+    def _parse_auto_scale(spec: str) -> dict[str, float]:
+        mapping: dict[str, float] = {}
+        for part in spec.split(","):
+            piece = part.strip()
+            if not piece:
+                continue
+            if "=" not in piece:
+                raise ValueError(f"Invalid auto-scale entry: '{piece}'")
+            key, value = piece.split("=", 1)
+            try:
+                mapping[key.strip()] = float(value.strip())
+            except ValueError as exc:
+                raise ValueError(f"Invalid gain for '{key.strip()}': {value.strip()}") from exc
+        if not mapping:
+            raise ValueError("Auto-scale map must specify at least one channel")
+        return mapping
+
+    scope_scale_map = None
+    if args.scope_auto_scale:
+        scope_scale_map = _parse_auto_scale(args.scope_auto_scale)
 
     rows, out_path, suppressed = thd_sweep(
         visa_resource=args.visa_resource,
@@ -147,6 +194,10 @@ def main() -> int:
         filter_window=args.filter_window,
         filter_factor=args.filter_factor,
         filter_min_percent=args.filter_min,
+        scope_scale_map=scope_scale_map,
+        scope_scale_margin=args.scope_auto_scale_margin,
+        scope_scale_min=args.scope_auto_scale_min,
+        scope_scale_divs=args.scope_auto_scale_divs,
     )
     if out_path:
         print("Saved:", out_path)

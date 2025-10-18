@@ -240,6 +240,12 @@ def sweep_audio_kpis(
     scope_wait_single_complete: Callable[[Any, float], bool] | None = None,
     scope_configure_math_subtract: Callable[[Any, str], Any] | None = None,
     scope_resource: Any = None,
+    scope_set_vertical_scale: Callable[[Any, Any, float], Any] | None = None,
+    scope_read_vertical_scale: Callable[[Any, Any], float | None] | None = None,
+    vertical_scale_map: dict[Any, float] | None = None,
+    vertical_scale_margin: float = 1.25,
+    vertical_scale_min: float = 1e-3,
+    vertical_scale_divs: float = 8.0,
     logger: Callable[[str], Any] = lambda s: None,
     progress: Callable[[int, int], Any] = lambda i, n: None,
     abort_flag: Callable[[], bool] = lambda: False,
@@ -265,6 +271,13 @@ def sweep_audio_kpis(
     if resource is not None:
         with suppress(Exception):
             original_scale = scope_read_timebase(resource)
+    original_vertical: dict[Any, float] = {}
+    if resource is not None and scope_read_vertical_scale is not None and vertical_scale_map:
+        for label in vertical_scale_map:
+            with suppress(Exception):
+                value = scope_read_vertical_scale(scope_resource, label)
+                if value is not None:
+                    original_vertical[label] = value
     cycles_per_capture = max(1.0, float(cycles_per_capture))
     for i, f in enumerate(freqs):
         if abort_flag():
@@ -324,6 +337,22 @@ def sweep_audio_kpis(
                     scope_configure_math_subtract(scope_resource, math_order)
                 except Exception as e:
                     logger(f"MATH config error: {e}")
+            if scope_set_vertical_scale and vertical_scale_map and scope_resource is not None:
+                for label, gain in vertical_scale_map.items():
+                    try:
+                        gain_f = float(gain)
+                    except Exception:
+                        logger(f"Vertical scale warn ({label}): invalid gain {gain!r}")
+                        continue
+                    try:
+                        expected_vpp = abs(float(amp_to_set) * gain_f)
+                        divs = max(1.0, float(vertical_scale_divs))
+                        margin = max(0.1, float(vertical_scale_margin))
+                        target = expected_vpp / (divs * margin)
+                        target = max(float(vertical_scale_min), target)
+                        scope_set_vertical_scale(scope_resource, label, target)
+                    except Exception as e:
+                        logger(f"Vertical scale warn ({label}): {e}")
             # Capture
             try:
                 src = "MATH" if use_math else scope_channel
@@ -386,4 +415,8 @@ def sweep_audio_kpis(
     if original_scale is not None and resource is not None:
         with suppress(Exception):
             scope_configure_timebase(resource, original_scale)
+    if original_vertical and scope_set_vertical_scale and resource is not None:
+        for label, value in original_vertical.items():
+            with suppress(Exception):
+                scope_set_vertical_scale(scope_resource, label, value)
     return {"rows": rows, "knees": knees}

@@ -47,7 +47,6 @@ def test_thd_sweep_restores_generator(monkeypatch, tmp_path):
         return ["ok"]
 
     monkeypatch.setattr("amp_benchkit.sweeps.fy_apply", fake_fy_apply)
-    monkeypatch.setattr("amp_benchkit.sweeps.sweep_audio_kpis", _stub_sweep_audio_kpis)
 
     rows, out_path, suppressed = thd_sweep(
         visa_resource="FAKE::SCOPE",
@@ -103,3 +102,53 @@ def test_thd_sweep_logs_when_reset_fails(monkeypatch, caplog):
             post_seconds_per_div=None,
         )
     assert any("FY reset to 1000.0 Hz failed" in rec.message for rec in caplog.records)
+
+
+def test_thd_sweep_auto_scale(monkeypatch):
+    calls = []
+
+    def fake_fy_apply(*, freq_hz, amp_vpp, wave, off_v, duty, ch, port=None, proto=None):
+        calls.append((freq_hz, amp_vpp))
+        return ["ok"]
+
+    set_calls = []
+    read_calls = []
+
+    def fake_set(resource, channel, volts_per_div):
+        set_calls.append((resource, channel, volts_per_div))
+
+    def fake_read(resource, channel):
+        read_calls.append((resource, channel))
+        return 0.05
+
+    monkeypatch.setattr("amp_benchkit.sweeps.fy_apply", fake_fy_apply)
+    monkeypatch.setattr("amp_benchkit.sweeps.scope_set_vertical_scale", fake_set)
+    monkeypatch.setattr("amp_benchkit.sweeps.scope_read_vertical_scale", fake_read)
+
+    thd_sweep(
+        visa_resource="FAKE::SCOPE",
+        fy_port="FAKE::GEN",
+        fy_proto="FY ASCII 9600",
+        amp_vpp=0.5,
+        scope_channel=1,
+        start_hz=100.0,
+        stop_hz=200.0,
+        points=3,
+        dwell_s=0.0,
+        use_math=False,
+        output=None,
+        filter_spikes=False,
+        post_seconds_per_div=None,
+        scope_scale_map={"CH1": 10.0},
+        scope_scale_margin=1.0,
+        scope_scale_min=0.01,
+        scope_scale_divs=8.0,
+    )
+
+    # 3 sweep points -> 3 scale adjustments, plus one restore
+    assert len(calls) == 4  # includes post-sweep restore @ 1 kHz
+    assert math.isclose(calls[-1][0], 1000.0, abs_tol=1e-6)
+    assert len([c for c in set_calls if c[2] != 0.05]) == 3
+    assert math.isclose(set_calls[0][2], 0.5 * 10.0 / 8.0, rel_tol=1e-9)
+    assert set_calls[-1][2] == 0.05
+    assert read_calls  # ensure original scale was queried

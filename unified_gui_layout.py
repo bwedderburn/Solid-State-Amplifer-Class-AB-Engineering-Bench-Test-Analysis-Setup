@@ -1880,6 +1880,32 @@ def main():
         default=None,
         help="Target DUT amplitude when calibration is applied.",
     )
+    sp_thd.add_argument(
+        "--scope-auto-scale",
+        default=None,
+        help=(
+            "Auto vertical scale map (e.g. CH1=12,CH3=1). "
+            "Values represent expected Vpp gain relative to generator amplitude."
+        ),
+    )
+    sp_thd.add_argument(
+        "--scope-auto-scale-margin",
+        type=float,
+        default=1.25,
+        help="Headroom multiplier when computing auto scope V/div (default: 1.25).",
+    )
+    sp_thd.add_argument(
+        "--scope-auto-scale-min",
+        type=float,
+        default=1e-3,
+        help="Minimum V/div when auto scaling (default: 1e-3).",
+    )
+    sp_thd.add_argument(
+        "--scope-auto-scale-divs",
+        type=float,
+        default=8.0,
+        help="Vertical divisions assumed when auto scaling (default: 8).",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1889,6 +1915,23 @@ def main():
 
     setup_logging(verbose=getattr(args, "verbose", False))
     get_logger()
+
+    def _parse_auto_scale(spec: str) -> dict[str, float]:
+        mapping: dict[str, float] = {}
+        for part in spec.split(","):
+            piece = part.strip()
+            if not piece:
+                continue
+            if "=" not in piece:
+                raise ValueError(f"Invalid auto-scale entry: '{piece}'")
+            key, value = piece.split("=", 1)
+            try:
+                mapping[key.strip()] = float(value.strip())
+            except ValueError as exc:
+                raise ValueError(f"Invalid gain for '{key.strip()}': {value.strip()}") from exc
+        if not mapping:
+            raise ValueError("Auto-scale map must specify at least one channel")
+        return mapping
 
     if args.cmd == "thd-math-sweep":
         try:
@@ -1901,6 +1944,13 @@ def main():
                     print(f"Calibration load error: {exc}", file=sys.stderr)
             cal_target = args.cal_target_vpp if calibration_curve else None
             sweep_amp = cal_target if cal_target is not None else args.amp_vpp
+            scope_scale_map = None
+            if args.scope_auto_scale:
+                try:
+                    scope_scale_map = _parse_auto_scale(args.scope_auto_scale)
+                except ValueError as exc:
+                    print(f"Scope auto-scale error: {exc}", file=sys.stderr)
+                    return
             rows, out_path, suppressed = thd_sweep(
                 visa_resource=args.visa_resource,
                 fy_port=args.fy_port,
@@ -1919,6 +1969,10 @@ def main():
                 filter_min_percent=args.filter_min,
                 calibration_curve=calibration_curve,
                 calibrate_to_vpp=cal_target,
+                scope_scale_map=scope_scale_map,
+                scope_scale_margin=args.scope_auto_scale_margin,
+                scope_scale_min=args.scope_auto_scale_min,
+                scope_scale_divs=args.scope_auto_scale_divs,
             )
         except Exception as exc:  # pragma: no cover - hardware path
             print("THD sweep error:", exc, file=sys.stderr)

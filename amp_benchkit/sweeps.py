@@ -19,7 +19,9 @@ from .tek import (
     scope_capture_calibrated,
     scope_configure_math_subtract,
     scope_configure_timebase,
+    scope_read_vertical_scale,
     scope_resume_run,
+    scope_set_vertical_scale,
     scope_wait_single_complete,
 )
 
@@ -75,6 +77,10 @@ def thd_sweep(
     filter_factor: float = 2.0,
     filter_min_percent: float = 2.0,
     calibration_curve: CalibrationCurve | None = None,
+    scope_scale_map: dict[str, float] | None = None,
+    scope_scale_margin: float = 1.25,
+    scope_scale_min: float = 1e-3,
+    scope_scale_divs: float = 8.0,
 ) -> tuple[
     list[tuple[float, float, float, float]],
     Path | None,
@@ -122,6 +128,28 @@ def thd_sweep(
     def _fy_apply(**kw):
         return fy_apply(port=fy_port, proto=fy_proto, **kw)
 
+    vertical_scale_map: dict[str, float] | None = None
+    if scope_scale_map:
+        normalized: dict[str, float] = {}
+        for key, gain in scope_scale_map.items():
+            if isinstance(key, int):
+                label = f"CH{key}"
+            else:
+                label = str(key).strip().upper()
+                if label and label[0].isdigit():
+                    label = f"CH{label}"
+            try:
+                normalized[label or "CH1"] = float(gain)
+            except Exception:
+                log.warning("Invalid scope scale gain %r for %r", gain, key)
+        vertical_scale_map = normalized or None
+
+    def _scope_set_vertical_scale(_resource, channel, volts_per_div):
+        return scope_set_vertical_scale(visa_resource, channel, volts_per_div)
+
+    def _scope_read_vertical_scale(_resource, channel):
+        return scope_read_vertical_scale(visa_resource, channel)
+
     result = sweep_audio_kpis(
         freqs,
         channel=1,
@@ -147,6 +175,12 @@ def thd_sweep(
             visa_resource, timeout_s=timeout_s
         ),
         scope_resource=visa_resource,
+        scope_set_vertical_scale=_scope_set_vertical_scale if vertical_scale_map else None,
+        scope_read_vertical_scale=_scope_read_vertical_scale if vertical_scale_map else None,
+        vertical_scale_map=vertical_scale_map,
+        vertical_scale_margin=scope_scale_margin,
+        vertical_scale_min=scope_scale_min,
+        vertical_scale_divs=scope_scale_divs,
         amplitude_calibration=amplitude_calibration,
         amp_vpp_strategy=amp_vpp_strategy,
     )

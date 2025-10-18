@@ -86,6 +86,7 @@ amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
 # Headless THD sweep using Tek math (requires hardware)
 amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
 # add --math to capture CH1-CH2 differential instead of a single channel
+# add --scope-auto-scale CH1=12,CH3=1 to adjust vertical scale per amplitude
 
 ```
 
