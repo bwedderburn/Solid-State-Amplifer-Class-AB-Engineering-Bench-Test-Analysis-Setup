@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import logging
 import math
 from collections.abc import Iterable
 from contextlib import suppress
@@ -58,6 +59,7 @@ def thd_sweep(
     fy_port: str | None,
     amp_vpp: float = 0.5,
     calibrate_to_vpp: float | None = None,
+    fy_proto: str = "FY ASCII 9600",
     scope_channel: int = 1,
     start_hz: float = 20.0,
     stop_hz: float = 20000.0,
@@ -91,6 +93,7 @@ def thd_sweep(
     if not math.isfinite(dwell_s) or dwell_s < 0:
         raise ValueError("dwell_s must be >= 0")
 
+    log = logging.getLogger("amp_benchkit.sweeps")
     freqs = build_freq_points(start=start_hz, stop=stop_hz, points=points, mode="log")
 
     def _capture(_resource, ch):
@@ -116,13 +119,16 @@ def thd_sweep(
 
     sweep_amp = float(calibrate_to_vpp) if calibrate_to_vpp is not None else amp_vpp
 
+    def _fy_apply(**kw):
+        return fy_apply(port=fy_port, proto=fy_proto, **kw)
+
     result = sweep_audio_kpis(
         freqs,
         channel=1,
         scope_channel=scope_channel,
         amp_vpp=sweep_amp,
         dwell_s=dwell_s,
-        fy_apply=lambda **kw: fy_apply(port=fy_port, proto="FY ASCII 9600", **kw),
+        fy_apply=_fy_apply,
         scope_capture_calibrated=_capture,
         dsp_vrms=vrms,
         dsp_vpp=vpp,
@@ -178,16 +184,23 @@ def thd_sweep(
 
     scope_resume_run(visa_resource)
     # Restore predictable idle state (1 kHz tone, fast timebase) for quick follow-up work.
-    with suppress(Exception):  # pragma: no cover - hardware-specific
-        fy_apply(
-            port=fy_port,
-            proto="FY ASCII 9600",
+    try:  # pragma: no cover - hardware-specific
+        _fy_apply(
             freq_hz=post_freq_hz,
             amp_vpp=amp_vpp,
             wave="Sine",
             off_v=0.0,
             duty=None,
             ch=1,
+        )
+    except Exception as exc:  # pragma: no cover - hardware-specific
+        log.warning(
+            "FY reset to %.1f Hz failed (amp %.2f Vpp, port=%s, proto=%s): %s",
+            post_freq_hz,
+            amp_vpp,
+            fy_port or "<auto>",
+            fy_proto,
+            exc,
         )
     if post_seconds_per_div is not None:
         with suppress(Exception):  # pragma: no cover - hardware-specific
