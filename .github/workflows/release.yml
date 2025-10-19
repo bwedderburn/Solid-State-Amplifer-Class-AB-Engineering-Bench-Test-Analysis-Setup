@@ -37,3 +37,15 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: twine upload --skip-existing dist/*
+
+      - name: Publish to GitHub Packages
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TWINE_USERNAME: ${{ github.actor }}
+          TWINE_PASSWORD: ${{ secrets.GH_PACKAGES_TOKEN }}
+        run: |
+          if [ -z "${TWINE_PASSWORD}" ]; then
+            echo "GH_PACKAGES_TOKEN not set; skipping GitHub Packages upload.";
+            exit 0;
+          fi
+          twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
