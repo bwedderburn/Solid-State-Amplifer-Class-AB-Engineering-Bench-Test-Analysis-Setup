@@ -32,6 +32,24 @@ Exercise scope/generator fixtures individually for failures, e.g.:
 pytest tests/test_gui_builders.py -k scope
 ```
 
+### Tektronix auto-scaling checks
+
+When validating sweeps at multiple amplitudes, prefer the new auto-scaling flags so the
+Tek math trace does not clip between runs:
+
+```bash
+python unified_gui_layout.py thd-math-sweep \
+  --math --math-order CH1-CH3 \
+  --amp-vpp 0.3 \
+  --scope-auto-scale CH1=13,CH3=1 \
+  --scope-auto-scale-margin 0.8 \
+  --apply-gold-calibration --cal-target-vpp 0.3 \
+  --output results/thd_0p3_auto_gold.csv
+```
+
+- Tune the gain map (`CHn=value`) to match your probe ratios / stage gain.
+- Keep results under `results/` (e.g. `results/kenwood/baseline_auto_gold/`) so future HIL runs can compare against the same artefacts.
+
 Document anomalies in `CHANGELOG.md` or new issues.
 
 ## Continuous Integration

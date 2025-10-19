@@ -8,9 +8,20 @@ starting with 0.x pre-release phases.
 [Unreleased]
 ------------
 
+- _No changes yet._
+
+[0.3.8] - 2025-10-12
+--------------------
+
+**Added**
+
+- Automatic Tektronix vertical scaling for THD sweeps via new CLI options (`--scope-auto-scale`, `--scope-auto-scale-margin`, `--scope-auto-scale-min`, `--scope-auto-scale-divs`), including logging and tests around the post-sweep generator reset.
+- Gold-calibrated baseline assets for 0.2–0.5 Vpp Kenwood KAC-823 sweeps, plus helper plots comparing raw vs calibrated THD/Vrms.
+
 **Changed**
 
-- Added `Documentation` URL to PyPI package metadata in `pyproject.toml` pointing to the published GitHub Pages site.
+- Added a `Documentation` URL to the package metadata pointing to the GitHub Pages site.
+- README and docs now explain how to enable auto-scaling and archive sweep artefacts for repeatable amplifier sessions.
 
 [0.3.7] - 2025-10-11
 --------------------

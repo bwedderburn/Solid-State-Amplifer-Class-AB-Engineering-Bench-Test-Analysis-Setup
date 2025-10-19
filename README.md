@@ -86,7 +86,31 @@ amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
 # Headless THD sweep using Tek math (requires hardware)
 amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
 # add --math to capture CH1-CH2 differential instead of a single channel
-# add --scope-auto-scale CH1=12,CH3=1 to adjust vertical scale per amplitude
+# add --scope-auto-scale CH1=12,CH3=1 --scope-auto-scale-margin 1.2 to auto-set volts/div
+
+### Automatic Scope Scaling
+
+`thd-math-sweep` can now drive Tektronix vertical scale automatically so the math trace
+stays within the display window during amplitude sweeps. Provide a comma-separated map
+of channel → expected Vpp gain relative to the FY3200S setting:
+
+```bash
+python3 unified_gui_layout.py thd-math-sweep \
+  --math --math-order CH1-CH3 \
+  --amp-vpp 0.4 \
+  --scope-auto-scale CH1=13,CH3=1 \
+  --scope-auto-scale-margin 0.8 \
+  --apply-gold-calibration --cal-target-vpp 0.4 \
+  --output results/thd_0p4_auto_gold.csv
+```
+
+- `CH1=13` assumes the bridged amplifier output is ~13× the generator amplitude (adjust for
+  your probe factor and gain). Include additional channels or `MATH` if needed.
+- `--scope-auto-scale-margin` controls headroom (values < 1 zoom out, > 1 zoom in). `--scope-auto-scale-min`
+  and `--scope-auto-scale-divs` offer fine tuning for minimum volts/div or displays that show more than
+  eight divisions.
+- At the end of the run the helper restores the original volts/div settings and resets the generator to 1 kHz.
+- For a reference dataset (Kenwood KAC-823, 0.2–0.5 Vpp) see `docs/examples/kenwood_baseline_auto_gold/`.
 
 ```
 
