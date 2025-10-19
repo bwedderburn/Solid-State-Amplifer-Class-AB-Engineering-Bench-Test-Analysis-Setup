@@ -46,13 +46,9 @@ jobs:
           TWINE_USERNAME: ${{ github.actor }}
           GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
-          if [ -n "${GH_PACKAGES_TOKEN}" ]; then
-            export TWINE_PASSWORD="${GH_PACKAGES_TOKEN}"
-          else
-            export TWINE_PASSWORD="${GITHUB_TOKEN}"
-          fi
+          export TWINE_PASSWORD="${GITHUB_TOKEN}"
           if [ -z "${TWINE_PASSWORD}" ]; then
-            echo "No GitHub Packages token available; skipping upload.";
+            echo "No GITHUB_TOKEN available; skipping upload.";
             exit 0;
           fi
           twine upload --repository-url https://pip.pkg.github.com/${{ github.repository_owner }}/legacy/ dist/*
