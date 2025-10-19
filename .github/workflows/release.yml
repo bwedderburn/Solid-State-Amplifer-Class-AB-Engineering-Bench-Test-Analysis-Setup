@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   build-and-publish:
@@ -41,11 +42,17 @@ jobs:
       - name: Publish to GitHub Packages
         if: startsWith(github.ref, 'refs/tags/v')
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TWINE_USERNAME: ${{ github.actor }}
-          TWINE_PASSWORD: ${{ secrets.GH_PACKAGES_TOKEN }}
+          GH_PACKAGES_TOKEN: ${{ secrets.GH_PACKAGES_TOKEN }}
         run: |
+          if [ -n "${GH_PACKAGES_TOKEN}" ]; then
+            export TWINE_PASSWORD="${GH_PACKAGES_TOKEN}"
+          else
+            export TWINE_PASSWORD="${GITHUB_TOKEN}"
+          fi
           if [ -z "${TWINE_PASSWORD}" ]; then
-            echo "GH_PACKAGES_TOKEN not set; skipping GitHub Packages upload.";
+            echo "No GitHub Packages token available; skipping upload.";
             exit 0;
           fi
           twine upload --repository-url https://pip.pkg.github.com/${{ github.repository_owner }}/legacy/ dist/*
