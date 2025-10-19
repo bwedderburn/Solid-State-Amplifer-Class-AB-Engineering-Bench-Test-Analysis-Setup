@@ -10,7 +10,7 @@ starting with 0.x pre-release phases.
 
 - _No changes yet._
 
-[0.3.8] - 2025-10-12
+[0.3.9] - 2025-10-12
 --------------------
 
 **Added**
