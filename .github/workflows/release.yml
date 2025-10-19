@@ -40,6 +40,7 @@ jobs:
         run: twine upload --skip-existing dist/*
 
       - name: Publish to GitHub Packages
+        continue-on-error: true
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,4 +52,6 @@ jobs:
             echo "No GITHUB_TOKEN available; skipping upload.";
             exit 0;
           fi
-          twine upload --repository-url https://pip.pkg.github.com/${{ github.repository_owner }}/legacy/ dist/*
+          echo "Attempting GitHub Packages upload (optional)."
+          twine upload --repository-url https://pip.pkg.github.com/${{ github.repository_owner }}/legacy/ dist/* || \
+            echo "GitHub Packages upload failed (often 404 if namespace not yet provisioned)."
