@@ -48,4 +48,4 @@ jobs:
             echo "GH_PACKAGES_TOKEN not set; skipping GitHub Packages upload.";
             exit 0;
           fi
-          twine upload --repository-url https://upload.pypi.org/legacy/ dist/*
+          twine upload --repository-url https://pip.pkg.github.com/${{ github.repository_owner }}/legacy/ dist/*
