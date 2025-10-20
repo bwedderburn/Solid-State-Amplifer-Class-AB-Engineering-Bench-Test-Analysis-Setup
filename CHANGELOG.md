@@ -8,7 +8,8 @@ starting with 0.x pre-release phases.
 [Unreleased]
 ------------
 
-- _No changes yet._
+- Added `knee-sweep` CLI support for -3 dB bandwidth detection with smoothing/monotonic controls, gold calibration, CSV export, and accompanying tests/docs.
+- New `fft-capture` CLI subcommand configures the Tek math FFT trace, exports frequency/amplitude CSV data, and reports the strongest bins (with optional FY retune helper).
 
 [0.3.9] - 2025-10-12
 --------------------

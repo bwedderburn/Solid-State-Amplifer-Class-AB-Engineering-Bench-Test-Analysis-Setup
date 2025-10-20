@@ -52,6 +52,40 @@ python unified_gui_layout.py thd-math-sweep \
 
 Document anomalies in `CHANGELOG.md` or new issues.
 
+### -3 dB knee sweep
+
+Use the new headless bandwidth helper when validating amplifier bandwidth or matching against golden references:
+
+```bash
+python unified_gui_layout.py knee-sweep \
+  --amp-vpp 1.0 \
+  --output results/knee_sweep.csv \
+  --apply-gold-calibration \
+  --knee-drop-db 3.0 \
+  --smoothing median --smooth-window 5
+```
+
+- Adjust `--knee-drop-db` for other thresholds (e.g. -1 dB noise floor checks).
+- `--smoothing` / `--allow-non-monotonic` help tame non-linear response curves before interpolation.
+- CLI output includes Vrms/PkPk columns plus the relative dB delta that should be cross-checked against published specs.
+
+### FFT snapshot (Tek math trace)
+
+When you need a quick look at harmonic distribution or the measurement noise floor, capture the on-scope FFT trace:
+
+```bash
+amp-benchkit fft-capture \
+  --source CH1 \
+  --window hanning \
+  --scale db \
+  --output results/fft_trace.csv \
+  --top 12
+```
+
+- Pass `--fy-freq` / `--fy-amp` to re-arm the FY source ahead of the grab (falls back to auto-detecting the FY port).
+- Use `--smoothing none` or custom scripts on the CSV to cross-validate against the analyzer’s THD readings.
+- The CLI prints the strongest bins in human-readable form while the CSV retains the full spectrum for post-processing.
+
 ## Continuous Integration
 
 GitHub Actions run:

@@ -11,6 +11,7 @@ Refined to prefer PySide6 automatically (falls back to PyQt5). Headless selftest
 """
 
 import argparse
+import csv
 import math
 import os
 import sys
@@ -58,12 +59,13 @@ from amp_benchkit.diagnostics import collect_diagnostics
 from amp_benchkit.fy import FY_BAUD_EOLS, build_fy_cmds, fy_apply, fy_sweep
 from amp_benchkit.gui import build_generator_tab, build_scope_tab
 from amp_benchkit.logging import get_logger, setup_logging
-from amp_benchkit.sweeps import format_thd_rows, thd_sweep
+from amp_benchkit.sweeps import format_thd_rows, knee_sweep, thd_sweep
 from amp_benchkit.tek import (
     TEK_RSRC_DEFAULT,
     parse_ieee_block,
     scope_arm_single,
     scope_capture_calibrated,
+    scope_capture_fft_trace,
     scope_configure_math_subtract,
     scope_resume_run,
     scope_screenshot,
@@ -1906,6 +1908,199 @@ def main():
         default=8.0,
         help="Vertical divisions assumed when auto scaling (default: 8).",
     )
+    sp_knee = sub.add_parser(
+        "knee-sweep",
+        help="Headless log sweep to find -dB knees using Vrms/PkPk metrics.",
+    )
+    sp_knee.add_argument(
+        "--visa-resource",
+        default=os.environ.get("VISA_RESOURCE", TEK_RSRC_DEFAULT),
+        help="Tektronix VISA resource string.",
+    )
+    sp_knee.add_argument(
+        "--fy-port",
+        default=os.environ.get("FY_PORT"),
+        help="FY3200S serial port (auto-detect if omitted).",
+    )
+    sp_knee.add_argument(
+        "--amp-vpp",
+        type=float,
+        default=float(os.environ.get("AMP_VPP", "0.5")),
+        help="Generator amplitude (Vpp).",
+    )
+    sp_knee.add_argument(
+        "--start",
+        type=float,
+        default=20.0,
+        help="Sweep start frequency (Hz).",
+    )
+    sp_knee.add_argument(
+        "--stop",
+        type=float,
+        default=20000.0,
+        help="Sweep stop frequency (Hz).",
+    )
+    sp_knee.add_argument(
+        "--points",
+        type=int,
+        default=61,
+        help="Number of logarithmic sweep points.",
+    )
+    sp_knee.add_argument(
+        "--dwell",
+        type=float,
+        default=0.15,
+        help="Dwell time per frequency in seconds (increase for LF stability).",
+    )
+    sp_knee.add_argument(
+        "--channel",
+        type=int,
+        default=1,
+        help="Scope channel to capture (ignored when --math is used).",
+    )
+    sp_knee.add_argument(
+        "--math",
+        action="store_true",
+        help="Capture the scope MATH trace instead of a single channel.",
+    )
+    sp_knee.add_argument(
+        "--math-order",
+        default="CH1-CH2",
+        help="Math subtraction order (e.g. CH1-CH2).",
+    )
+    sp_knee.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results/knee_sweep.csv"),
+        help="Optional CSV destination (set to '-' to disable saving).",
+    )
+    sp_knee.add_argument(
+        "--apply-gold-calibration",
+        action="store_true",
+        help="Apply the packaged gold calibration curve to amplitude metrics.",
+    )
+    sp_knee.add_argument(
+        "--cal-target-vpp",
+        type=float,
+        default=None,
+        help="Target DUT amplitude when calibration is applied.",
+    )
+    sp_knee.add_argument(
+        "--knee-drop-db",
+        type=float,
+        default=3.0,
+        help="Drop in dB to qualify low/high knees (default: 3.0).",
+    )
+    sp_knee.add_argument(
+        "--knee-ref-mode",
+        choices=["max", "1khz"],
+        default="max",
+        help="Reference amplitude: overall max or nearest to 1 kHz.",
+    )
+    sp_knee.add_argument(
+        "--knee-ref-hz",
+        type=float,
+        default=1000.0,
+        help="Reference frequency when --knee-ref-mode=1khz (default: 1000 Hz).",
+    )
+    sp_knee.add_argument(
+        "--smoothing",
+        choices=["median", "mean", "none"],
+        default="median",
+        help="Smoothing strategy before knee search (default: median).",
+    )
+    sp_knee.add_argument(
+        "--smooth-window",
+        type=int,
+        default=5,
+        help="Window size for smoothing (odd integer, default: 5).",
+    )
+    sp_knee.add_argument(
+        "--allow-non-monotonic",
+        action="store_true",
+        help="Disable monotonic envelope enforcement around the reference point.",
+    )
+    sp_knee.add_argument(
+        "--scope-auto-scale",
+        default=None,
+        help=(
+            "Auto vertical scale map (e.g. CH1=12,CH3=1). "
+            "Values represent expected Vpp gain relative to generator amplitude."
+        ),
+    )
+    sp_knee.add_argument(
+        "--scope-auto-scale-margin",
+        type=float,
+        default=1.25,
+        help="Headroom multiplier when computing auto scope V/div (default: 1.25).",
+    )
+    sp_knee.add_argument(
+        "--scope-auto-scale-min",
+        type=float,
+        default=1e-3,
+        help="Minimum V/div when auto scaling (default: 1e-3).",
+    )
+    sp_knee.add_argument(
+        "--scope-auto-scale-divs",
+        type=float,
+        default=8.0,
+        help="Vertical divisions assumed when auto scaling (default: 8).",
+    )
+    sp_fft = sub.add_parser(
+        "fft-capture",
+        help="Capture the Tektronix FFT (math) trace and export frequency/amplitude CSV.",
+    )
+    sp_fft.add_argument(
+        "--visa-resource",
+        default=os.environ.get("VISA_RESOURCE", TEK_RSRC_DEFAULT),
+        help="Tektronix VISA resource string.",
+    )
+    sp_fft.add_argument(
+        "--source",
+        default="CH1",
+        help="Scope channel feeding the FFT (e.g. CH1, CH2).",
+    )
+    sp_fft.add_argument(
+        "--window",
+        choices=["rectangular", "hanning", "hamming", "blackman"],
+        default="hanning",
+        help="FFT window (default: hanning).",
+    )
+    sp_fft.add_argument(
+        "--scale",
+        choices=["linear", "db"],
+        default="db",
+        help="FFT vertical scale (default: db).",
+    )
+    sp_fft.add_argument(
+        "--output",
+        type=Path,
+        default=Path("results/fft_trace.csv"),
+        help="CSV destination for FFT trace (set to '-' to disable saving).",
+    )
+    sp_fft.add_argument(
+        "--fy-port",
+        default=os.environ.get("FY_PORT"),
+        help="Optional FY3200S serial port to retune before capture.",
+    )
+    sp_fft.add_argument(
+        "--fy-freq",
+        type=float,
+        default=None,
+        help="If provided, retune the FY generator to this frequency before capture.",
+    )
+    sp_fft.add_argument(
+        "--fy-amp",
+        type=float,
+        default=None,
+        help="If provided, set FY output amplitude (Vpp) before capture.",
+    )
+    sp_fft.add_argument(
+        "--top",
+        type=int,
+        default=10,
+        help="Print the top-N FFT bins by amplitude (default: 10).",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -1985,6 +2180,131 @@ def main():
             print("Filtered spikes:")
             for freq, original, baseline in suppressed:
                 print(f"  {freq:8.2f} Hz → {original:6.3f}% (replaced with {baseline:6.3f}%)")
+        return
+    if args.cmd == "knee-sweep":
+        try:
+            output = None if str(args.output) == "-" else args.output
+            calibration_curve = None
+            if getattr(args, "apply_gold_calibration", False) or args.cal_target_vpp is not None:
+                try:
+                    calibration_curve = load_calibration_curve()
+                except Exception as exc:
+                    print(f"Calibration load error: {exc}", file=sys.stderr)
+            cal_target = args.cal_target_vpp if calibration_curve else None
+            sweep_amp = cal_target if cal_target is not None else args.amp_vpp
+            scope_scale_map = None
+            if args.scope_auto_scale:
+                try:
+                    scope_scale_map = _parse_auto_scale(args.scope_auto_scale)
+                except ValueError as exc:
+                    print(f"Scope auto-scale error: {exc}", file=sys.stderr)
+                    return
+            result = knee_sweep(
+                visa_resource=args.visa_resource,
+                fy_port=args.fy_port,
+                amp_vpp=sweep_amp,
+                calibrate_to_vpp=cal_target,
+                scope_channel=args.channel,
+                start_hz=args.start,
+                stop_hz=args.stop,
+                points=args.points,
+                dwell_s=args.dwell,
+                use_math=args.math,
+                math_order=args.math_order,
+                output=output,
+                knee_drop_db=args.knee_drop_db,
+                knee_ref_mode="freq" if args.knee_ref_mode == "1khz" else "max",
+                knee_ref_hz=args.knee_ref_hz,
+                smoothing=args.smoothing,
+                smooth_window=args.smooth_window,
+                enforce_monotonic=not args.allow_non_monotonic,
+                calibration_curve=calibration_curve,
+                scope_scale_map=scope_scale_map,
+                scope_scale_margin=args.scope_auto_scale_margin,
+                scope_scale_min=args.scope_auto_scale_min,
+                scope_scale_divs=args.scope_auto_scale_divs,
+            )
+        except Exception as exc:  # pragma: no cover - hardware path
+            print("Knee sweep error:", exc, file=sys.stderr)
+            return
+        csv_path = result.get("csv_path")
+        if csv_path:
+            print("Saved:", csv_path)
+        knees = result.get("knees")
+        ref_label = "max" if args.knee_ref_mode == "max" else f"{args.knee_ref_hz:.1f} Hz"
+        if knees:
+            f_lo, f_hi, ref_amp, ref_db = knees
+            drop = args.knee_drop_db
+            print(
+                f"Knees @ -{drop:.2f} dB (ref {ref_label}): "
+                f"low≈{f_lo:.2f} Hz, high≈{f_hi:.2f} Hz "
+                f"(ref_amp={ref_amp:.4f} Vpp, ref_dB={ref_db:.2f} dB)"
+            )
+        else:
+            print("Knee detection unavailable (insufficient data).")
+        for freq, vr, pk, rel_db in result.get("rows", []):
+            vr_str = f"{vr:7.4f}" if math.isfinite(vr) else "   NaN"
+            pk_str = f"{pk:7.4f}" if math.isfinite(pk) else "   NaN"
+            rel_str = f"{rel_db:7.2f}" if math.isfinite(rel_db) else "   NaN"
+            print(f"{freq:8.2f} Hz → Vrms {vr_str} V, PkPk {pk_str} V, delta {rel_str} dB")
+        return
+    if args.cmd == "fft-capture":
+        fy_port = args.fy_port
+        if (args.fy_freq is not None or args.fy_amp is not None) and not fy_port:
+            fy_port = find_fy_port()
+            if not fy_port:
+                print("FY generator port not found; skipping generator retune.", file=sys.stderr)
+        if fy_port and (args.fy_freq is not None or args.fy_amp is not None):
+            try:
+                fy_apply(
+                    port=fy_port,
+                    proto="FY ASCII 9600",
+                    freq_hz=float(args.fy_freq if args.fy_freq is not None else 1000.0),
+                    amp_vpp=float(args.fy_amp if args.fy_amp is not None else 0.5),
+                    wave="Sine",
+                    off_v=0.0,
+                    duty=None,
+                    ch=1,
+                )
+            except Exception as exc:
+                print(f"Generator retune error: {exc}", file=sys.stderr)
+        try:
+            fft = scope_capture_fft_trace(
+                resource=args.visa_resource,
+                source=args.source,
+                window=args.window,
+                scale=args.scale,
+            )
+        except Exception as exc:  # pragma: no cover - hardware path
+            print("FFT capture error:", exc, file=sys.stderr)
+            return
+        freqs = fft.get("freqs", [])
+        values = fft.get("values", [])
+        x_unit = fft.get("x_unit", "Hz")
+        y_unit = fft.get("y_unit", "dB" if args.scale.lower() == "db" else "V")
+        if args.output and str(args.output) != "-":
+            try:
+                out_path = Path(args.output)
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                with out_path.open("w", newline="") as fh:
+                    writer = csv.writer(fh)
+                    writer.writerow([f"freq_{x_unit.lower()}", f"amplitude_{y_unit.lower()}"])
+                    writer.writerows(zip(freqs, values, strict=False))
+                print("Saved:", out_path)
+            except Exception as exc:
+                print(f"Save error: {exc}", file=sys.stderr)
+        pairs = list(zip(freqs, values, strict=False))
+        if not pairs:
+            print("FFT trace empty.")
+            return
+        if args.scale.lower() == "db":
+            ranked = sorted(pairs, key=lambda fv: fv[1], reverse=True)
+        else:
+            ranked = sorted(pairs, key=lambda fv: abs(fv[1]), reverse=True)
+        top_n = max(1, int(args.top))
+        print(f"Top {top_n} bins ({y_unit}):")
+        for freq, value in ranked[:top_n]:
+            print(f"  {freq:10.2f} {x_unit} → {value:9.3f} {y_unit}")
         return
 
     if args.cmd == "diag":

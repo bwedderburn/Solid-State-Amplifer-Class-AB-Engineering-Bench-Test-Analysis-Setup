@@ -34,6 +34,7 @@ __all__ = [
     "scope_wait_single_complete",
     "scope_configure_math_subtract",
     "scope_capture_calibrated",
+    "scope_capture_fft_trace",
     "scope_configure_timebase",
     "scope_read_timebase",
     "scope_resume_run",
@@ -344,12 +345,142 @@ def scope_capture_calibrated(resource=TEK_RSRC_DEFAULT, timeout_ms=15000, ch=1):
         yzero = float(sc.query("WFMPRE:YZERO?"))
         yoff = float(sc.query("WFMPRE:YOFF?"))
         xincr = float(sc.query("WFMPRE:XINCR?"))
+        try:
+            xzero = float(sc.query("WFMPRE:XZERO?"))
+        except Exception:
+            xzero = 0.0
         block = read_curve_block(sc)
         data = _np.frombuffer(parse_ieee_block(block), dtype=_np.int8)
         volts = (data - yoff) * ymult + yzero
-        t = _np.arange(data.size) * xincr
+        t = xzero + _np.arange(data.size) * xincr
         return t.tolist(), volts.tolist()
     finally:
+        with suppress(Exception):
+            sc.close()
+
+
+def scope_capture_fft_trace(
+    resource=TEK_RSRC_DEFAULT,
+    source=1,
+    *,
+    window="HANNING",
+    scale="DB",
+    timeout_ms=15000,
+):
+    """Capture the Tek FFT (math) trace as frequency/amplitude arrays.
+
+    Parameters
+    ----------
+    resource : str
+        VISA resource identifier for the scope.
+    source : int | str
+        Base channel feeding the FFT (e.g. 1, "CH2").
+    window : str
+        FFT window. Accepted values: rectangular, hanning, hamming, blackman.
+    scale : str
+        FFT vertical scale. Accepted values: linear, db.
+    timeout_ms : int
+        VISA timeout for the transfer.
+
+    Returns
+    -------
+    dict
+        {"freqs": [...], "values": [...], "x_unit": "Hz", "y_unit": "dB" or "V"}.
+    """
+
+    _need_pyvisa()
+    import numpy as _np
+
+    window_map = {
+        "RECT": "RECTANGULAR",
+        "RECTANGULAR": "RECTANGULAR",
+        "RECTANGLE": "RECTANGULAR",
+        "HANN": "HANNING",
+        "HANNING": "HANNING",
+        "HAMM": "HAMMING",
+        "HAMMING": "HAMMING",
+        "BLACK": "BLACKMAN",
+        "BLACKMAN": "BLACKMAN",
+    }
+    scale_map = {
+        "LIN": "LINEAR",
+        "LINEAR": "LINEAR",
+        "DB": "DB",
+        "DBM": "DB",
+        "DECIBEL": "DB",
+    }
+    src = _resolve_source(source)
+    win_key = window.upper().strip()
+    scl_key = scale.upper().strip()
+    win_cmd = window_map.get(win_key, window_map.get(win_key.rstrip("G"), "HANNING"))
+    if win_cmd not in window_map.values():
+        raise TekError(f"Unsupported FFT window '{window}'")
+    scale_cmd = scale_map.get(scl_key)
+    if scale_cmd is None:
+        raise TekError(f"Unsupported FFT scale '{scale}'")
+
+    try:
+        rm = _pyvisa.ResourceManager()
+        sc = rm.open_resource(resource)
+    except Exception as e:
+        raise TekError(f"Failed to open scope resource '{resource}': {e}") from e
+    try:
+        try:
+            sc.timeout = int(float(timeout_ms))
+        except Exception:
+            sc.timeout = 15000
+        sc.chunk_size = max(getattr(sc, "chunk_size", 20480), 1048576)
+        sc.write("HEADER OFF")
+        # Configure FFT math trace
+        with suppress(Exception):
+            sc.write("MATH:DEFINE FFT")
+        with suppress(Exception):
+            sc.write(f"MATH:SOURCE1 {src}")
+        with suppress(Exception):
+            sc.write(f"MATH:SOUrce {src}")
+        with suppress(Exception):
+            sc.write(f"MATH:FFT:SOURCE {src}")
+        with suppress(Exception):
+            sc.write(f"MATH:FFT:WINDOW {win_cmd}")
+        with suppress(Exception):
+            sc.write(f"MATH:FFT:SCALE {scale_cmd}")
+        with suppress(Exception):
+            sc.write("MATH:FFT:STATE ON")
+        sc.write("DATA:SOURCE MATH")
+        sc.write("DATa:ENCdg RIBinary;WIDth 1")
+        sc.write("DATA:START 1")
+        sc.write("ACQUIRE:STOPAFTER SEQUENCE")
+        sc.write("ACQUIRE:STATE RUN")
+        ymult = float(sc.query("WFMPRE:YMULT?"))
+        yzero = float(sc.query("WFMPRE:YZERO?"))
+        yoff = float(sc.query("WFMPRE:YOFF?"))
+        xincr = float(sc.query("WFMPRE:XINCR?"))
+        try:
+            xzero = float(sc.query("WFMPRE:XZERO?"))
+        except Exception:
+            xzero = 0.0
+        try:
+            xunit = sc.query("WFMPRE:XUNIT?").strip()
+        except Exception:
+            xunit = "Hz"
+        try:
+            yunit = sc.query("WFMPRE:YUNIT?").strip()
+        except Exception:
+            yunit = "dB" if scale_cmd == "DB" else "V"
+        block = read_curve_block(sc)
+        raw = parse_ieee_block(block)
+        data = raw.astype(_np.float64, copy=False)
+        values = (data - yoff) * ymult + yzero
+        freqs = xzero + _np.arange(values.size) * xincr
+        return {
+            "freqs": freqs.tolist(),
+            "values": values.tolist(),
+            "x_unit": xunit or "Hz",
+            "y_unit": yunit or ("dB" if scale_cmd == "DB" else "V"),
+        }
+    finally:
+        with suppress(Exception):
+            sc.write("MATH:FFT:STATE OFF")
         with suppress(Exception):
             sc.close()
 

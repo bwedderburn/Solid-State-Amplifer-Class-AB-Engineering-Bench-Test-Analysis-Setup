@@ -88,6 +88,15 @@ amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
 # add --math to capture CH1-CH2 differential instead of a single channel
 # add --scope-auto-scale CH1=12,CH3=1 --scope-auto-scale-margin 1.2 to auto-set volts/div
 
+# Headless bandwidth sweep to locate -3 dB knees (fake-hw friendly)
+amp-benchkit knee-sweep --amp-vpp 1.0 --output results/knee_sweep.csv
+# add --knee-drop-db 1.5 to search for alternate bandwidth targets
+# add --smoothing mean --smooth-window 7 --allow-non-monotonic to tweak the envelope fit
+
+# Snapshot the scope FFT (math trace) with optional generator retune
+amp-benchkit fft-capture --source CH1 --output results/fft_trace.csv --top 8
+# add --fy-freq 1000 --fy-amp 0.5 to re-arm the FY generator before capture
+
 ### Automatic Scope Scaling
 
 `thd-math-sweep` can now drive Tektronix vertical scale automatically so the math trace
