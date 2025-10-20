@@ -97,6 +97,15 @@ amp-benchkit knee-sweep --amp-vpp 1.0 --output results/knee_sweep.csv
 amp-benchkit fft-capture --source CH1 --output results/fft_trace.csv --top 8
 # add --fy-freq 1000 --fy-amp 0.5 to re-arm the FY generator before capture
 
+# Compare FFT-derived THD against sweep output
+python scripts/fft_thd_compare.py \
+  --fft results/fft_trace.csv \
+  --thd results/thd_sweep.csv \
+  --auto-fundamental \
+  --window 200 \
+  --harmonics 8
+# replace --auto-fundamental with --fundamental 1000 if the FFT bin lands exactly at 1 kHz
+
 ### Automatic Scope Scaling
 
 `thd-math-sweep` can now drive Tektronix vertical scale automatically so the math trace

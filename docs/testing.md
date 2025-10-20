@@ -86,6 +86,23 @@ amp-benchkit fft-capture \
 - Use `--smoothing none` or custom scripts on the CSV to cross-validate against the analyzer’s THD readings.
 - The CLI prints the strongest bins in human-readable form while the CSV retains the full spectrum for post-processing.
 
+### Offline THD comparison
+
+After capturing both a THD sweep and an FFT trace, reconcile them with the helper script:
+
+```bash
+python scripts/fft_thd_compare.py \
+  --thd results/thd_sweep.csv \
+  --fft results/fft_trace.csv \
+  --auto-fundamental \
+  --window 200 \
+  --harmonics 8
+```
+
+- Swap `--auto-fundamental` for `--fundamental 1000` if the FFT is already zoomed to 1 kHz.
+- Tighten `--window` when the FFT resolution is high to avoid picking up adjacent bins.
+- The script surfaces the harmonic peaks and delta so scope FFT, THD sweep, and analyzer readings can be compared offline.
+
 ## Continuous Integration
 
 GitHub Actions run:
