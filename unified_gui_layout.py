@@ -17,6 +17,7 @@ import os
 import sys
 import time
 from contextlib import suppress
+from datetime import datetime
 from pathlib import Path
 from typing import Any, TypedDict
 
@@ -42,6 +43,7 @@ matplotlib.use("Agg")
 
 # Import extracted dependency detection & helpers
 from amp_benchkit import dsp as _dsp
+from amp_benchkit.automation import build_freq_points
 from amp_benchkit.calibration import load_calibration_curve
 from amp_benchkit.deps import (
     HAVE_PYVISA,
@@ -66,6 +68,7 @@ from amp_benchkit.tek import (
     scope_arm_single,
     scope_capture_calibrated,
     scope_capture_fft_trace,
+    scope_configure_fft,
     scope_configure_math_subtract,
     scope_resume_run,
     scope_screenshot,
@@ -123,6 +126,20 @@ def fixed_font():
         return f
     except Exception:
         return None
+
+
+def _timestamp_path(path: Path) -> Path:
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    if path.suffix:
+        return path.with_name(f"{path.stem}_{stamp}{path.suffix}")
+    return path.parent / f"{path.name}_{stamp}"
+
+
+def _resolve_output_path(value: Path | str | None, *, timestamp: bool) -> Path | None:
+    if value is None:
+        return None
+    path = Path(value)
+    return _timestamp_path(path) if timestamp else path
 
 
 # -----------------------------
@@ -1908,6 +1925,11 @@ def main():
         default=8.0,
         help="Vertical divisions assumed when auto scaling (default: 8).",
     )
+    sp_thd.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="Append a timestamp to the output filename to avoid overwriting.",
+    )
     sp_knee = sub.add_parser(
         "knee-sweep",
         help="Headless log sweep to find -dB knees using Vrms/PkPk metrics.",
@@ -2046,6 +2068,11 @@ def main():
         default=8.0,
         help="Vertical divisions assumed when auto scaling (default: 8).",
     )
+    sp_knee.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="Append a timestamp to the output filename to avoid overwriting.",
+    )
     sp_fft = sub.add_parser(
         "fft-capture",
         help="Capture the Tektronix FFT (math) trace and export frequency/amplitude CSV.",
@@ -2101,6 +2128,102 @@ def main():
         default=10,
         help="Print the top-N FFT bins by amplitude (default: 10).",
     )
+    sp_fft.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="Append a timestamp to the output filename to avoid overwriting.",
+    )
+    sp_fft_sweep = sub.add_parser(
+        "fft-sweep",
+        help="Run a generator frequency sweep capturing FFT spectra at each point.",
+    )
+    sp_fft_sweep.add_argument(
+        "--visa-resource",
+        default=os.environ.get("VISA_RESOURCE", TEK_RSRC_DEFAULT),
+        help="Tektronix VISA resource string.",
+    )
+    sp_fft_sweep.add_argument(
+        "--fy-port",
+        default=os.environ.get("FY_PORT"),
+        help="FY3200S serial port (auto-detect if omitted).",
+    )
+    sp_fft_sweep.add_argument(
+        "--amp-vpp",
+        type=float,
+        default=float(os.environ.get("AMP_VPP", "0.5")),
+        help="Generator amplitude (Vpp).",
+    )
+    sp_fft_sweep.add_argument(
+        "--start",
+        type=float,
+        required=True,
+        help="Sweep start frequency (Hz).",
+    )
+    sp_fft_sweep.add_argument(
+        "--stop",
+        type=float,
+        required=True,
+        help="Sweep stop frequency (Hz).",
+    )
+    sp_fft_sweep.add_argument(
+        "--points",
+        type=int,
+        required=True,
+        help="Number of logarithmic sweep points (>=2).",
+    )
+    sp_fft_sweep.add_argument(
+        "--mode",
+        choices=["log", "linear"],
+        default="log",
+        help="Frequency spacing mode (default: log).",
+    )
+    sp_fft_sweep.add_argument(
+        "--fft-span",
+        type=float,
+        default=None,
+        help="FFT span in Hz (set center to current frequency).",
+    )
+    sp_fft_sweep.add_argument(
+        "--fft-zoom",
+        type=float,
+        default=None,
+        help="FFT zoom multiplier (optional alternative to span).",
+    )
+    sp_fft_sweep.add_argument(
+        "--fft-scale",
+        choices=["linear", "db"],
+        default="db",
+        help="FFT vertical scale (default: db).",
+    )
+    sp_fft_sweep.add_argument(
+        "--fft-window",
+        choices=["rectangular", "hanning", "hamming", "blackman", "flattop"],
+        default="hanning",
+        help="FFT window applied before each capture (default: hanning).",
+    )
+    sp_fft_sweep.add_argument(
+        "--dwell",
+        type=float,
+        default=0.3,
+        help="Settling time in seconds before each capture (default: 0.3).",
+    )
+    sp_fft_sweep.add_argument(
+        "--output-dir",
+        type=Path,
+        default=Path("results/fft_sweep"),
+        help="Directory for per-frequency FFT CSV files.",
+    )
+    sp_fft_sweep.add_argument(
+        "--top",
+        type=int,
+        default=8,
+        help="Show the first N bins by amplitude for each capture (default: 8).",
+    )
+    sp_fft_sweep.add_argument(
+        "--timestamp",
+        action="store_true",
+        help="Append timestamps to saved filenames.",
+    )
     sp_sweep = sub.add_parser("sweep", help="Generate frequency list (headless)")
     sp_sweep.add_argument("--start", type=float, required=True, help="Start frequency Hz")
     sp_sweep.add_argument("--stop", type=float, required=True, help="Stop frequency Hz")
@@ -2130,7 +2253,10 @@ def main():
 
     if args.cmd == "thd-math-sweep":
         try:
-            output = None if str(args.output) == "-" else args.output
+            output_raw = None if str(args.output) == "-" else Path(args.output)
+            output = None
+            if output_raw is not None:
+                output = _resolve_output_path(output_raw, timestamp=args.timestamp)
             calibration_curve = None
             if getattr(args, "apply_gold_calibration", False) or args.cal_target_vpp is not None:
                 try:
@@ -2183,7 +2309,10 @@ def main():
         return
     if args.cmd == "knee-sweep":
         try:
-            output = None if str(args.output) == "-" else args.output
+            output_raw = None if str(args.output) == "-" else Path(args.output)
+            output = None
+            if output_raw is not None:
+                output = _resolve_output_path(output_raw, timestamp=args.timestamp)
             calibration_curve = None
             if getattr(args, "apply_gold_calibration", False) or args.cal_target_vpp is not None:
                 try:
@@ -2282,9 +2411,12 @@ def main():
         values = fft.get("values", [])
         x_unit = fft.get("x_unit", "Hz")
         y_unit = fft.get("y_unit", "dB" if args.scale.lower() == "db" else "V")
+        output_path = None
         if args.output and str(args.output) != "-":
             try:
-                out_path = Path(args.output)
+                raw_path = Path(args.output)
+                output_path = _resolve_output_path(raw_path, timestamp=args.timestamp)
+                out_path = output_path
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 with out_path.open("w", newline="") as fh:
                     writer = csv.writer(fh)
@@ -2305,6 +2437,121 @@ def main():
         print(f"Top {top_n} bins ({y_unit}):")
         for freq, value in ranked[:top_n]:
             print(f"  {freq:10.2f} {x_unit} → {value:9.3f} {y_unit}")
+        return
+    if args.cmd == "fft-sweep":
+        output_dir = args.output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        fy_port = args.fy_port or find_fy_port()
+        if args.fy_port and not fy_port:
+            print(f"FY generator port '{args.fy_port}' not found.", file=sys.stderr)
+        if fy_port:
+            print("Using FY port:", fy_port)
+        try:
+            freqs = build_freq_points(
+                start=args.start,
+                stop=args.stop,
+                points=args.points,
+                mode=args.mode,
+            )
+        except Exception as exc:
+            print("FFT sweep frequency error:", exc, file=sys.stderr)
+            return
+        top_n = max(1, int(args.top))
+        try:
+            for idx, freq in enumerate(freqs, start=1):
+                print(f"[{idx}/{len(freqs)}] Capturing FFT @ {freq:.2f} Hz")
+                if fy_port:
+                    try:
+                        fy_apply(
+                            port=fy_port,
+                            proto="FY ASCII 9600",
+                            freq_hz=float(freq),
+                            amp_vpp=float(args.amp_vpp),
+                            wave="Sine",
+                            off_v=0.0,
+                            duty=None,
+                            ch=1,
+                        )
+                    except Exception as exc:
+                        print(f"Generator retune error ({freq:.2f} Hz): {exc}", file=sys.stderr)
+                try:
+                    scope_configure_fft(
+                        resource=args.visa_resource,
+                        center_hz=freq,
+                        span_hz=args.fft_span,
+                        zoom=args.fft_zoom,
+                        scale=args.fft_scale,
+                        window=args.fft_window,
+                    )
+                except Exception as exc:
+                    print(f"FFT config warning ({freq:.2f} Hz): {exc}", file=sys.stderr)
+                if args.dwell > 0:
+                    time.sleep(args.dwell)
+                try:
+                    fft = scope_capture_fft_trace(
+                        resource=args.visa_resource,
+                        source="CH1",
+                        window=args.fft_window,
+                        scale=args.fft_scale,
+                    )
+                except Exception as exc:
+                    print(f"FFT capture error ({freq:.2f} Hz): {exc}", file=sys.stderr)
+                    continue
+                freqs_fft = fft.get("freqs", [])
+                values_fft = fft.get("values", [])
+                x_unit = fft.get("x_unit", "Hz")
+                y_unit = fft.get("y_unit", "dB" if args.fft_scale.lower() == "db" else "V")
+                filename = f"fft_{freq:.2f}Hz.csv"
+                dest = output_dir / filename
+                dest = _timestamp_path(dest) if args.timestamp else dest
+                try:
+                    with dest.open("w", newline="") as fh:
+                        writer = csv.writer(fh)
+                        writer.writerow([f"freq_{x_unit.lower()}", f"amplitude_{y_unit.lower()}"])
+                        writer.writerows(zip(freqs_fft, values_fft, strict=False))
+                    print("Saved:", dest)
+                except Exception as exc:
+                    print(f"Save error ({dest}): {exc}", file=sys.stderr)
+                pairs = list(zip(freqs_fft, values_fft, strict=False))
+                if not pairs:
+                    continue
+                ranked = (
+                    sorted(pairs, key=lambda fv: fv[1], reverse=True)
+                    if args.fft_scale.lower() == "db"
+                    else sorted(pairs, key=lambda fv: abs(fv[1]), reverse=True)
+                )
+                print(f"Top {top_n} bins ({y_unit}):")
+                for f_bin, val in ranked[:top_n]:
+                    print(f"  {f_bin:10.2f} {x_unit} → {val:9.3f} {y_unit}")
+        finally:
+            if fy_port:
+                try:
+                    fy_apply(
+                        port=fy_port,
+                        proto="FY ASCII 9600",
+                        freq_hz=1000.0,
+                        amp_vpp=float(args.amp_vpp),
+                        wave="Sine",
+                        off_v=0.0,
+                        duty=None,
+                        ch=1,
+                    )
+                except Exception as exc:
+                    print(f"Generator reset warning: {exc}", file=sys.stderr)
+            try:
+                restore_span = args.fft_span if args.fft_span is not None else 1000.0
+                scope_configure_fft(
+                    resource=args.visa_resource,
+                    center_hz=1000.0,
+                    span_hz=restore_span,
+                    zoom=1.0,
+                    scale=args.fft_scale,
+                    window=args.fft_window,
+                )
+            except Exception as exc:
+                print(f"FFT restore warning: {exc}", file=sys.stderr)
+            with suppress(Exception):
+                scope_resume_run(args.visa_resource)
         return
 
     if args.cmd == "diag":
@@ -2387,8 +2634,6 @@ def main():
     if args.cmd == "sweep":
         rc = 0
         try:
-            from amp_benchkit.automation import build_freq_points
-
             freqs = build_freq_points(
                 start=args.start, stop=args.stop, points=args.points, mode=args.mode
             )

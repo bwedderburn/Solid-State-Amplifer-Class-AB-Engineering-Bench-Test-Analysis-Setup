@@ -44,7 +44,19 @@ python unified_gui_layout.py thd-math-sweep \
   --scope-auto-scale CH1=13,CH3=1 \
   --scope-auto-scale-margin 0.8 \
   --apply-gold-calibration --cal-target-vpp 0.3 \
-  --output results/thd_0p3_auto_gold.csv
+  --output results/thd_0p3_auto_gold.csv \
+  --timestamp
+
+Or use the scripted wrapper (auto-detect Tek/FY + scaling):
+
+```bash
+python3 scripts/run_thd_sweep.py \
+  --amp-vpp 0.5 \
+  --start 20 --stop 20000 --points 61 \
+  --scope-auto-scale CH1=12 \
+  --apply-gold-calibration --cal-target-vpp 0.5 \
+  --timestamp
+```
 ```
 
 - Tune the gain map (`CHn=value`) to match your probe ratios / stage gain.
@@ -62,7 +74,8 @@ python unified_gui_layout.py knee-sweep \
   --output results/knee_sweep.csv \
   --apply-gold-calibration \
   --knee-drop-db 3.0 \
-  --smoothing median --smooth-window 5
+  --smoothing median --smooth-window 5 \
+  --timestamp
 ```
 
 - Adjust `--knee-drop-db` for other thresholds (e.g. -1 dB noise floor checks).
@@ -85,6 +98,37 @@ amp-benchkit fft-capture \
 - Pass `--fy-freq` / `--fy-amp` to re-arm the FY source ahead of the grab (falls back to auto-detecting the FY port).
 - Use `--smoothing none` or custom scripts on the CSV to cross-validate against the analyzer’s THD readings.
 - The CLI prints the strongest bins in human-readable form while the CSV retains the full spectrum for post-processing.
+- Append `--timestamp` when you want to keep every capture instead of overwriting the previous CSV.
+
+To automate multiple FFT grabs across the audio band, use the sweep helper (handles FY tuning and FFT center/span per point, restoring defaults afterward):
+
+```bash
+amp-benchkit fft-sweep \
+  --start 100 \
+  --stop 5000 \
+  --points 10 \
+  --amp-vpp 0.5 \
+  --fft-span 250 \
+  --fft-zoom 10 \
+  --output-dir results/fft_sweep \
+  --timestamp
+```
+
+To automate multiple FFT grabs across the audio band, use the sweep helper:
+
+```bash
+amp-benchkit fft-sweep \
+  --start 100 \
+  --stop 5000 \
+  --points 10 \
+  --amp-vpp 0.5 \
+  --fft-span 500 \
+  --output-dir results/fft_sweep \
+  --timestamp
+```
+
+- The command adjusts the FY generator for each point, repoints the FFT center to the current frequency, then saves timestamped CSV traces.
+- Tweak `--fft-span` or `--fft-zoom` so the scope’s FFT window matches your manual configuration.
 
 ### Offline THD comparison
 
@@ -102,6 +146,18 @@ python scripts/fft_thd_compare.py \
 - Swap `--auto-fundamental` for `--fundamental 1000` if the FFT is already zoomed to 1 kHz.
 - Tighten `--window` when the FFT resolution is high to avoid picking up adjacent bins.
 - The script surfaces the harmonic peaks and delta so scope FFT, THD sweep, and analyzer readings can be compared offline.
+
+For bulk FFT sweep runs, generate a consolidated report:
+
+```bash
+python scripts/fft_vs_thd_summary.py \
+  --fft-dir results/fft_sweep \
+  --thd results/thd_sweep.csv \
+  --window 50 \
+  --harmonics 8
+```
+
+This writes `fft_thd_summary.csv` and prints per-frequency deltas so you can confirm the FFT captures align with the THD sweep.
 
 ## Continuous Integration
 

@@ -93,3 +93,46 @@ def test_cli_fft_capture(monkeypatch, capsys):
     out_lines = capsys.readouterr().out.strip().splitlines()
     assert any("Top 1 bins" in line for line in out_lines)
     assert any("1000.00 Hz" in line for line in out_lines)
+
+
+def test_cli_fft_sweep(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr("unified_gui_layout.build_freq_points", lambda **kwargs: [100.0, 200.0])
+    monkeypatch.setattr("unified_gui_layout.find_fy_port", lambda: "/dev/ttyFAKE")
+    monkeypatch.setattr("unified_gui_layout.fy_apply", lambda **kwargs: None)
+    monkeypatch.setattr("unified_gui_layout.scope_configure_fft", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "unified_gui_layout.scope_capture_fft_trace",
+        lambda **kwargs: {
+            "freqs": [0.0, 100.0, 200.0],
+            "values": [-12.0, -3.0, -20.0],
+            "x_unit": "Hz",
+            "y_unit": "dB",
+        },
+    )
+    monkeypatch.setattr("unified_gui_layout._timestamp_path", lambda path: path)
+
+    args = [
+        "fft-sweep",
+        "--start",
+        "100",
+        "--stop",
+        "200",
+        "--points",
+        "2",
+        "--mode",
+        "linear",
+        "--output-dir",
+        str(tmp_path),
+        "--top",
+        "2",
+    ]
+
+    try:
+        rc = cli.main(args)
+    except SystemExit as e:
+        rc = e.code
+
+    assert rc == 0
+    capsys.readouterr()
+    saved_files = list(tmp_path.glob("fft_*.csv"))
+    assert saved_files

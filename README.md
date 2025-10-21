@@ -84,18 +84,31 @@ amp-benchkit config-reset      # reset config to defaults
 amp-benchkit sweep --start 20 --stop 20000 --points 10 --mode log
 
 # Headless THD sweep using Tek math (requires hardware)
-amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv
+amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv --timestamp
 # add --math to capture CH1-CH2 differential instead of a single channel
 # add --scope-auto-scale CH1=12,CH3=1 --scope-auto-scale-margin 1.2 to auto-set volts/div
 
+# One-shot THD sweep with auto-detected instruments & scaling
+python3 scripts/run_thd_sweep.py \
+  --amp-vpp 0.5 \
+  --start 20 --stop 20000 --points 61 \
+  --scope-auto-scale CH1=12 \
+  --apply-gold-calibration --cal-target-vpp 0.5 \
+  --timestamp
+
 # Headless bandwidth sweep to locate -3 dB knees (fake-hw friendly)
-amp-benchkit knee-sweep --amp-vpp 1.0 --output results/knee_sweep.csv
+amp-benchkit knee-sweep --amp-vpp 1.0 --output results/knee_sweep.csv --timestamp
 # add --knee-drop-db 1.5 to search for alternate bandwidth targets
 # add --smoothing mean --smooth-window 7 --allow-non-monotonic to tweak the envelope fit
 
 # Snapshot the scope FFT (math trace) with optional generator retune
-amp-benchkit fft-capture --source CH1 --output results/fft_trace.csv --top 8
+amp-benchkit fft-capture --source CH1 --output results/fft_trace.csv --top 8 --timestamp
 # add --fy-freq 1000 --fy-amp 0.5 to re-arm the FY generator before capture
+
+# Sweep FFT captures across multiple fundamentals
+amp-benchkit fft-sweep --start 100 --stop 5000 --points 10 \
+  --amp-vpp 0.5 --output-dir results/fft_sweep --timestamp
+# add --fft-span 500 or --fft-zoom 10 to match your scope configuration
 
 # Compare FFT-derived THD against sweep output
 python scripts/fft_thd_compare.py \
@@ -105,6 +118,12 @@ python scripts/fft_thd_compare.py \
   --window 200 \
   --harmonics 8
 # replace --auto-fundamental with --fundamental 1000 if the FFT bin lands exactly at 1 kHz
+
+# Summarize an FFT sweep against the latest THD sweep
+python scripts/fft_vs_thd_summary.py \
+  --fft-dir results/fft_sweep \
+  --thd results/thd_sweep.csv \
+  --window 50 --harmonics 8
 
 ### Automatic Scope Scaling
 

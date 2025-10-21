@@ -7,6 +7,7 @@ Requires pyvisa to be available.
 from __future__ import annotations
 
 from contextlib import suppress
+from typing import Any, cast
 
 import numpy as np
 
@@ -36,6 +37,7 @@ __all__ = [
     "scope_capture_calibrated",
     "scope_capture_fft_trace",
     "scope_configure_timebase",
+    "scope_configure_fft",
     "scope_read_timebase",
     "scope_resume_run",
     "scope_read_vertical_scale",
@@ -144,6 +146,7 @@ def tek_capture_block(resource, ch=1):
 
 def scope_set_trigger_ext(resource=TEK_RSRC_DEFAULT, slope="RISE", level=None):
     _need_pyvisa()
+    assert _pyvisa is not None  # for mypy
     rm = _pyvisa.ResourceManager()
     sc = rm.open_resource(resource)
     try:
@@ -177,6 +180,9 @@ def scope_set_trigger_ext(resource=TEK_RSRC_DEFAULT, slope="RISE", level=None):
 
 def scope_arm_single(resource=TEK_RSRC_DEFAULT):
     _need_pyvisa()
+    if _pyvisa is None:  # pragma: no cover - type guard
+        raise TekError("pyvisa backend unavailable")
+    assert _pyvisa is not None
     rm = _pyvisa.ResourceManager()
     sc = rm.open_resource(resource)
     try:
@@ -401,6 +407,8 @@ def scope_capture_fft_trace(
         "HAMMING": "HAMMING",
         "BLACK": "BLACKMAN",
         "BLACKMAN": "BLACKMAN",
+        "FLAT": "FLATTOP",
+        "FLATTOP": "FLATTOP",
     }
     scale_map = {
         "LIN": "LINEAR",
@@ -481,6 +489,74 @@ def scope_capture_fft_trace(
     finally:
         with suppress(Exception):
             sc.write("MATH:FFT:STATE OFF")
+        with suppress(Exception):
+            sc.close()
+
+
+def scope_configure_fft(
+    resource=TEK_RSRC_DEFAULT,
+    *,
+    center_hz: float | None = None,
+    span_hz: float | None = None,
+    zoom: float | None = None,
+    scale: str | None = None,
+    window: str | None = None,
+):
+    """Configure FFT display parameters (center/span/scale/window).
+
+    Parameters map to the Tektronix SCPI commands where available. Commands are
+    wrapped in suppress blocks so unsupported models simply ignore them.
+    """
+
+    _need_pyvisa()
+    if _pyvisa is None:  # pragma: no cover - type guard
+        raise TekError("pyvisa backend unavailable")
+    visa_module = cast(Any, _pyvisa)
+    rm = visa_module.ResourceManager()
+    sc = rm.open_resource(resource)
+    window_map = {
+        "RECT": "RECTANGULAR",
+        "RECTANGULAR": "RECTANGULAR",
+        "RECTANGLE": "RECTANGULAR",
+        "HANN": "HANNING",
+        "HANNING": "HANNING",
+        "HAMM": "HAMMING",
+        "HAMMING": "HAMMING",
+        "BLACK": "BLACKMAN",
+        "BLACKMAN": "BLACKMAN",
+        "FLAT": "FLATTOP",
+        "FLATTOP": "FLATTOP",
+    }
+    try:
+        if center_hz is not None:
+            with suppress(Exception):
+                sc.write(f"MATH:FFT:CENTER {float(center_hz)}")
+        if span_hz is not None:
+            with suppress(Exception):
+                sc.write(f"MATH:FFT:SPAN {float(span_hz)}")
+        if zoom is not None:
+            with suppress(Exception):
+                sc.write(f"MATH:FFT:ZOOM {float(zoom)}")
+        if window is not None:
+            key = str(window).upper().strip()
+            win_cmd = window_map.get(key)
+            if win_cmd:
+                with suppress(Exception):
+                    sc.write(f"MATH:FFT:WINDOW {win_cmd}")
+        if scale is not None:
+            scale_map = {
+                "LIN": "LINEAR",
+                "LINEAR": "LINEAR",
+                "DB": "DB",
+                "DBM": "DB",
+                "DECIBEL": "DB",
+            }
+            key = str(scale).upper()
+            scale_cmd = scale_map.get(key)
+            if scale_cmd:
+                with suppress(Exception):
+                    sc.write(f"MATH:FFT:SCALE {scale_cmd}")
+    finally:
         with suppress(Exception):
             sc.close()
 

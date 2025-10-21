@@ -11,6 +11,8 @@ starting with 0.x pre-release phases.
 - Added `knee-sweep` CLI support for -3 dB bandwidth detection with smoothing/monotonic controls, gold calibration, CSV export, and accompanying tests/docs.
 - New `fft-capture` CLI subcommand configures the Tek math FFT trace, exports frequency/amplitude CSV data, and reports the strongest bins (with optional FY retune helper).
 - Added `scripts/fft_thd_compare.py` for offline comparison between THD sweep CSVs and FFT captures (auto-detected fundamental, harmonic windowing, and delta reporting).
+- Introduced `fft-sweep` CLI for timestamped FFT captures across a frequency list, including automatic FY retune and optional FFT span/zoom configuration.
+- Added `scripts/run_thd_sweep.py` to auto-detect Tek/FY hardware, apply scope auto-scaling/calibration, and produce timestamped THD sweep datasets.
 
 [0.3.9] - 2025-10-12
 --------------------
