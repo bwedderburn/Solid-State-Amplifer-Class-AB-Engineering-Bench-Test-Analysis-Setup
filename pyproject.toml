@@ -32,7 +32,7 @@ classifiers = [
   "Framework :: Pytest"
 ]
 
-# Core runtime deps (mirrors requirements.txt)
+# Core runtime deps (mirrors requirements/runtime.txt)
 dependencies = [
 "numpy==2.3.3",
 "matplotlib==3.10.7",

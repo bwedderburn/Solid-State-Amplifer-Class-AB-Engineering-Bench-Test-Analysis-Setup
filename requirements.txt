@@ -1,16 +1,9 @@
-# Core runtime dependencies (pinned for reproducibility)
-# Update with: pip-compile (future) or manual bump after testing GUI & selftest
-numpy==2.3.3
-matplotlib==3.10.7
-pyvisa==1.15.0
-pyserial==3.5
-LabJackPython==2.1.0
-# Either PySide6 or PyQt5 is acceptable; PySide6 preferred. Keep both pins for flexibility.
-PySide6==6.10.0
-PyQt5==5.15.11
-
-# (Optional) Developer tooling (uncomment if needed)
-# mypy==1.13.0
-# black==24.8.0
-# ruff==0.6.9
-# loguru==0.7.2
+# amp-benchkit now manages pinned dependencies via pyproject.toml.
+# This stub prevents upstream automation (GitHub dependency submission)
+# from crashing on ``pip-compile`` while we ride out the pip 25.3 toolchain bug.
+#
+# For a locked runtime environment, use:
+#   pip install -r requirements/runtime.txt
+# or preferred:
+#   pip install .[gui]
+#
