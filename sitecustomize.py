@@ -132,6 +132,7 @@ def _patch_piptools_utils() -> None:
         return original(template, **extra_kwargs)
 
     piptools_utils.copy_install_requirement = wrapper  # type: ignore[assignment]
+    os.environ.setdefault("AMPBENCHKIT_PIPTOOLS_PATCHED", "1")
 
 
 if not TYPE_CHECKING:
