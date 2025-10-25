@@ -5,7 +5,7 @@ Core modules live in `amp_benchkit/`, spanning instrument drivers, DSP helpers, 
 
 ## Build, Test, and Development Commands
 - `python3 -m venv .venv && source .venv/bin/activate` — create and enter an isolated environment.
-- `pip install .[gui]` (optional: `pip install .[dev,test]`) — install runtime GUI bindings and developer tooling.
+- `pip install -r requirements.txt` (plus `-r requirements-dev.txt`) — install runtime and developer tooling.
 - `pre-commit run --all-files --show-diff-on-failure` — enforce Ruff, Black, MyPy, and ancillary checks.
 - `python unified_gui_layout.py selftest` — run a headless smoke test against the fake hardware stack.
 - `python unified_gui_layout.py gui` — launch the Qt GUI for manual workflows.

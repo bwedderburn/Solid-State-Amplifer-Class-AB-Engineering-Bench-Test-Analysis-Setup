@@ -29,7 +29,7 @@ COPY unified_gui_layout.py ./
 COPY scripts/ ./scripts/
 COPY patches/ ./patches/
 
-# Install Python deps (explicit list; mirrors requirements/runtime.txt)
+# Install Python deps (explicit list; could move to requirements.txt later)
 RUN $VIRTUAL_ENV/bin/pip install --upgrade pip \
     && $VIRTUAL_ENV/bin/pip install pyvisa pyserial PySide6 PyQt5 LabJackPython numpy matplotlib
 

@@ -30,7 +30,7 @@ export FY_PORT=/dev/tty.usbserial-XYZ
 
 ## Updating Dependencies
 
-- Runtime pins are managed in `pyproject.toml` and `requirements/runtime.txt`.
+- Runtime pins are managed in `pyproject.toml` and `requirements.txt`.
 - Use `pip install -e .[dev,test,gui]` to update your environment.
 - Docs tooling lives under the `docs` optional extra (`pip install .[docs]`).
 

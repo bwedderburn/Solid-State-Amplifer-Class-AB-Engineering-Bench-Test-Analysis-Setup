@@ -41,7 +41,7 @@ The MkDocs site bundles setup recipes, hardware guides, and developer workflow n
 python3 -m venv .venv
 source .venv/bin/activate
 pip install --upgrade pip
-pip install .[gui]
+pip install -r requirements.txt
 
 # Build & install Exodriver (USB support)
 ./scripts/install_exodriver_alpine.sh
@@ -399,7 +399,7 @@ Then commits will auto-run ruff / mypy (if configured) on changed files.
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `Could not load the Exodriver driver` | `liblabjackusb` not on search path | Run installer; set `LD_LIBRARY_PATH` |
-| `No module named numpy` | Dependencies not installed | `pip install .[gui]` |
+| `No module named numpy` | Dependencies not installed | `pip install -r requirements.txt` (future) |
 | GUI won’t launch | Missing Qt binding / no display | Install PySide6; ensure DISPLAY set or use VS Code desktop |
 | `Permission denied` running script | Not executable | `chmod +x script.sh` |
 

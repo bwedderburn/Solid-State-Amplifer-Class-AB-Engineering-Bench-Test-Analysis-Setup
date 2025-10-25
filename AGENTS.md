@@ -24,9 +24,9 @@ pyproject.toml
 # environment
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -U pip
-pip install .[gui]
+pip install -r requirements.txt
 # optional developer extras
-pip install .[dev,test] || true
+pip install -r requirements-dev.txt || true
 
 # pre-commit (format/lint/types)
 pip install pre-commit && pre-commit install
@@ -75,8 +75,8 @@ brew install --cask ni-visa
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 python -m pip install -U pip
-pip install .[gui]
-pip install .[dev,test] || true
+pip install -r requirements.txt
+pip install -r requirements-dev.txt || true
 pre-commit install
 pre-commit run --all-files --show-diff-on-failure
 ```
