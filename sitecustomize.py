@@ -114,3 +114,23 @@ if RequirementCommand is not None and not TYPE_CHECKING:
     RequirementCommand.make_resolver = _shim_make_resolver(  # type: ignore[assignment]
         RequirementCommand
     )
+
+
+def _patch_piptools_utils() -> None:
+    try:
+        from piptools import utils as piptools_utils  # type: ignore[import-not-found]
+    except ModuleNotFoundError:  # pragma: no cover - pip-tools absent
+        return
+
+    original = piptools_utils.copy_install_requirement
+
+    def wrapper(template: Any, **extra_kwargs: Any) -> Any:
+        if "use_pep517" not in extra_kwargs and not hasattr(template, "use_pep517"):
+            extra_kwargs["use_pep517"] = False
+        return original(template, **extra_kwargs)
+
+    piptools_utils.copy_install_requirement = wrapper  # type: ignore[assignment]
+
+
+if not TYPE_CHECKING:
+    _patch_piptools_utils()
