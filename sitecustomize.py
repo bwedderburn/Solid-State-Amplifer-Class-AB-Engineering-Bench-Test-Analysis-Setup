@@ -93,6 +93,7 @@ if (
     _inject_use_pep517(cast(Any, InstallRequirement))
 
 RequirementCommand: Any
+_PIPTOOLS_PATCHED = False
 
 try:
     from pip._internal.cli.req_command import RequirementCommand
@@ -117,22 +118,51 @@ if RequirementCommand is not None and not TYPE_CHECKING:
 
 
 def _patch_piptools_utils() -> None:
+    global _PIPTOOLS_PATCHED
+
+    def _apply(module: Any) -> None:
+        global _PIPTOOLS_PATCHED
+        if _PIPTOOLS_PATCHED:
+            return
+        original = module.copy_install_requirement
+
+        def wrapper(template: Any, **extra_kwargs: Any) -> Any:
+            if not hasattr(template, "use_pep517"):
+                template.use_pep517 = False
+            if "use_pep517" not in extra_kwargs:
+                extra_kwargs["use_pep517"] = False
+            return original(template, **extra_kwargs)
+
+        module.copy_install_requirement = wrapper  # type: ignore[attr-defined]
+        os.environ.setdefault("AMPBENCHKIT_PIPTOOLS_PATCHED", "1")
+        _PIPTOOLS_PATCHED = True
+
+    def _hook_import() -> None:
+        import builtins
+
+        original_import = builtins.__import__
+
+        def wrapped(
+            name: str, globals: Any = None, locals: Any = None, fromlist: Any = (), level: int = 0
+        ):
+            module = original_import(name, globals, locals, fromlist, level)
+            if name == "piptools.utils":
+                _apply(module)
+                builtins.__import__ = original_import
+            elif name.startswith("piptools.") and "piptools.utils" in sys.modules:
+                _apply(sys.modules["piptools.utils"])
+                builtins.__import__ = original_import
+            return module
+
+        builtins.__import__ = wrapped
+
     try:
         from piptools import utils as piptools_utils  # type: ignore[import-not-found]
     except ModuleNotFoundError:  # pragma: no cover - pip-tools absent
+        _hook_import()
         return
 
-    original = piptools_utils.copy_install_requirement
-
-    def wrapper(template: Any, **extra_kwargs: Any) -> Any:
-        if not hasattr(template, "use_pep517"):
-            template.use_pep517 = False
-        if "use_pep517" not in extra_kwargs:
-            extra_kwargs["use_pep517"] = False
-        return original(template, **extra_kwargs)
-
-    piptools_utils.copy_install_requirement = wrapper  # type: ignore[assignment]
-    os.environ.setdefault("AMPBENCHKIT_PIPTOOLS_PATCHED", "1")
+    _apply(piptools_utils)
 
 
 if not TYPE_CHECKING:
