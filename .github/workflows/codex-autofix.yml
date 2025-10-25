@@ -96,7 +96,6 @@ jobs:
 
       - name: Open pull request
         if: steps.trust.outputs.trusted == 'true' && steps.push_changes.outputs.no_changes != 'true'
-        if: steps.push_changes.outputs.no_changes != 'true'
         uses: actions/github-script@v7
         env:
           AUTOFIX_BRANCH: ${{ steps.push_changes.outputs.branch }}
