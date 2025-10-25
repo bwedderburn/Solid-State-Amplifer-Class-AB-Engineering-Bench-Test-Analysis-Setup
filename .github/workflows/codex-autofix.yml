@@ -21,10 +21,12 @@ jobs:
           ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Capture metadata for prompt
+        env:
+          FAILED_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
           echo "FAILED_WORKFLOW=${{ github.event.workflow_run.name }}" >> $GITHUB_ENV
           echo "FAILED_URL=${{ github.event.workflow_run.html_url }}" >> $GITHUB_ENV
-          echo "FAILED_BRANCH=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_ENV
+          echo "FAILED_BRANCH=$FAILED_BRANCH" >> $GITHUB_ENV
           echo "FAILED_SHA=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
 
       # Optional: reproduce locally first (your CI uses pytest, ruff, mypy)
