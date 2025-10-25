@@ -101,19 +101,16 @@ except ModuleNotFoundError:  # pragma: no cover - pip not available
 
 
 def _shim_make_resolver(command: Any) -> Any:
-    original = command.make_resolver.__func__  # unwrap classmethod
+    original = command.make_resolver  # classmethod descriptor
 
-    def wrapper(cls: Any, *args: Any, use_pep517: Any = None, **kwargs: Any) -> Any:
-        return original(cls, *args, **kwargs)
+    def wrapper(cls: Any, *args: Any, **kwargs: Any) -> Any:
+        kwargs.pop("use_pep517", None)
+        return original.__func__(cls, *args, **kwargs)
 
     return classmethod(wrapper)
 
 
-if (
-    RequirementCommand is not None
-    and not TYPE_CHECKING
-    and "use_pep517" not in RequirementCommand.make_resolver.__code__.co_varnames
-):
+if RequirementCommand is not None and not TYPE_CHECKING:
     RequirementCommand.make_resolver = _shim_make_resolver(  # type: ignore[assignment]
         RequirementCommand
     )
