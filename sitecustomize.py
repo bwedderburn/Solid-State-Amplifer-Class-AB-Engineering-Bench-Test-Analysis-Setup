@@ -125,7 +125,9 @@ def _patch_piptools_utils() -> None:
     original = piptools_utils.copy_install_requirement
 
     def wrapper(template: Any, **extra_kwargs: Any) -> Any:
-        if "use_pep517" not in extra_kwargs and not hasattr(template, "use_pep517"):
+        if not hasattr(template, "use_pep517"):
+            template.use_pep517 = False
+        if "use_pep517" not in extra_kwargs:
             extra_kwargs["use_pep517"] = False
         return original(template, **extra_kwargs)
 
