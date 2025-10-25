@@ -1,0 +1,38 @@
+name: Dependency Submission (Python)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install pip-tools with pinned pip
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install "pip<25.3"
+          python -m pip install pip-tools
+
+      - name: Generate dependency snapshot
+        run: |
+          pip-compile --dry-run -o requirements.out requirements.txt
+
+      - name: Submit dependency snapshot
+        uses: actions/dependency-submission-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          manifest: requirements.out
