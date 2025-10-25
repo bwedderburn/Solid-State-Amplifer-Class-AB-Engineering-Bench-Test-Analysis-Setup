@@ -20,6 +20,8 @@ import subprocess
 import sys
 from typing import TYPE_CHECKING, Any, cast
 
+os.environ.setdefault("AMPBENCHKIT_SITECUSTOMIZE", "1")
+
 InstallRequirement: Any
 
 
