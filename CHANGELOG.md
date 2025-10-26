@@ -8,11 +8,23 @@ starting with 0.x pre-release phases.
 [Unreleased]
 ------------
 
+### Added
+
+- Enhanced FFT capture with vertical scale and position controls for TDS 2024B oscilloscope
+  - `scope_capture_fft_trace()` now accepts `vertical_scale` and `vertical_position` parameters
+  - New `scope_read_fft_vertical_params()` function to query current FFT vertical settings
+  - Example script `scripts/example_fft_capture.py` demonstrating proper FFT scaling usage
+  - Comprehensive test suite for tek module (11 new tests in `tests/test_tek.py`)
+  - Documentation updates in `docs/hardware-setup.md` with FFT best practices
+
+### Changed
+
 - Added `knee-sweep` CLI support for -3 dB bandwidth detection with smoothing/monotonic controls, gold calibration, CSV export, and accompanying tests/docs.
 - New `fft-capture` CLI subcommand configures the Tek math FFT trace, exports frequency/amplitude CSV data, and reports the strongest bins (with optional FY retune helper).
 - Added `scripts/fft_thd_compare.py` for offline comparison between THD sweep CSVs and FFT captures (auto-detected fundamental, harmonic windowing, and delta reporting).
 - Introduced `fft-sweep` CLI for timestamped FFT captures across a frequency list, including automatic FY retune and optional FFT span/zoom configuration.
 - Added `scripts/run_thd_sweep.py` to auto-detect Tek/FY hardware, apply scope auto-scaling/calibration, and produce timestamped THD sweep datasets.
+- Updated `ruff.toml` to allow E402 (module-level imports) in scripts directory
 
 [0.3.9] - 2025-10-12
 --------------------
