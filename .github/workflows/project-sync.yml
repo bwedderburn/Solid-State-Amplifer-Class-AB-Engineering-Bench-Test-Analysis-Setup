@@ -1,0 +1,22 @@
+name: Project Sync
+
+on:
+  issues:
+    types: [opened, reopened]
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+  pull-requests: write
+  project: write
+
+jobs:
+  add-to-project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Add item to project
+        uses: actions/add-to-project@v1
+        with:
+          project-url: https://github.com/users/bwedderburn/projects/2
+          github-token: ${{ secrets.PROJECT_AUTOMATION_PAT }}
