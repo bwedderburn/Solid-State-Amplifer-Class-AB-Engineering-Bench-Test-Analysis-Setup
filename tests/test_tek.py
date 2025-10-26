@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from amp_benchkit import tek
 
 
@@ -77,34 +75,17 @@ def test_scope_capture_fft_trace_scale_validation():
 def test_scope_capture_fft_trace_valid_windows():
     """Test that valid window types are mapped correctly."""
     # Test window mapping logic without requiring VISA connection
-    valid_windows = {
-        "RECTANGULAR": "RECTANGULAR",
-        "RECT": "RECTANGULAR",
-        "HANNING": "HANNING",
-        "HANN": "HANNING",
-        "HAMMING": "HAMMING",
-        "HAMM": "HAMMING",
-        "BLACKMAN": "BLACKMAN",
-        "BLACK": "BLACKMAN",
-        "FLATTOP": "FLATTOP",
-        "FLAT": "FLATTOP",
-    }
     # These are the expected mappings based on the window_map in the function
     # Actual connection test would require VISA backend or mocking
+    pass
 
 
 def test_scope_capture_fft_trace_valid_scales():
     """Test that valid scale types are mapped correctly."""
     # Test scale mapping logic without requiring VISA connection
-    valid_scales = {
-        "LINEAR": "LINEAR",
-        "LIN": "LINEAR",
-        "DB": "DB",
-        "DBM": "DB",
-        "DECIBEL": "DB",
-    }
     # These are the expected mappings based on the scale_map in the function
     # Actual connection test would require VISA backend or mocking
+    pass
 
 
 def test_scope_read_fft_vertical_params_no_pyvisa(monkeypatch):
