@@ -127,7 +127,7 @@ def main() -> int:
         with open(args.output, "w", newline="") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow([f"Frequency ({x_unit})", f"Amplitude ({y_unit})"])
-            for freq, val in zip(freqs, values, strict=False):
+            for freq, val in zip(freqs, values, strict=True):
                 writer.writerow([freq, val])
         print(f"\nSaved FFT data to: {args.output}")
 
