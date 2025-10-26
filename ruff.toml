@@ -7,3 +7,4 @@ ignore = []
 
 [lint.per-file-ignores]
 "tests/*" = ["E402"]
+"scripts/*" = ["E402"]
