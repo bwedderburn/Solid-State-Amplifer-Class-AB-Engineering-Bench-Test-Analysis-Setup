@@ -42,6 +42,7 @@ __all__ = [
     "scope_resume_run",
     "scope_read_vertical_scale",
     "scope_set_vertical_scale",
+    "scope_read_fft_vertical_params",
     "scope_screenshot",
     "TekError",
     "TekTimeoutError",
@@ -371,6 +372,8 @@ def scope_capture_fft_trace(
     *,
     window="HANNING",
     scale="DB",
+    vertical_scale=None,
+    vertical_position=None,
     timeout_ms=15000,
 ):
     """Capture the Tek FFT (math) trace as frequency/amplitude arrays.
@@ -382,9 +385,16 @@ def scope_capture_fft_trace(
     source : int | str
         Base channel feeding the FFT (e.g. 1, "CH2").
     window : str
-        FFT window. Accepted values: rectangular, hanning, hamming, blackman.
+        FFT window. Accepted values: rectangular, hanning, hamming, blackman, flattop.
     scale : str
         FFT vertical scale. Accepted values: linear, db.
+    vertical_scale : float | None
+        FFT vertical scale in units/div. If None, uses scope's current setting.
+        For dB scale, typical values are 5 or 10 dB/div.
+        For linear scale, values depend on input signal amplitude.
+    vertical_position : float | None
+        FFT vertical position in divisions. If None, uses scope's current setting.
+        Range is typically -5.0 to +5.0 divisions.
     timeout_ms : int
         VISA timeout for the transfer.
 
@@ -392,6 +402,13 @@ def scope_capture_fft_trace(
     -------
     dict
         {"freqs": [...], "values": [...], "x_unit": "Hz", "y_unit": "dB" or "V"}.
+
+    Notes
+    -----
+    For TDS 2024B oscilloscopes, the MATH vertical scale should be configured
+    appropriately for the FFT display to ensure accurate amplitude readings.
+    When scale='DB', vertical_scale typically ranges from 1 to 20 dB/div.
+    When scale='LINEAR', vertical_scale depends on the input signal level.
     """
 
     _need_pyvisa()
@@ -454,6 +471,13 @@ def scope_capture_fft_trace(
             sc.write(f"MATH:FFT:SCALE {scale_cmd}")
         with suppress(Exception):
             sc.write("MATH:FFT:STATE ON")
+        # Configure vertical scale and position for FFT display
+        if vertical_scale is not None:
+            with suppress(Exception):
+                sc.write(f"MATH:VERTICAL:SCALE {float(vertical_scale)}")
+        if vertical_position is not None:
+            with suppress(Exception):
+                sc.write(f"MATH:VERTICAL:POSITION {float(vertical_position)}")
         sc.write("DATA:SOURCE MATH")
         sc.write("DATa:ENCdg RIBinary;WIDth 1")
         sc.write("DATA:START 1")
@@ -556,6 +580,49 @@ def scope_configure_fft(
             if scale_cmd:
                 with suppress(Exception):
                     sc.write(f"MATH:FFT:SCALE {scale_cmd}")
+    finally:
+        with suppress(Exception):
+            sc.close()
+
+
+def scope_read_fft_vertical_params(resource=TEK_RSRC_DEFAULT):
+    """Read current FFT vertical scale and position settings.
+
+    Parameters
+    ----------
+    resource : str
+        VISA resource identifier for the scope.
+
+    Returns
+    -------
+    dict
+        {"scale": float, "position": float} or None on failure.
+        scale: vertical scale in units/div (dB/div for dB mode, V/div for linear).
+        position: vertical position in divisions.
+
+    Notes
+    -----
+    This function queries the MATH vertical parameters which apply when the
+    MATH function is configured for FFT display. Useful for verifying the
+    current FFT display configuration or for restoring settings.
+    """
+    if not HAVE_PYVISA:
+        return None
+    try:
+        rm = _pyvisa.ResourceManager()
+        sc = rm.open_resource(resource)
+    except Exception:
+        return None
+    try:
+        scale = None
+        position = None
+        with suppress(Exception):
+            scale = float(sc.query("MATH:VERTICAL:SCALE?"))
+        with suppress(Exception):
+            position = float(sc.query("MATH:VERTICAL:POSITION?"))
+        if scale is None and position is None:
+            return None
+        return {"scale": scale, "position": position}
     finally:
         with suppress(Exception):
             sc.close()
