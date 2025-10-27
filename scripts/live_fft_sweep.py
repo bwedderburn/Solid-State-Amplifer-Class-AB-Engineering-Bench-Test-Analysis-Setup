@@ -12,7 +12,7 @@ Example (defaults match the user's current setup):
         --start 20 --stop 20000 --points 25 \
         --amp-vpp 0.5 --fft-zoom 2 \
         --vertical-scale 10 --vertical-position 0 \
-        --low-span 500 --low-stop 500 \
+        --low-span 100 --low-stop 500 --low-timebase 0.02 \
         --timestamp --restore-freq 1000
 """
 
@@ -156,6 +156,32 @@ def capture_fft_point(
     )
 
 
+def interpolate_amplitude(
+    freqs: Sequence[float],
+    values: Sequence[float],
+    target_hz: float,
+    *,
+    default: float = float("nan"),
+) -> float:
+    if not freqs or not values:
+        return default
+    if len(freqs) != len(values):
+        raise ValueError("freq and value arrays must be same length")
+    # assume freqs monotonically increasing
+    last_freq = freqs[0]
+    last_val = values[0]
+    for f, v in zip(freqs[1:], values[1:], strict=False):
+        if (last_freq <= target_hz <= f) or (last_freq >= target_hz >= f):
+            if f == last_freq:
+                return v
+            weight = (target_hz - last_freq) / (f - last_freq)
+            return last_val + weight * (v - last_val)
+        last_freq, last_val = f, v
+    # fallback to nearest
+    nearest = min(zip(freqs, values, strict=False), key=lambda item: abs(item[0] - target_hz))
+    return nearest[1]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run a live FFT sweep with timestamped capture.")
     parser.add_argument(
@@ -231,7 +257,7 @@ def main() -> int:
     parser.add_argument(
         "--low-span",
         type=float,
-        default=500.0,
+        default=100.0,
         help="FFT span (Hz) used for the low-band pass (≤0 enables auto span).",
     )
     parser.add_argument(
@@ -249,7 +275,7 @@ def main() -> int:
     parser.add_argument(
         "--low-min-span",
         type=float,
-        default=200.0,
+        default=100.0,
         help="Minimum span for the low-band when auto span is active.",
     )
     parser.add_argument(
@@ -261,7 +287,7 @@ def main() -> int:
     parser.add_argument(
         "--low-timebase",
         type=float,
-        default=None,
+        default=0.02,
         help="Horizontal scale (seconds/div) applied before each low-band capture.",
     )
     parser.add_argument(
@@ -409,7 +435,14 @@ def main() -> int:
     total_points = sum(len(p["freqs"]) for p in passes)
 
     summary_rows: list[list[str | float]] = [
-        ["test_freq_hz", "top_bin_hz", "top_bin_value", "csv_path"]
+        [
+            "test_freq_hz",
+            "drive_amp_db",
+            "bin_freq_hz",
+            "bin_value_db",
+            "bin_width_hz",
+            "csv_path",
+        ]
     ]
 
     try:
@@ -528,16 +561,27 @@ def main() -> int:
                 except OSError as exc:
                     print(f"  Save error: {exc}")
 
-                top_bins = rank_bins(freqs_fft, values_fft, scale=args.fft_scale, top=args.top)
-                if top_bins:
-                    print(f"  Top {len(top_bins)} bins ({y_unit}):")
-                    for f_bin, val in top_bins:
-                        print(f"    {f_bin:10.2f} {x_unit} → {val:9.3f} {y_unit}")
-                    top_freq, top_val = top_bins[0]
-                else:
-                    print("  No significant bins detected.")
-                    top_freq, top_val = float("nan"), float("nan")
-                summary_rows.append([freq, top_freq, top_val, dest.name])
+            pairs = list(zip(freqs_fft, values_fft, strict=False))
+            top_bins = rank_bins(freqs_fft, values_fft, scale=args.fft_scale, top=args.top)
+            nearest_bin = None
+            if top_bins:
+                print(f"  Top {len(top_bins)} bins ({y_unit}):")
+                for f_bin, val in top_bins:
+                    print(f"    {f_bin:10.2f} {x_unit} → {val:9.3f} {y_unit}")
+                nearest_bin = min(top_bins, key=lambda item: abs(item[0] - freq))
+            else:
+                print("  No significant bins detected.")
+            bin_freq = float("nan")
+            bin_val = float("nan")
+            if nearest_bin is None and pairs:
+                nearest_bin = min(pairs, key=lambda item: abs(item[0] - freq))
+            if nearest_bin is not None:
+                bin_freq, bin_val = nearest_bin
+            drive_amp = interpolate_amplitude(freqs_fft, values_fft, freq, default=bin_val)
+            bin_width = float("nan")
+            if len(freqs_fft) > 1:
+                bin_width = abs(freqs_fft[1] - freqs_fft[0])
+            summary_rows.append([freq, drive_amp, bin_freq, bin_val, bin_width, dest.name])
 
         if len(summary_rows) > 1:
             summary_path = output_dir / "fft_sweep_summary.csv"

@@ -88,6 +88,22 @@ amp-benchkit thd-math-sweep --amp-vpp 0.5 --output results/thd_sweep.csv --times
 # add --math to capture CH1-CH2 differential instead of a single channel
 # add --scope-auto-scale CH1=12,CH3=1 --scope-auto-scale-margin 1.2 to auto-set volts/div
 
+# Stepped THD+N vs frequency at fixed output power (1 W & just-under-rated default)
+python scripts/thdn_vs_frequency.py \
+  --visa-resource USB0::0x0699::0x036A::C100563::INSTR \
+  --load-ohms 8 \
+  --power 1 --power 140 \
+  --points 31 --timestamp
+# Override --power or --points to refine the grid; add --calibration gold_reference to compensate probe gain.
+
+# THD+N vs output power at 1 kHz (log-spaced from 10 mW to 150 W by default)
+python scripts/thdn_vs_power.py \
+  --visa-resource USB0::0x0699::0x036A::C100563::INSTR \
+  --frequency 1000 \
+  --power-start 0.01 --power-stop 150 --points 25 \
+  --timestamp
+# Produces Vrms/THD tables you can plot to expose crossover knees, noise floor, and clipping onset.
+
 # One-shot THD sweep with auto-detected instruments & scaling
 python3 scripts/run_thd_sweep.py \
   --amp-vpp 0.5 \

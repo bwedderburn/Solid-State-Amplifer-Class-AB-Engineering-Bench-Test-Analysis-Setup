@@ -15,7 +15,9 @@ starting with 0.x pre-release phases.
   - New `scope_read_fft_vertical_params()` function to query current FFT vertical settings
   - Example script `scripts/example_fft_capture.py` demonstrating proper FFT scaling usage
   - Comprehensive test suite for tek module (11 new tests in `tests/test_tek.py`)
-  - Documentation updates in `docs/hardware-setup.md` with FFT best practices
+- Documentation updates in `docs/hardware-setup.md` with FFT best practices
+- Introduced THD+N characterization scripts: `scripts/thdn_vs_frequency.py` (frequency sweep at fixed power) and `scripts/thdn_vs_power.py` (power sweep at fixed frequency).
+- Added FFT analysis helpers and QA tooling (`scripts/inspect_fft_bin.py`, `scripts/stitch_fft_bandpasses.py`, `scripts/fft_quality_metrics.py`) to support drive-aligned FFT validation workflows.
 
 ### Changed
 
@@ -25,6 +27,8 @@ starting with 0.x pre-release phases.
 - Introduced `fft-sweep` CLI for timestamped FFT captures across a frequency list, including automatic FY retune and optional FFT span/zoom configuration.
 - Added `scripts/run_thd_sweep.py` to auto-detect Tek/FY hardware, apply scope auto-scaling/calibration, and produce timestamped THD sweep datasets.
 - Updated `ruff.toml` to allow E402 (module-level imports) in scripts directory
+- `scripts/live_fft_sweep.py` now interpolates drive amplitude at the commanded frequency, records FFT bin widths, and controls the Tek timebase per pass.
+- `scripts/fft_quality_metrics.py` treats FFT bin width as part of the tolerance window to avoid false positives on wide-span captures.
 
 [0.3.9] - 2025-10-12
 --------------------

@@ -159,6 +159,27 @@ python scripts/fft_vs_thd_summary.py \
 
 This writes `fft_thd_summary.csv` and prints per-frequency deltas so you can confirm the FFT captures align with the THD sweep.
 
+### THD+N characterisation workflows
+
+Two new scripts automate the stepped single-tone measurements discussed in the “high quality” guidance:
+
+```bash
+# THD+N vs frequency at constant output power (defaults: 1 W and ~140 W)
+python scripts/thdn_vs_frequency.py \
+  --visa-resource USB0::0x0699::0x036A::C100563::INSTR \
+  --load-ohms 8 \
+  --power 1 --power 140 \
+  --points 31 --timestamp
+
+# THD+N vs output power at 1 kHz (log sweep from 10 mW to 150 W)
+python scripts/thdn_vs_power.py \
+  --visa-resource USB0::0x0699::0x036A::C100563::INSTR \
+  --frequency 1000 \
+  --power-start 0.01 --power-stop 150 --points 25 --timestamp
+```
+
+Both helpers compute the required Vrms/Vpp from the requested power and load impedance, use the THD sweep engine under the hood, and emit per-run summaries (in addition to per-point CSVs). Use the first script at low power (~1 W) and near rated power to capture THD+N vs frequency curves, then run the power sweep to map THD+N vs output level at 1 kHz. Feed the resulting CSVs into your plotting tool of choice to reproduce the industry-standard plots.
+
 ## Continuous Integration
 
 GitHub Actions run:
